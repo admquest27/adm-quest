@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// Regras iniciais (etapa 0). Tudo é negado, exceto o que está liberado abaixo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // O professor é identificado por uma marca na conta (custom claim),
+    // aplicada por ferramentas/definir-professor.mjs. Nenhum e-mail fica aqui.
+    function ehProfessor() {
+      return request.auth != null && request.auth.token.professor == true;
+    }
+
+    function logado() {
+      return request.auth != null;
+    }
+
+    // Cadastro do aluno: ele cria só o próprio documento, sempre como "pendente".
+    // Só o professor aprova (muda o status), liga ao número de chamada etc.
+    match /alunos/{uid} {
+      allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
+      allow create: if logado()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['status', 'criadoEm'])
+        && request.resource.data.status == 'pendente'
+        && request.resource.data.criadoEm == request.time;
+      allow update, delete: if ehProfessor();
+    }
+
+    // Todo o resto: só o professor.
+    match /{document=**} {
+      allow read, write: if ehProfessor();
+    }
+  }
+}
