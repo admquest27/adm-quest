@@ -329,3 +329,14 @@ test('professor registra e lê comentários e anotações', async () => {
   await assertSucceeds(getDocs(collection(db, 'anotacoes')));
   await assertFails(deleteDoc(doc(db, 'comentarios/n1')));
 });
+// ---------- calendário e plano ----------
+test('calendário e plano de datas: só o professor', async () => {
+  await assertSucceeds(setDoc(doc(prof(), 'calendario/2027'), { ano: 2027, bimestres: [], semAula: [], eventos: {} }));
+  await assertSucceeds(updateDoc(doc(prof(), 'calendario/2027'), { 'eventos.e1': { data: '2027-02-23', titulo: 'Evento', bloqueia: 'dia' } }));
+  await assertSucceeds(setDoc(doc(prof(), 'planos/1A'), { fixas: { m1f3: { din: '2027-03-02' } } }, { merge: true }));
+  await assertSucceeds(getDoc(doc(prof(), 'planos/1A')));
+  await assertFails(getDoc(doc(aluno('ativo1'), 'calendario/2027')));
+  await assertFails(getDoc(doc(aluno('ativo1'), 'planos/1A')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'planos/1A'), { fixas: {} }));
+  await assertFails(getDoc(doc(anonimo(), 'calendario/2027')));
+});

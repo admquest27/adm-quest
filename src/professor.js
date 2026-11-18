@@ -12,10 +12,12 @@ import {
 import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } from './registros.js';
 import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
+import { htmlAgenda, tratarAgenda, importarCalendario, ANO } from './calendario.js';
+import { abrirExportacao, exportarAluno } from './exportar.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const ROTULO = { pendente: 'Pendente', ativo: 'Ativo', saiu: 'Saiu', bloqueado: 'Bloqueado' };
-const ABAS = ['turma', 'fases', 'painel', 'turmas', 'conteudo'];
+const ABAS = ['turma', 'fases', 'agenda', 'painel', 'mais'];
 
 function codigoAleatorio() {
   const n = new Uint32Array(5);
@@ -50,7 +52,8 @@ const deLinks = (lista) => (lista ?? []).map((l) => `${l.titulo} | ${l.url}`).jo
 
 export function iniciarProfessor(user, opcoes = {}) {
   const st = {
-    aba: ABAS.includes(ler('aba')) ? ler('aba') : 'turma',
+    aba: ABAS.includes(ler('aba')) ? ler('aba') : (['turmas', 'conteudo'].includes(ler('aba')) ? 'mais' : 'turma'),
+    cal: null, plano: null, calBim: null,
     turma: ler('turma') || '',
     turmas: [], alunos: [], fases: [], mundo: null,
     progresso: {}, aval: {}, comentarios: [], anotacoes: [], profFase: null,
@@ -94,18 +97,24 @@ export function iniciarProfessor(user, opcoes = {}) {
     desenhar();
   }, () => {}));
 
+  paradas.push(onSnapshot(doc(db, 'calendario', String(ANO)), (s) => {
+    st.cal = s.exists() ? s.data() : null;
+    desenhar();
+  }, () => {}));
+
   // progresso, avaliações, atitudes e anotações só da turma escolhida
   function ligarTurma() {
     if (turmaLigada === st.turma) return;
     turmaLigada = st.turma;
     paradasTurma.forEach((p) => p());
     paradasTurma = [];
-    st.progresso = {}; st.aval = {}; st.comentarios = []; st.anotacoes = [];
+    st.progresso = {}; st.aval = {}; st.comentarios = []; st.anotacoes = []; st.plano = null;
     if (!st.turma) return;
     const dosAlunos = (nome, fn) => paradasTurma.push(onSnapshot(query(collection(db, nome), where('turma', '==', st.turma)), fn, () => {}));
     dosAlunos('progresso', (s) => { st.progresso = {}; s.docs.forEach((d) => { st.progresso[d.id] = d.data(); }); desenhar(); });
     dosAlunos('avaliacoes', (s) => { st.aval = {}; s.docs.forEach((d) => { st.aval[d.id] = d.data(); }); desenhar(); });
     dosAlunos('comentarios', (s) => { st.comentarios = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
+    paradasTurma.push(onSnapshot(doc(db, 'planos', st.turma), (s) => { st.plano = s.exists() ? s.data() : null; desenhar(); }, () => {}));
     dosAlunos('anotacoes', (s) => { st.anotacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
   }
 
@@ -132,11 +141,11 @@ export function iniciarProfessor(user, opcoes = {}) {
       return;
     }
     const ativo = document.activeElement;
-    if (st.aba === 'turmas' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
+    if (st.aba === 'mais' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
     const pend = pendentesTotal();
     const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'painel' ? htmlEstatisticas(st) : aba === 'turmas' ? htmlTurmas() : htmlConteudo();
-    const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['painel', 'Painel'], ['turmas', 'Turmas'], ['conteudo', 'Conteúdo']];
+    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlTurmas()}<hr>${htmlConteudo()}`;
+    const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['mais', 'Mais']];
     tela(
       `<header class="topo">
         <strong>ADM Quest</strong>
@@ -162,7 +171,7 @@ export function iniciarProfessor(user, opcoes = {}) {
   }
 
   function htmlTurma() {
-    if (!st.turmas.length) return '<p class="vazio">Você ainda não tem turmas. Crie a primeira na aba Turmas.</p>';
+    if (!st.turmas.length) return '<p class="vazio">Você ainda não tem turmas. Crie a primeira na aba Mais.</p>';
     const lista = alunosDaTurma();
     const ativos = lista.filter((a) => a.status === 'ativo').length;
     const linhas = lista.map((a) => `
@@ -199,8 +208,8 @@ export function iniciarProfessor(user, opcoes = {}) {
   }
 
   function htmlFases() {
-    if (!st.turma) return '<p class="vazio">Crie uma turma primeiro, na aba Turmas.</p>';
-    if (!st.fases.length) return '<p class="vazio">Ainda não há fases. Importe o conteúdo do Mundo 1 na aba Conteúdo.</p>';
+    if (!st.turma) return '<p class="vazio">Crie uma turma primeiro, na aba Mais.</p>';
+    if (!st.fases.length) return '<p class="vazio">Ainda não há fases. Importe o conteúdo do Mundo 1 na aba Mais.</p>';
     ligarProf();
     if (st.faseSel) return htmlPainelFase();
     const itens = st.fases.map((f) => {
@@ -375,12 +384,22 @@ export function iniciarProfessor(user, opcoes = {}) {
     await updateDoc(doc(db, 'turmas', st.turma), { [`liberacoes.${f.id}.${itemId}`]: !atual });
   }
 
+  async function mudarEstado(faseId, novo) {
+    const campos = { [`estadoFases.${faseId}`]: novo };
+    const anterior = turmaAtual()?.datas?.[faseId]?.[novo];
+    if (!anterior || novo !== 'aberta') campos[`datas.${faseId}.${novo}`] = hoje();
+    await updateDoc(doc(db, 'turmas', st.turma), campos);
+  }
+
   app.onclick = async (e) => {
     if (e.target.id === 'sair') { signOut(auth); return; }
     const b = e.target.closest('[data-acao]');
     if (!b) return;
     const acao = b.dataset.acao;
     try {
+      if (acao.startsWith('cal-')) { await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado }); return; }
+      if (acao === 'exportar-painel') { abrirExportacao(st, dlg); return; }
+      if (acao === 'exportar-aluno') { exportarAluno(st, b.dataset.uid); return; }
       if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; st.painelVista = null; guardar('aba', st.aba); ligarProf(); desenhar(); }
       else if (acao === 'aprovar') { e.stopPropagation(); await updateDoc(doc(db, 'alunos', b.dataset.uid), { status: 'ativo', dataEntrada: hoje() }); }
       else if (acao === 'recusar') {
@@ -425,9 +444,10 @@ export function iniciarProfessor(user, opcoes = {}) {
       else if (e.target.dataset?.estado) {
         const novo = e.target.value;
         if (novo === 'encerrada' && !confirm('Encerrar a fase? Os alunos não poderão mais editar, exceto quem faltou ou quem você liberar.')) { desenhar(); return; }
-        await updateDoc(doc(db, 'turmas', st.turma), { [`estadoFases.${e.target.dataset.estado}`]: novo });
+        await mudarEstado(e.target.dataset.estado, novo);
       }
       else if (e.target.id === 'arq') { await lerArquivo(e.target.files?.[0]); }
+      else if (e.target.id === 'arq-cal') { if (e.target.files?.[0]) await importarCalendario(e.target.files[0], falha); }
       else if (e.target.id === 'painel-aluno') { if (e.target.value) { st.painelVista = { tipo: 'aluno', id: e.target.value }; desenhar(); window.scrollTo(0, 0); } }
     } catch { falha('Não consegui salvar essa alteração. Tente de novo.'); }
   };

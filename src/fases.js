@@ -102,5 +102,6 @@ export function parteAluno(f, mundo) {
     avaliacao: f.avaliacao ?? '',
     cartaoResumo: f.cartaoResumo ?? '',
     tarefaTrilha: f.tarefaTrilha ?? '',
+    folgaAntes: f.folgaAntes ?? 0,
   };
 }

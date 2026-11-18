@@ -233,7 +233,7 @@ export function iniciarAluno(user, opcoes = {}) {
         ${criterios ? `<details><summary>Como serei avaliado</summary>${criterios}</details>` : f.avaliacao ? `<p class="nota">${esc(f.avaliacao)}</p>` : ''}
         ${f.cartaoResumo ? `<details><summary>Resumo da fase</summary><p>${esc(f.cartaoResumo)}</p></details>` : ''}
         <p class="erro" id="msg">${esc(st.aviso)}</p>
-        ${f.tipo === 'chefao' || ver ? '' : `<button id="concluir" class="botao ${p?.concluida ? 'secundario' : ''}" ${podeConcluir ? '' : 'disabled'}>${p?.concluida ? 'Desmarcar como concluída' : 'Marcar a fase como concluída'}</button>
+        ${f.tipo === 'chefao' || ver ? '' : `<button id="concluir" class="botao ${p?.concluida ? 'secundario' : !podeConcluir ? 'parcial' : ''}" ${editavel ? '' : 'disabled'}>${p?.concluida ? 'Desmarcar como concluída' : 'Marcar a fase como concluída'}</button>
           ${!p?.concluida && faltam > 0 && editavel ? `<p class="nota centro-txt">Faltam ${faltam} etapa(s) para poder concluir a fase.</p>` : ''}`}
       </section>`,
       'centro alto'
@@ -292,8 +292,18 @@ export function iniciarAluno(user, opcoes = {}) {
     const p = st.progresso[faseId];
     const nova = !p?.concluida;
     if (nova && f) {
-      const { total, feitas } = contarTarefas(f, p);
-      if (feitas < total) { aviso(`Faltam ${total - feitas} etapa(s) para concluir a fase.`); return; }
+      const todas = etapasDe(f);
+      const pend = todas.filter((e) => e.semMarcar !== true && p?.tarefas?.[e.id] !== true);
+      if (pend.length) {
+        const visiveis = todas.map((e, i) => ({ e, n: i + 1 })).filter((x) => pend.includes(x.e) && liberado(st.turma, f.id, x.e, 'travada'));
+        const travadas = pend.length - visiveis.length;
+        aviso(`Ainda falta concluir ${pend.length} etapa(s)${visiveis.length ? ` (etapa ${visiveis.map((x) => x.n).join(', ')})` : ''}${travadas ? `. Há ${travadas} etapa(s) que o professor ainda vai liberar` : ''}.`);
+        const lis = document.querySelectorAll('.etapa:not(.feita):not(.trava)');
+        lis.forEach((li) => li.classList.add('destaque'));
+        (lis[0] ?? document.getElementById('msg'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => lis.forEach((li) => li.classList.remove('destaque')), 3500);
+        return;
+      }
     }
     const dados = { concluida: nova, concluidaEm: nova ? serverTimestamp() : null, atualizadoEm: serverTimestamp() };
     if (!p) Object.assign(dados, baseNova(faseId), { tarefas: {} });

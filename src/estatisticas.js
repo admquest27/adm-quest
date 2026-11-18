@@ -4,6 +4,7 @@ import { esc } from './ui.js';
 import { progId, contarTarefas, situacao, SITUACAO_ROTULO } from './fases.js';
 import { MARCAS } from './registros.js';
 import { imgAvatar } from './avatar.js';
+import { rosca, barrasH, colunas } from './graficos.js';
 
 const pct = (n, d) => (d ? Math.round((100 * n) / d) : 0);
 const ms = (ts) => (ts?.toMillis ? ts.toMillis() : Date.now());
@@ -27,7 +28,7 @@ function contexto(st) {
 }
 
 const mencoesDe = (st, uid) => st.fases.flatMap((f) => Object.entries(st.aval[progId(uid, f.id)]?.mencoes ?? {})
-  .filter(([, m]) => m).map(([cod, m]) => ({ fase: f, cod, m })));
+  .filter(([, m]) => m).map(([cod, m]) => ({ fase: f, cod, m, data: st.aval[progId(uid, f.id)]?.atualizadoEm, validada: st.aval[progId(uid, f.id)]?.validada === true })));
 
 function chipsMencao(lista) {
   return lista.map((x) => `<span class="chip m-${esc(x.m)}">${esc(x.fase.codigo)} · ${esc(x.cod.replace('EMT1ADM', ''))}: ${esc(x.m)}</span>`).join(' ');
@@ -101,17 +102,37 @@ function fichaAluno(st, uid) {
   const conversas = st.anotacoes.filter((n) => n.uid === uid).sort((x, y) => ms(y.criadoEm) - ms(x.criadoEm));
   const m = mencoesDe(st, uid);
   const conta = (k) => m.filter((x) => x.m === k).length;
+  const habs = st.mundo?.habilidades ?? {};
+  const porHab = {};
+  for (const x of m) (porHab[x.cod] = porHab[x.cod] ?? []).push(x);
+  const listaM = Object.entries(porHab).map(([cod, lista]) => {
+    const maisRecente = [...lista].sort((x, y) => y.fase.ordem - x.fase.ordem)[0];
+    return `<li class="est-fase"><strong>${esc(cod)}</strong> <span class="nota">${esc(habs[cod] ?? '')}</span>
+      <p>Mais recente: <span class="chip m-${esc(maisRecente.m)}">${esc(maisRecente.m)}</span> <span class="nota">(fase ${esc(maisRecente.fase.codigo)})</span></p>
+      <p>${lista.map((x) => `<span class="chip m-${esc(x.m)}">${esc(x.fase.codigo)}: ${esc(x.m)}${x.validada ? '' : ' (a validar)'}</span>`).join(' ')}</p></li>`;
+  }).join('');
+  const barrasFases = barrasH(fases.map((f) => {
+    const { total, feitas } = contarTarefas(f, st.progresso[progId(uid, f.id)]);
+    return { rotulo: f.codigo, valor: pct(feitas, total), texto: `${feitas}/${total}`, classe: 'b-info' };
+  }));
+  const nAt = (t) => comentarios.filter((c) => (t === 'positivo' ? c.tipoAtitude === 'positivo' : t === 'atencao' ? c.tipoAtitude === 'atencao' : !['positivo', 'atencao'].includes(c.tipoAtitude))).length;
+  const roscaAt = rosca([{ n: nAt('positivo'), classe: 'b-ok', rotulo: 'Positivas' }, { n: nAt('atencao'), classe: 'b-pa', rotulo: 'De atenção' }, { n: nAt('livre'), classe: 'b-meio', rotulo: 'Livres' }], comentarios.length);
   return `${voltar}
     <div class="cab-aluno">${a.avatar ? imgAvatar(a.avatar, 'avatar p') : ''}<div><h2>${esc(a.apelido)}</h2><span class="nota">Nº ${a.numeroChamada ?? '—'} · ${esc(a.status)}${a.dataEntrada ? ` · entrou em ${esc(a.dataEntrada)}` : ''}</span></div></div>
     <div class="linha-btn">
       <button class="mini" data-acao="registros" data-uid="${esc(uid)}">Registrar atitude ou conversa</button>
       <button class="mini" data-acao="ver-aluno" data-uid="${esc(uid)}">Ver como aluno</button>
+      <button class="mini" data-acao="exportar-aluno" data-uid="${esc(uid)}">Exportar ficha</button>
     </div>
     <h3>Menções</h3>
     <p><span class="chip m-A">A ${conta('A')}</span> <span class="chip m-PA">PA ${conta('PA')}</span> <span class="chip m-NA">NA ${conta('NA')}</span></p>
+    <ul class="lista">${listaM || '<li class="vazio">Nenhuma menção registrada ainda.</li>'}</ul>
+    <h3>Andamento por fase</h3>
+    ${barrasFases}
     <h3>Fases</h3>
     <ul class="lista">${linhasFase || '<li class="vazio">Nenhuma fase aberta ainda.</li>'}</ul>
     <h3>Atitudes registradas</h3>
+    ${roscaAt}
     <ul class="lista">${comentarios.map((c) => linhaComentario(c, '', st)).join('') || '<li class="vazio">Nenhuma atitude registrada.</li>'}</ul>
     <h3>Conversas anotadas</h3>
     <ul class="lista">${conversas.map((n) => `<li class="reg conversa"><span class="nota">${dataCurta(n.criadoEm)}</span><p>${esc(n.texto)}</p></li>`).join('') || '<li class="vazio">Nenhuma conversa anotada.</li>'}</ul>`;
@@ -190,8 +211,46 @@ export function htmlEstatisticas(st) {
     return { id: m.id, nome: m.nome, pos: lista.filter((c) => c.tipoAtitude !== 'atencao').length, atn: lista.filter((c) => c.tipoAtitude === 'atencao').length };
   });
 
+  // gráficos gerais da turma
+  const geral = { validada: 0, concluida: 0, andamento: 0, inicio: 0, afazer: 0, naoconcluida: 0 };
+  const part = [];
+  for (const a of ativos) {
+    let feitas = 0, total = 0;
+    for (const f of fases) {
+      const id = progId(a.uid, f.id);
+      geral[situacao(f, st.progresso[id], st.aval[id], estados[f.id])]++;
+      const c = contarTarefas(f, st.progresso[id]);
+      feitas += c.feitas; total += c.total;
+    }
+    part.push({ a, valor: pct(feitas, total) });
+  }
+  part.sort((x, y) => x.valor - y.valor);
+  const porDia = {};
+  for (const p of Object.values(st.progresso)) {
+    if (p.concluida && p.concluidaEm?.toMillis) {
+      const d = new Date(p.concluidaEm.toMillis()).toISOString().slice(0, 10);
+      porDia[d] = (porDia[d] ?? 0) + 1;
+    }
+  }
+  const dias = Object.keys(porDia).sort().slice(-21).map((d) => ({ rotulo: `${d.slice(8)}/${d.slice(5, 7)}`, valor: porDia[d] }));
+  const totalSit = Object.values(geral).reduce((s, n) => s + n, 0);
+  const graficos = fases.length ? `
+    <h3>Situação geral</h3>
+    ${rosca([
+      { n: geral.validada, classe: 'b-ok', rotulo: 'Validadas' }, { n: geral.concluida, classe: 'b-info', rotulo: 'Concluídas' },
+      { n: geral.andamento, classe: 'b-meio', rotulo: 'Em andamento' }, { n: geral.inicio, classe: 'b-neutro', rotulo: 'Não iniciadas' },
+      { n: geral.afazer, classe: 'b-falta', rotulo: 'A fazer' }, { n: geral.naoconcluida, classe: 'b-aten', rotulo: 'Não concluídas' },
+    ], `${pct(geral.validada + geral.concluida, totalSit)}%`)}
+    <h3>Participação por aluno</h3>
+    <p class="nota">Etapas feitas nas fases abertas, do menor para o maior. Toque para ver a ficha.</p>
+    ${barrasH(part.map((p) => ({ rotulo: `${p.a.numeroChamada ? `${p.a.numeroChamada} · ` : ''}${p.a.apelido}`, valor: p.valor, classe: p.valor < 40 ? 'b-aten' : p.valor < 80 ? 'b-info' : 'b-ok', acao: 'painel-ver', tipo: 'aluno', id: p.a.uid })))}
+    <h3>Conclusões por dia</h3>
+    ${colunas(dias, 'Fases concluídas por dia')}` : '';
+
   return `<h2>Painel da turma</h2>
+    <div class="linha-btn"><button class="mini" data-acao="exportar-painel">Exportar painel</button></div>
     <p class="nota">${ativos.length} aluno(s) ativo(s). Só você vê esta tela. Toque em qualquer item para ver os detalhes.</p>
+    ${graficos}
     <label for="painel-aluno">Ficha de um aluno</label>
     <select id="painel-aluno"><option value="">Escolha um aluno...</option>${ativos.map((a) => `<option value="${esc(a.uid)}">${a.numeroChamada ? `${a.numeroChamada} · ` : ''}${esc(a.apelido)}</option>`).join('')}</select>
     <h3>Por fase</h3>
