@@ -3,7 +3,7 @@ import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, s
 import { auth, db } from './firebase.js';
 import { app, tela, esc, carregando } from './ui.js';
 import { FANTASIAS, TONS, imgAvatar } from './avatar.js';
-import { MUNDO, SITUACAO_ROTULO, progId, contarTarefas, situacao, textoPlaca } from './fases.js';
+import { MUNDO, SITUACAO_ROTULO, progId, contarTarefas, situacao, podeEditar, textoPlaca, normInstrucoes, normMateriais, liberado, urlSegura } from './fases.js';
 
 export function iniciarAluno(user) {
   const ref = doc(db, 'alunos', user.uid);
@@ -122,7 +122,7 @@ export function iniciarAluno(user) {
       const est = estados[f.id] ?? 'trancada';
       const cod = `<span class="cod">${esc(f.codigo)}</span><span class="nm">${esc(f.nome)}</span>`;
       if (est === 'aberta' || est === 'encerrada') {
-        const sit = situacao(f, st.progresso[f.id], st.aval[f.id]);
+        const sit = situacao(f, st.progresso[f.id], st.aval[f.id], est);
         return `<li><button class="fase ${sit === 'afazer' ? 'afazer' : ''}" data-fase="${esc(f.id)}">${cod}<span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}</span></button></li>`;
       }
       const placa = est === 'adiada' ? textos.adiada : est === 'cancelada' ? textos.cancelada : textoPlaca(textos, f);
@@ -143,15 +143,20 @@ export function iniciarAluno(user) {
     );
   }
 
+  const links = (lista) => (lista ?? []).filter((l) => l?.url).map((l) => `<a class="link" href="${esc(urlSegura(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.titulo || l.url)}</a>`).join('');
+  const saibaMais = (txt) => (txt ? `<details class="mais"><summary>Saiba mais</summary><p>${esc(txt).replace(/\n/g, '<br>')}</p></details>` : '');
+
   function telaCartao() {
     const f = st.fases.find((x) => x.id === st.faseAberta);
     const est = st.turma?.estadoFases?.[st.faseAberta];
     if (!f || !(est === 'aberta' || est === 'encerrada')) { st.faseAberta = null; return telaLista(); }
     const p = st.progresso[f.id];
     const a = st.aval[f.id];
-    const sit = situacao(f, p, a);
+    const sit = situacao(f, p, a, est);
+    const editavel = podeEditar(est, a);
     const { total, feitas } = contarTarefas(f, p);
     const habs = st.mundo?.habilidades ?? {};
+    const dis = editavel ? '' : 'disabled';
 
     const criterios = (f.habilidades ?? []).map((cod) => {
       const c = f.criterios?.[cod] ?? {};
@@ -160,32 +165,51 @@ export function iniciarAluno(user) {
         <dl><dt>A</dt><dd>${esc(c.A ?? '')}</dd><dt>PA</dt><dd>${esc(c.PA ?? '')}</dd><dt>NA</dt><dd>${esc(c.NA ?? '')}</dd></dl></div>`;
     }).join('');
 
-    const mencoes = a?.validada && a.mencoes && Object.keys(a.mencoes).length
+    const mencoes = a?.validada && a.mencoes && Object.values(a.mencoes).some(Boolean)
       ? `<div class="mencoes"><strong>Sua menção nesta fase</strong>${Object.entries(a.mencoes).filter(([, v]) => v).map(([cod, v]) => `<p>${esc(cod)}: <span class="chip m-${esc(v)}">${esc(v)}</span></p>`).join('')}</div>`
       : '';
 
+    const etapas = normInstrucoes(f).map((it, i) => {
+      if (!liberado(st.turma, f.id, it, 'travada')) {
+        return `<li class="etapa trava"><span aria-hidden="true">🔒</span> Etapa ${i + 1}: aguarde o professor liberar.</li>`;
+      }
+      return `<li class="etapa"><p>${esc(it.texto)}</p>${it.links?.length ? `<p class="links">${links(it.links)}</p>` : ''}${saibaMais(it.saibaMais)}</li>`;
+    }).join('');
+
+    const materiais = normMateriais(f).map((m) => liberado(st.turma, f.id, m, 'travado')
+      ? `<li>${links([m])}${m.descricao ? ` <span class="nota">${esc(m.descricao)}</span>` : ''}</li>`
+      : '<li class="trava"><span aria-hidden="true">🔒</span> Material que o professor vai liberar durante a aula.</li>').join('');
+
+    const tarefas = (f.tarefas ?? []).map((t) => {
+      const campos = (t.campos ?? []).map((c) => `<label class="campo" for="r-${esc(t.id)}-${esc(c.id)}">${esc(c.rotulo)}${c.dica ? ` <span class="nota">${esc(c.dica)}</span>` : ''}</label>
+        <textarea id="r-${esc(t.id)}-${esc(c.id)}" rows="2" maxlength="600" data-resp="${esc(t.id)}" data-campo="${esc(c.id)}" ${dis}>${esc(p?.respostas?.[t.id]?.[c.id] ?? '')}</textarea>`).join('');
+      return `<li class="tarefa"><label class="check"><input type="checkbox" data-tarefa="${esc(t.id)}" ${p?.tarefas?.[t.id] ? 'checked' : ''} ${dis}> ${esc(t.texto)}</label>
+        ${campos ? `<div class="campos">${campos}</div>` : ''}${saibaMais(t.saibaMais)}</li>`;
+    }).join('');
+
+    const faltou = a?.faltou && !p?.concluida;
     tela(
       `<section class="cartao largo esq">
         <button id="voltar" class="mini">← Fases</button>
         <h1>${esc(f.codigo)} · ${esc(f.nome)}</h1>
         <p class="centro-txt"><span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}</span>${est === 'encerrada' ? ' <span class="chip">Fase encerrada</span>' : ''}</p>
-        ${a?.faltou && !p?.concluida ? '<p class="banner">Você não estava na dinâmica desta fase, então ela ficou <strong>a fazer</strong>. Leia a missão, faça as tarefas (peça ajuda ao professor ou aos colegas) e marque como concluída quando terminar.</p>' : ''}
+        ${faltou ? '<p class="banner">Você não estava na dinâmica desta fase, então ela ficou <strong>a fazer</strong>. Leia a missão, faça as tarefas (peça ajuda ao professor ou aos colegas) e marque como concluída quando terminar.</p>' : ''}
+        ${est === 'encerrada' && !editavel && !p?.concluida ? '<p class="banner">O professor encerrou esta fase. Se você precisa terminá-la, converse com ele.</p>' : ''}
         ${mencoes}
         <h2>Missão</h2>
         <p>${esc(f.missao)}</p>
-        <h2>O que fazer</h2>
-        <ol>${(f.instrucoes ?? []).map((i) => `<li>${esc(i)}</li>`).join('')}</ol>
-        ${total ? `<h2>Minhas tarefas <span class="nota">(${feitas} de ${total})</span></h2>
-          <ul class="tarefas">${f.tarefas.map((t) => `<li><label class="check"><input type="checkbox" data-tarefa="${esc(t.id)}" ${p?.tarefas?.[t.id] ? 'checked' : ''}> ${esc(t.texto)}</label></li>`).join('')}</ul>` : ''}
+        <h2>Passo a passo</h2>
+        <ol class="etapas">${etapas}</ol>
+        ${materiais ? `<h2>Material de apoio</h2><ul class="materiais">${materiais}</ul>` : ''}
+        ${total ? `<h2>Minhas tarefas <span class="nota">(${feitas} de ${total})</span></h2><ul class="tarefas">${tarefas}</ul>` : ''}
         ${criterios ? `<details><summary>Como serei avaliado</summary>${criterios}</details>` : f.avaliacao ? `<p class="nota">${esc(f.avaliacao)}</p>` : ''}
         ${f.cartaoResumo ? `<details><summary>Resumo da fase</summary><p>${esc(f.cartaoResumo)}</p></details>` : ''}
         <p class="erro" id="msg">${esc(st.aviso)}</p>
-        ${f.tipo === 'chefao' ? '' : `<button id="concluir" class="botao ${p?.concluida ? 'secundario' : ''}">${p?.concluida ? 'Desmarcar como concluída' : 'Marcar a fase como concluída'}</button>`}
+        ${f.tipo === 'chefao' ? '' : `<button id="concluir" class="botao ${p?.concluida ? 'secundario' : ''}" ${dis}>${p?.concluida ? 'Desmarcar como concluída' : 'Marcar a fase como concluída'}</button>`}
       </section>`,
       'centro alto'
     );
   }
-
   function telaAvatar() {
     const mestre = st.escolha.fantasia === 'mestre';
     tela(
@@ -220,6 +244,13 @@ export function iniciarAluno(user) {
     const p = st.progresso[faseId];
     const dados = { tarefas: { [tarefaId]: valor }, atualizadoEm: serverTimestamp() };
     if (!p) Object.assign(dados, { uid: user.uid, turma: st.dados.turma, fase: faseId, concluida: false });
+    await setDoc(doc(db, 'progresso', progId(user.uid, faseId)), dados, { merge: true });
+  }
+
+  async function marcarResposta(faseId, tarefaId, campoId, valor) {
+    const p = st.progresso[faseId];
+    const dados = { respostas: { [tarefaId]: { [campoId]: valor } }, atualizadoEm: serverTimestamp() };
+    if (!p) Object.assign(dados, { uid: user.uid, turma: st.dados.turma, fase: faseId, tarefas: {}, concluida: false });
     await setDoc(doc(db, 'progresso', progId(user.uid, faseId)), dados, { merge: true });
   }
 
@@ -264,6 +295,12 @@ export function iniciarAluno(user) {
   };
 
   app.onchange = async (e) => {
+    const r = e.target.closest('textarea[data-resp]');
+    if (r) {
+      try { await marcarResposta(st.faseAberta, r.dataset.resp, r.dataset.campo, r.value.trim()); aviso(''); }
+      catch { aviso('Não consegui salvar a resposta. Tente de novo.'); }
+      return;
+    }
     const c = e.target.closest('input[data-tarefa]');
     if (!c) return;
     try { await marcarTarefa(st.faseAberta, c.dataset.tarefa, c.checked); }

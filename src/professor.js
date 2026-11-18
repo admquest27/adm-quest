@@ -5,7 +5,10 @@ import {
 import { auth, db } from './firebase.js';
 import { app, tela, esc, hoje, guardar, ler } from './ui.js';
 import { imgAvatar } from './avatar.js';
-import { MUNDO, ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno } from './fases.js';
+import {
+  MUNDO, ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno,
+  normInstrucoes, normMateriais, liberado,
+} from './fases.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const ROTULO = { pendente: 'Pendente', ativo: 'Ativo', saiu: 'Saiu', bloqueado: 'Bloqueado' };
@@ -30,18 +33,32 @@ function ordenar(alunos) {
     || String(a.apelido).localeCompare(String(b.apelido), 'pt-BR'));
 }
 
+const linhasDe = (txt) => String(txt ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
+
+function paraLinks(txt) {
+  return linhasDe(txt).map((l) => {
+    const [a, ...b] = l.split('|');
+    const url = (b.length ? b.join('|') : a).trim();
+    return { titulo: (b.length ? a : url).trim(), url };
+  }).filter((l) => /^https?:\/\//i.test(l.url));
+}
+
+const deLinks = (lista) => (lista ?? []).map((l) => `${l.titulo} | ${l.url}`).join('\n');
+
 export function iniciarProfessor() {
   const st = {
     aba: ABAS.includes(ler('aba')) ? ler('aba') : 'turma',
     turma: ler('turma') || '',
     turmas: [], alunos: [], fases: [], mundo: null,
-    progresso: {}, aval: {},
+    progresso: {}, aval: {}, profFase: null,
     faseSel: null, importacao: null, aviso: '',
     carregou: { turmas: false, alunos: false },
   };
   const paradas = [];
   let paradasTurma = [];
   let turmaLigada = null;
+  let paraProf = null;
+  let profLigada = null;
   let dlg = document.getElementById('dlg');
   if (!dlg) {
     dlg = document.createElement('dialog');
@@ -74,7 +91,6 @@ export function iniciarProfessor() {
     desenhar();
   }, () => {}));
 
-  // progresso e avaliações só da turma escolhida
   function ligarTurma() {
     if (turmaLigada === st.turma) return;
     turmaLigada = st.turma;
@@ -90,7 +106,18 @@ export function iniciarProfessor() {
     }, () => {}));
   }
 
+  // notas do professor da fase aberta no painel
+  function ligarProf() {
+    if (profLigada === st.faseSel) return;
+    profLigada = st.faseSel;
+    if (paraProf) { paraProf(); paraProf = null; }
+    st.profFase = null;
+    if (!st.faseSel) return;
+    paraProf = onSnapshot(doc(db, 'fasesProfessor', st.faseSel), (s) => { st.profFase = s.exists() ? s.data() : null; desenhar(); }, () => {});
+  }
+
   const turmaAtual = () => st.turmas.find((t) => t.id === st.turma);
+  const estadoDe = (faseId) => turmaAtual()?.estadoFases?.[faseId] ?? 'trancada';
   const alunosDaTurma = () => ordenar(st.alunos.filter((a) => a.turma === st.turma));
   const ativosDaTurma = () => alunosDaTurma().filter((a) => a.status === 'ativo');
   const pendentesTotal = () => st.alunos.filter((a) => a.status === 'pendente').length;
@@ -101,7 +128,6 @@ export function iniciarProfessor() {
       tela('<p class="carregando">Conferindo a turma...</p>', 'centro');
       return;
     }
-    // não apaga o que o professor está digitando no formulário de nova turma
     const ativo = document.activeElement;
     if (st.aba === 'turmas' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
     const pend = pendentesTotal();
@@ -143,10 +169,10 @@ export function iniciarProfessor() {
     const htmlOrfaos = orfaos.length ? `<h2>Cadastros sem turma (testes antigos)</h2>
       <ul class="lista">${orfaos.map((a) => `<li class="aluno"><span class="nome">Cadastro de teste</span><span class="chip">${esc(ROTULO[a.status] ?? a.status)}</span><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Apagar</button></li>`).join('')}</ul>` : '';
     return `<h2>${lista.length} cadastro(s) · ${ativos} ativo(s)</h2>
+      <p class="nota">Toque no aluno para editar, mover de turma ou marcar que saiu.</p>
       <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ainda. Passe o código da turma.</li>'}</ul>${htmlOrfaos}`;
   }
 
-  // resumo de uma fase na turma: quem concluiu, faltou e foi validado
   function resumoFase(f) {
     const ativos = ativosDaTurma();
     let concluidas = 0, faltas = 0, validadas = 0, presentes = 0;
@@ -165,10 +191,10 @@ export function iniciarProfessor() {
   function htmlFases() {
     if (!st.turma) return '<p class="vazio">Crie uma turma primeiro, na aba Turmas.</p>';
     if (!st.fases.length) return '<p class="vazio">Ainda não há fases. Importe o conteúdo do Mundo 1 na aba Conteúdo.</p>';
+    ligarProf();
     if (st.faseSel) return htmlPainelFase();
-    const estados = turmaAtual()?.estadoFases ?? {};
     const itens = st.fases.map((f) => {
-      const est = estados[f.id] ?? 'trancada';
+      const est = estadoDe(f.id);
       const r = resumoFase(f);
       return `<li class="fase-prof">
         <button class="nome-fase" data-acao="fase" data-id="${esc(f.id)}">
@@ -181,31 +207,52 @@ export function iniciarProfessor() {
       </li>`;
     }).join('');
     return `<h2>${esc(st.mundo?.nome ?? 'Mundo 1')}</h2>
-      <p class="nota">Só você libera as fases. O aluno vê "em obra" até você abrir.</p>
+      <p class="nota">Só você libera as fases. O aluno vê "em obra" até você abrir. Aberta: os alunos trabalham. Encerrada: ninguém edita, só quem faltou ou quem você liberar.</p>
       <ul class="lista">${itens}</ul>`;
   }
 
   function htmlPainelFase() {
     const f = st.fases.find((x) => x.id === st.faseSel);
     if (!f) { st.faseSel = null; return htmlFases(); }
-    const est = turmaAtual()?.estadoFases?.[f.id] ?? 'trancada';
+    const est = estadoDe(f.id);
     const r = resumoFase(f);
     const pct = r.presentes ? Math.round((100 * r.concluidas) / r.presentes) : 0;
+    const roteiro = st.profFase?.professor?.paraVoce ?? [];
+    const turmaDoc = turmaAtual();
+
+    const travaveis = [
+      ...normInstrucoes(f).map((it, i) => ({ item: it, rotulo: `Etapa ${i + 1}: ${it.texto.slice(0, 60)}${it.texto.length > 60 ? '…' : ''}`, chave: 'travada' })),
+      ...normMateriais(f).map((m) => ({ item: m, rotulo: `Material: ${m.titulo || m.url}`, chave: 'travado' })),
+    ].filter((x) => x.item[x.chave] === true);
+    const htmlLiberar = travaveis.length ? `<h2>Liberar durante a aula</h2>
+      <ul class="lista">${travaveis.map((x) => {
+        const lib = liberado(turmaDoc, f.id, x.item, x.chave);
+        return `<li class="aluno"><span class="nome">${esc(x.rotulo)}</span><button class="mini ${lib ? 'ok' : ''}" data-acao="liberar" data-item="${esc(x.item.id)}">${lib ? 'Liberada ✓ (tocar para travar)' : 'Liberar para a turma'}</button></li>`;
+      }).join('')}</ul>` : '';
+
+    const temCampos = (f.tarefas ?? []).some((t) => t.campos?.length);
     const linhas = ativosDaTurma().map((a) => {
       const id = progId(a.uid, f.id);
       const p = st.progresso[id];
       const v = st.aval[id];
-      const sit = situacao(f, p, v);
+      const sit = situacao(f, p, v, est);
       const { total, feitas } = contarTarefas(f, p);
+      const mencoes = Object.entries(v?.mencoes ?? {}).filter(([, m]) => m).map(([c, m]) => `${c.replace('EMT1ADM', '')}: ${m}`).join(' · ');
       return `<li class="aluno">
         <span class="num">${a.numeroChamada ?? '—'}</span>
         ${a.avatar ? imgAvatar(a.avatar, 'avatar p') : '<span class="avatar p vazio-av"></span>'}
         <span class="nome">${esc(a.apelido)}</span>
         <span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}${total && sit === 'andamento' ? ` ${feitas}/${total}` : ''}</span>
-        <button class="mini ${v?.faltou ? 'ruim' : ''}" data-acao="faltou" data-uid="${esc(a.uid)}">${v?.faltou ? 'Faltou' : 'Faltou?'}</button>
-        <button class="mini ok" data-acao="validar" data-uid="${esc(a.uid)}">${v?.validada ? 'Validada' : 'Validar'}</button>
+        <div class="acoes-aluno">
+          <button class="mini ${v?.faltou ? 'ruim' : ''}" data-acao="faltou" data-uid="${esc(a.uid)}">${v?.faltou ? 'Faltou ✓' : 'Faltou?'}</button>
+          <button class="mini ${v?.validada ? 'ok cheio' : ''}" data-acao="validar" data-uid="${esc(a.uid)}">${v?.validada ? 'Validada ✓' : 'Validar'}</button>
+          ${(f.habilidades ?? []).length ? `<button class="mini" data-acao="mencao" data-uid="${esc(a.uid)}">${mencoes ? esc(mencoes) : 'Menção'}</button>` : ''}
+          ${est === 'encerrada' && !p?.concluida ? `<button class="mini ${v?.liberado ? 'ok' : ''}" data-acao="liberar-aluno" data-uid="${esc(a.uid)}">${v?.liberado ? 'Liberado ✓' : 'Liberar p/ fazer'}</button>` : ''}
+          ${temCampos ? `<button class="mini" data-acao="respostas" data-uid="${esc(a.uid)}">Respostas</button>` : ''}
+        </div>
       </li>`;
     }).join('');
+
     return `<button class="mini" data-acao="voltar-fases">← Fases</button>
       <h2>${esc(f.codigo)} · ${esc(f.nome)}</h2>
       <div class="linha-btn">
@@ -214,8 +261,13 @@ export function iniciarProfessor() {
         </select>
         <button class="mini" data-acao="editar-fase" data-id="${esc(f.id)}">Editar fase</button>
       </div>
+      <details class="roteiro"><summary>Roteiro da aula (só você vê)</summary>
+        ${roteiro.length ? `<ul>${roteiro.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : '<p class="nota">Sem roteiro. Escreva um em "Editar fase".</p>'}
+      </details>
+      ${htmlLiberar}
       <p class="resumo"><strong>${r.concluidas}</strong> de <strong>${r.presentes}</strong> presentes concluíram (${pct}%)${pct >= 80 ? ' · meta de 80% atingida' : ''}<br>
         <span class="nota">${r.validadas} validada(s) · ${r.faltas} faltou · ${r.total} aluno(s) ativo(s)</span></p>
+      <button class="mini" data-acao="validar-todos">Validar todos que concluíram</button>
       <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ativo nesta turma.</li>'}</ul>`;
   }
 
@@ -270,14 +322,43 @@ export function iniciarProfessor() {
     setTimeout(() => { if (st.aviso === texto) { st.aviso = ''; desenhar(); } }, 6000);
   }
 
-  async function mudarEstado(faseId, estado) {
-    await updateDoc(doc(db, 'turmas', st.turma), { [`estadoFases.${faseId}`]: estado });
+  const refAval = (uid) => doc(db, 'avaliacoes', progId(uid, st.faseSel));
+  const baseAval = (uid) => ({ uid, turma: st.turma, fase: st.faseSel, atualizadoEm: serverTimestamp() });
+
+  async function alternarValidada(uid) {
+    const atual = st.aval[progId(uid, st.faseSel)]?.validada === true;
+    const a = st.alunos.find((x) => x.uid === uid);
+    if (atual && !confirm(`Remover a validação de ${a?.apelido ?? 'este aluno'}?`)) return;
+    await setDoc(refAval(uid), { ...baseAval(uid), validada: !atual }, { merge: true });
+  }
+
+  async function validarTodos() {
+    const f = st.fases.find((x) => x.id === st.faseSel);
+    const alvo = ativosDaTurma().filter((a) => {
+      const id = progId(a.uid, f.id);
+      return st.progresso[id]?.concluida === true && !st.aval[id]?.validada;
+    });
+    if (!alvo.length) { falha('Ninguém para validar: ou ninguém concluiu, ou todos já estão validados.'); return; }
+    if (!confirm(`Validar ${alvo.length} aluno(s) que concluíram?`)) return;
+    const lote = writeBatch(db);
+    alvo.forEach((a) => lote.set(refAval(a.uid), { ...baseAval(a.uid), validada: true }, { merge: true }));
+    await lote.commit();
+  }
+
+  async function alternarLiberadoAluno(uid) {
+    const atual = st.aval[progId(uid, st.faseSel)]?.liberado === true;
+    await setDoc(refAval(uid), { ...baseAval(uid), liberado: !atual }, { merge: true });
   }
 
   async function alternarFalta(uid) {
-    const id = progId(uid, st.faseSel);
-    const atual = st.aval[id]?.faltou === true;
-    await setDoc(doc(db, 'avaliacoes', id), { uid, turma: st.turma, fase: st.faseSel, faltou: !atual, atualizadoEm: serverTimestamp() }, { merge: true });
+    const atual = st.aval[progId(uid, st.faseSel)]?.faltou === true;
+    await setDoc(refAval(uid), { ...baseAval(uid), faltou: !atual }, { merge: true });
+  }
+
+  async function alternarLiberacaoItem(itemId) {
+    const f = st.fases.find((x) => x.id === st.faseSel);
+    const atual = turmaAtual()?.liberacoes?.[f.id]?.[itemId] === true;
+    await updateDoc(doc(db, 'turmas', st.turma), { [`liberacoes.${f.id}.${itemId}`]: !atual });
   }
 
   app.onclick = async (e) => {
@@ -293,10 +374,15 @@ export function iniciarProfessor() {
         if (confirm('Recusar este cadastro? O aluno poderá se cadastrar de novo.')) await deleteDoc(doc(db, 'alunos', b.dataset.uid));
       }
       else if (acao === 'editar') { abrirEdicao(b.dataset.uid); }
-      else if (acao === 'fase') { st.faseSel = b.dataset.id; desenhar(); }
-      else if (acao === 'voltar-fases') { st.faseSel = null; desenhar(); }
+      else if (acao === 'fase') { st.faseSel = b.dataset.id; ligarProf(); desenhar(); }
+      else if (acao === 'voltar-fases') { st.faseSel = null; ligarProf(); desenhar(); }
       else if (acao === 'faltou') { await alternarFalta(b.dataset.uid); }
-      else if (acao === 'validar') { abrirValidacao(b.dataset.uid); }
+      else if (acao === 'validar') { await alternarValidada(b.dataset.uid); }
+      else if (acao === 'validar-todos') { await validarTodos(); }
+      else if (acao === 'mencao') { abrirMencao(b.dataset.uid); }
+      else if (acao === 'respostas') { abrirRespostas(b.dataset.uid); }
+      else if (acao === 'liberar') { await alternarLiberacaoItem(b.dataset.item); }
+      else if (acao === 'liberar-aluno') { await alternarLiberadoAluno(b.dataset.uid); }
       else if (acao === 'editar-fase') { abrirEdicaoFase(b.dataset.id); }
       else if (acao === 'aberta') {
         const t = st.turmas.find((x) => x.id === b.dataset.id);
@@ -315,8 +401,12 @@ export function iniciarProfessor() {
 
   app.onchange = async (e) => {
     try {
-      if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); st.faseSel = null; ligarTurma(); desenhar(); }
-      else if (e.target.dataset?.estado) { await mudarEstado(e.target.dataset.estado, e.target.value); }
+      if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); st.faseSel = null; ligarTurma(); ligarProf(); desenhar(); }
+      else if (e.target.dataset?.estado) {
+        const novo = e.target.value;
+        if (novo === 'encerrada' && !confirm('Encerrar a fase? Os alunos não poderão mais editar, exceto quem faltou ou quem você liberar.')) { desenhar(); return; }
+        await updateDoc(doc(db, 'turmas', st.turma), { [`estadoFases.${e.target.dataset.estado}`]: novo });
+      }
       else if (e.target.id === 'arq') { await lerArquivo(e.target.files?.[0]); }
     } catch { falha('Não consegui salvar essa alteração. Tente de novo.'); }
   };
@@ -358,7 +448,6 @@ export function iniciarProfessor() {
   // ---------- importar e exportar conteúdo ----------
   async function lerArquivo(arquivo) {
     if (!arquivo) return;
-    const msg = () => document.getElementById('msg-cont');
     let json;
     try { json = JSON.parse(await arquivo.text()); } catch { falha('Esse arquivo não é um JSON válido.'); return; }
     const fases = json?.fases;
@@ -377,7 +466,6 @@ export function iniciarProfessor() {
     });
     st.importacao = { nome: arquivo.name, json, itens };
     desenhar();
-    if (msg()) msg().textContent = '';
   }
 
   async function gravarImportacao() {
@@ -424,9 +512,19 @@ export function iniciarProfessor() {
   }
 
   // ---------- janelas ----------
+  async function docsDoAluno(uid) {
+    const [p, v] = await Promise.all([
+      getDocs(query(collection(db, 'progresso'), where('uid', '==', uid))),
+      getDocs(query(collection(db, 'avaliacoes'), where('uid', '==', uid))),
+    ]);
+    return [...p.docs, ...v.docs];
+  }
+
   function abrirEdicao(uid) {
     const a = st.alunos.find((x) => x.uid === uid);
     if (!a) return;
+    const turmaDoAluno = st.turmas.find((t) => t.id === a.turma);
+    const outras = st.turmas.filter((t) => t.id !== a.turma);
     dlg.innerHTML = `
       <form method="dialog" class="form" id="form-aluno">
         <h2>${esc(a.apelido)}</h2>
@@ -440,13 +538,41 @@ export function iniciarProfessor() {
         <select id="e-status">
           ${['pendente', 'ativo', 'bloqueado', 'saiu'].map((s) => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${ROTULO[s]}</option>`).join('')}
         </select>
+        <p class="nota">Para tirar um aluno da turma sem apagar o histórico, escolha "Saiu".</p>
         <p class="erro" id="e-msg"></p>
         <div class="linha-btn">
           <button class="botao" type="submit" value="salvar">Salvar</button>
           <button class="botao secundario" type="button" id="e-cancelar">Cancelar</button>
         </div>
+        ${outras.length ? `<hr><label for="e-mover">Mover para outra turma</label>
+          <div class="linha-btn"><select id="e-mover">${outras.map((t) => `<option value="${esc(t.id)}">${esc(t.nome || t.id)}</option>`).join('')}</select>
+          <button class="mini" type="button" id="e-mover-ok">Mover</button></div>` : ''}
+        ${turmaDoAluno?.teste ? '<hr><button class="mini ruim" type="button" id="e-apagar">Apagar este aluno e os dados dele (turma de teste)</button>' : ''}
       </form>`;
     document.getElementById('e-cancelar').onclick = () => dlg.close();
+    const mover = document.getElementById('e-mover-ok');
+    if (mover) mover.onclick = async () => {
+      const destino = document.getElementById('e-mover').value;
+      if (!confirm(`Mover ${a.apelido} para a turma ${destino}? As fases dele passam a valer na nova turma.`)) return;
+      try {
+        const lote = writeBatch(db);
+        lote.update(doc(db, 'alunos', a.uid), { turma: destino, numeroChamada: null });
+        (await docsDoAluno(a.uid)).forEach((d) => lote.update(d.ref, { turma: destino }));
+        await lote.commit();
+        dlg.close();
+      } catch { document.getElementById('e-msg').textContent = 'Não consegui mover agora.'; }
+    };
+    const apagar = document.getElementById('e-apagar');
+    if (apagar) apagar.onclick = async () => {
+      if (!confirm(`Apagar ${a.apelido} e todo o progresso dele? Isso não pode ser desfeito.`)) return;
+      try {
+        const lote = writeBatch(db);
+        (await docsDoAluno(a.uid)).forEach((d) => lote.delete(d.ref));
+        lote.delete(doc(db, 'alunos', a.uid));
+        await lote.commit();
+        dlg.close();
+      } catch { document.getElementById('e-msg').textContent = 'Não consegui apagar agora.'; }
+    };
     document.getElementById('form-aluno').onsubmit = async (ev) => {
       ev.preventDefault();
       const msg = document.getElementById('e-msg');
@@ -467,90 +593,195 @@ export function iniciarProfessor() {
     dlg.showModal();
   }
 
-  function abrirValidacao(uid) {
+  // menção: cada escolha é salva na hora, sem botão de salvar
+  function abrirMencao(uid) {
     const f = st.fases.find((x) => x.id === st.faseSel);
     const a = st.alunos.find((x) => x.uid === uid);
     if (!f || !a) return;
-    const id = progId(uid, f.id);
-    const v = st.aval[id] ?? {};
+    const v = st.aval[progId(uid, f.id)] ?? {};
     const habs = st.mundo?.habilidades ?? {};
     const campos = (f.habilidades ?? []).map((cod) => `
       <label for="m-${esc(cod)}">${esc(cod)} <span class="nota">${esc(habs[cod] ?? '')}${(f.porGrupo ?? []).includes(cod) ? ' · menção de grupo' : ''}</span></label>
       <select id="m-${esc(cod)}" data-hab="${esc(cod)}">
         ${['', 'A', 'PA', 'NA'].map((o) => `<option value="${o}" ${(v.mencoes?.[cod] ?? '') === o ? 'selected' : ''}>${o || 'Sem menção ainda'}</option>`).join('')}
-      </select>`).join('');
+      </select>
+      <details class="mais"><summary>Critérios</summary><dl><dt>A</dt><dd>${esc(f.criterios?.[cod]?.A ?? '')}</dd><dt>PA</dt><dd>${esc(f.criterios?.[cod]?.PA ?? '')}</dd><dt>NA</dt><dd>${esc(f.criterios?.[cod]?.NA ?? '')}</dd></dl></details>`).join('');
     dlg.innerHTML = `
-      <form method="dialog" class="form" id="form-valid">
+      <div class="form">
         <h2>${esc(a.apelido)} · ${esc(f.codigo)}</h2>
-        ${campos || '<p class="nota">Esta fase não tem menção, só validação.</p>'}
-        <label class="check"><input type="checkbox" id="v-ok" ${v.validada ? 'checked' : ''}> Fase validada</label>
-        <p class="erro" id="v-msg"></p>
-        <div class="linha-btn">
-          <button class="botao" type="submit">Salvar</button>
-          <button class="botao secundario" type="button" id="v-cancelar">Cancelar</button>
-        </div>
-      </form>`;
-    document.getElementById('v-cancelar').onclick = () => dlg.close();
-    document.getElementById('form-valid').onsubmit = async (ev) => {
-      ev.preventDefault();
-      const mencoes = {};
-      dlg.querySelectorAll('[data-hab]').forEach((s) => { mencoes[s.dataset.hab] = s.value || null; });
-      try {
-        await setDoc(doc(db, 'avaliacoes', id), {
-          uid, turma: st.turma, fase: f.id, validada: document.getElementById('v-ok').checked, mencoes, atualizadoEm: serverTimestamp(),
-        }, { merge: true });
-        dlg.close();
-      } catch { document.getElementById('v-msg').textContent = 'Não consegui salvar agora.'; }
-    };
+        ${campos}
+        <p class="nota" id="m-estado">Cada escolha é salva na hora.</p>
+        <button class="botao" type="button" id="m-fechar">Fechar</button>
+      </div>`;
+    document.getElementById('m-fechar').onclick = () => dlg.close();
+    dlg.querySelectorAll('[data-hab]').forEach((s) => {
+      s.onchange = async () => {
+        const out = document.getElementById('m-estado');
+        try {
+          await setDoc(refAval(uid), { ...baseAval(uid), mencoes: { [s.dataset.hab]: s.value || null } }, { merge: true });
+          out.textContent = 'Salvo ✓';
+        } catch { out.textContent = 'Não consegui salvar.'; }
+      };
+    });
     dlg.showModal();
   }
 
+  function abrirRespostas(uid) {
+    const f = st.fases.find((x) => x.id === st.faseSel);
+    const a = st.alunos.find((x) => x.uid === uid);
+    const p = st.progresso[progId(uid, f.id)];
+    const blocos = (f.tarefas ?? []).filter((t) => t.campos?.length).map((t) => `
+      <h3>${esc(t.texto)}</h3>
+      ${t.campos.map((c) => `<p><strong>${esc(c.rotulo)}</strong><br>${esc(p?.respostas?.[t.id]?.[c.id] || '(sem resposta)')}</p>`).join('')}`).join('');
+    dlg.innerHTML = `<div class="form"><h2>${esc(a?.apelido ?? '')} · respostas</h2>${blocos || '<p class="nota">Esta fase não tem campos de resposta.</p>'}<button class="botao" type="button" id="r-fechar">Fechar</button></div>`;
+    document.getElementById('r-fechar').onclick = () => dlg.close();
+    dlg.showModal();
+  }
+
+  // editor completo da fase: etapas, materiais, tarefas e roteiro
   function abrirEdicaoFase(faseId) {
     const f = st.fases.find((x) => x.id === faseId);
     if (!f) return;
-    dlg.innerHTML = `
-      <form method="dialog" class="form" id="form-fase">
-        <h2>Editar ${esc(f.codigo)}</h2>
-        <label for="f-nome">Nome</label>
-        <input id="f-nome" maxlength="60" value="${esc(f.nome)}" required>
-        <label for="f-missao">Missão</label>
-        <textarea id="f-missao" rows="5">${esc(f.missao)}</textarea>
-        <label for="f-instr">Instruções (uma por linha)</label>
-        <textarea id="f-instr" rows="6">${esc((f.instrucoes ?? []).join('\n'))}</textarea>
-        <label for="f-tarefas">Tarefas (uma por linha)</label>
-        <textarea id="f-tarefas" rows="6">${esc((f.tarefas ?? []).map((t) => t.texto).join('\n'))}</textarea>
-        <p class="nota">Habilidades e critérios mudam pelo arquivo de conteúdo. Os alunos veem um aviso de que a fase foi atualizada.</p>
-        <p class="erro" id="f-msg"></p>
-        <div class="linha-btn">
-          <button class="botao" type="submit">Salvar</button>
-          <button class="botao secundario" type="button" id="f-cancelar">Cancelar</button>
-        </div>
-      </form>`;
-    document.getElementById('f-cancelar').onclick = () => dlg.close();
-    document.getElementById('form-fase').onsubmit = async (ev) => {
-      ev.preventDefault();
-      const linhas = (id) => document.getElementById(id).value.split('\n').map((s) => s.trim()).filter(Boolean);
-      const antigos = f.tarefas ?? [];
-      let proximo = antigos.reduce((m, t) => Math.max(m, parseInt(String(t.id).replace(/\D/g, ''), 10) || 0), 0);
-      const tarefas = linhas('f-tarefas').map((texto, i) => ({ id: antigos[i]?.id ?? `t${++proximo}`, texto }));
-      try {
-        await updateDoc(doc(db, 'fases', f.id), {
-          nome: document.getElementById('f-nome').value.trim(),
-          missao: document.getElementById('f-missao').value.trim(),
-          instrucoes: linhas('f-instr'),
-          tarefas,
-          atualizadoEm: serverTimestamp(),
-        });
-        dlg.close();
-      } catch { document.getElementById('f-msg').textContent = 'Não consegui salvar agora.'; }
+    const ed = {
+      nome: f.nome ?? '',
+      missao: f.missao ?? '',
+      etapas: normInstrucoes(f).map((i) => ({ id: i.id, texto: i.texto ?? '', saibaMais: i.saibaMais ?? '', links: deLinks(i.links), travada: i.travada === true })),
+      materiais: normMateriais(f).map((m) => ({ id: m.id, titulo: m.titulo ?? '', url: m.url ?? '', descricao: m.descricao ?? '', travado: m.travado === true })),
+      tarefas: (f.tarefas ?? []).map((t) => ({ id: t.id, texto: t.texto ?? '', saibaMais: t.saibaMais ?? '', campos: t.campos ?? [], camposTxt: (t.campos ?? []).map((c) => (c.dica ? `${c.rotulo} | ${c.dica}` : c.rotulo)).join('\n') })),
+      roteiro: (st.profFase?.professor?.paraVoce ?? []).join('\n'),
     };
+
+    const proximoId = (lista, prefixo) => `${prefixo}${lista.reduce((m, x) => Math.max(m, parseInt(String(x.id).replace(/\D/g, ''), 10) || 0), 0) + 1}`;
+    const botoes = (sec, i, n) => `<div class="linha-btn">
+      <button type="button" class="mini" data-ed="sobe" data-sec="${sec}" data-i="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+      <button type="button" class="mini" data-ed="desce" data-sec="${sec}" data-i="${i}" ${i === n - 1 ? 'disabled' : ''}>↓</button>
+      <button type="button" class="mini ruim" data-ed="remove" data-sec="${sec}" data-i="${i}">Remover</button></div>`;
+
+    function pintar() {
+      dlg.innerHTML = `
+        <form class="form editor" id="form-fase">
+          <h2>Editar ${esc(f.codigo)}</h2>
+          <label for="f-nome">Nome</label>
+          <input id="f-nome" maxlength="60" value="${esc(ed.nome)}" required>
+          <label for="f-missao">Missão (o que o aluno lê primeiro)</label>
+          <textarea id="f-missao" rows="5">${esc(ed.missao)}</textarea>
+
+          <h3>Passo a passo (etapas)</h3>
+          <p class="nota">Cada etapa pode ter "saiba mais", links e ficar travada até você liberar durante a aula.</p>
+          ${ed.etapas.map((e, i) => `<fieldset class="card-ed"><legend>Etapa ${i + 1}</legend>
+            <textarea data-sec="etapas" data-i="${i}" data-f="texto" rows="3" placeholder="O que o aluno deve fazer">${esc(e.texto)}</textarea>
+            <label>Saiba mais (opcional)</label>
+            <textarea data-sec="etapas" data-i="${i}" data-f="saibaMais" rows="3">${esc(e.saibaMais)}</textarea>
+            <label>Links (um por linha: Título | endereço)</label>
+            <textarea data-sec="etapas" data-i="${i}" data-f="links" rows="2" placeholder="Apresentação da aula | https://...">${esc(e.links)}</textarea>
+            <label class="check"><input type="checkbox" data-sec="etapas" data-i="${i}" data-f="travada" ${e.travada ? 'checked' : ''}> Só aparece depois que eu liberar</label>
+            ${botoes('etapas', i, ed.etapas.length)}</fieldset>`).join('')}
+          <button type="button" class="mini" data-ed="add" data-sec="etapas">+ Etapa</button>
+
+          <h3>Material de apoio</h3>
+          ${ed.materiais.map((m, i) => `<fieldset class="card-ed"><legend>Material ${i + 1}</legend>
+            <input data-sec="materiais" data-i="${i}" data-f="titulo" placeholder="Título" value="${esc(m.titulo)}">
+            <input data-sec="materiais" data-i="${i}" data-f="url" placeholder="https://..." value="${esc(m.url)}">
+            <input data-sec="materiais" data-i="${i}" data-f="descricao" placeholder="Descrição curta (opcional)" value="${esc(m.descricao)}">
+            <label class="check"><input type="checkbox" data-sec="materiais" data-i="${i}" data-f="travado" ${m.travado ? 'checked' : ''}> Só aparece depois que eu liberar</label>
+            ${botoes('materiais', i, ed.materiais.length)}</fieldset>`).join('')}
+          <button type="button" class="mini" data-ed="add" data-sec="materiais">+ Material</button>
+
+          <h3>Tarefas do aluno</h3>
+          ${ed.tarefas.map((t, i) => `<fieldset class="card-ed"><legend>Tarefa ${i + 1}</legend>
+            <textarea data-sec="tarefas" data-i="${i}" data-f="texto" rows="2">${esc(t.texto)}</textarea>
+            <label>Saiba mais (opcional)</label>
+            <textarea data-sec="tarefas" data-i="${i}" data-f="saibaMais" rows="3">${esc(t.saibaMais)}</textarea>
+            <label>Campos para o aluno escrever (um por linha: Rótulo | dica)</label>
+            <textarea data-sec="tarefas" data-i="${i}" data-f="camposTxt" rows="2" placeholder="Jogos de que você gosta">${esc(t.camposTxt)}</textarea>
+            ${botoes('tarefas', i, ed.tarefas.length)}</fieldset>`).join('')}
+          <button type="button" class="mini" data-ed="add" data-sec="tarefas">+ Tarefa</button>
+
+          <h3>Roteiro da aula (só você vê)</h3>
+          <textarea id="f-roteiro" rows="6">${esc(ed.roteiro)}</textarea>
+          <p class="nota">Habilidades e critérios mudam pelo arquivo de conteúdo.</p>
+          <p class="erro" id="f-msg"></p>
+          <div class="linha-btn">
+            <button class="botao" type="submit">Salvar</button>
+            <button class="botao secundario" type="button" id="f-cancelar">Cancelar</button>
+          </div>
+        </form>`;
+    }
+
+    function lerCampos() {
+      const nome = document.getElementById('f-nome'); if (!nome) return;
+      ed.nome = nome.value; ed.missao = document.getElementById('f-missao').value; ed.roteiro = document.getElementById('f-roteiro').value;
+      dlg.querySelectorAll('[data-sec][data-f]').forEach((el) => {
+        ed[el.dataset.sec][Number(el.dataset.i)][el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value;
+      });
+    }
+
+    pintar();
+    dlg.onclick = (ev) => {
+      const b = ev.target.closest('[data-ed]');
+      if (ev.target.id === 'f-cancelar') { dlg.onclick = null; dlg.close(); return; }
+      if (!b) return;
+      lerCampos();
+      const sec = b.dataset.sec; const i = Number(b.dataset.i); const lista = ed[sec];
+      if (b.dataset.ed === 'add') {
+        if (sec === 'etapas') lista.push({ id: proximoId(lista, 'i'), texto: '', saibaMais: '', links: '', travada: false });
+        if (sec === 'materiais') lista.push({ id: proximoId(lista, 'm'), titulo: '', url: '', descricao: '', travado: false });
+        if (sec === 'tarefas') lista.push({ id: proximoId(lista, 't'), texto: '', saibaMais: '', campos: [], camposTxt: '' });
+      } else if (b.dataset.ed === 'remove') {
+        if (!confirm('Remover este item?')) return;
+        lista.splice(i, 1);
+      } else if (b.dataset.ed === 'sobe' && i > 0) { [lista[i - 1], lista[i]] = [lista[i], lista[i - 1]]; }
+      else if (b.dataset.ed === 'desce' && i < lista.length - 1) { [lista[i + 1], lista[i]] = [lista[i], lista[i + 1]]; }
+      pintar();
+    };
+    dlg.addEventListener('close', () => { dlg.onclick = null; }, { once: true });
     dlg.showModal();
+
+    dlg.onsubmit = async (ev) => {
+      if (ev.target.id !== 'form-fase') return;
+      ev.preventDefault();
+      lerCampos();
+      const msg = document.getElementById('f-msg');
+      const instrucoes = ed.etapas.filter((e) => e.texto.trim()).map((e) => {
+        const o = { id: e.id, texto: e.texto.trim() };
+        if (e.saibaMais.trim()) o.saibaMais = e.saibaMais.trim();
+        const l = paraLinks(e.links); if (l.length) o.links = l;
+        if (e.travada) o.travada = true;
+        return o;
+      });
+      const materiais = ed.materiais.filter((m) => /^https?:\/\//i.test(m.url.trim())).map((m) => {
+        const o = { id: m.id, titulo: m.titulo.trim() || m.url.trim(), url: m.url.trim() };
+        if (m.descricao.trim()) o.descricao = m.descricao.trim();
+        if (m.travado) o.travado = true;
+        return o;
+      });
+      const tarefas = ed.tarefas.filter((t) => t.texto.trim()).map((t) => {
+        const o = { id: t.id, texto: t.texto.trim() };
+        if (t.saibaMais.trim()) o.saibaMais = t.saibaMais.trim();
+        const campos = linhasDe(t.camposTxt).map((l, i) => {
+          const [rot, ...dica] = l.split('|');
+          return { id: t.campos?.[i]?.id ?? `c${i + 1}`, rotulo: rot.trim(), ...(dica.join('|').trim() ? { dica: dica.join('|').trim() } : {}) };
+        });
+        if (campos.length) o.campos = campos;
+        return o;
+      });
+      if (!ed.nome.trim()) { msg.textContent = 'A fase precisa de um nome.'; return; }
+      try {
+        const lote = writeBatch(db);
+        lote.update(doc(db, 'fases', f.id), { nome: ed.nome.trim(), missao: ed.missao.trim(), instrucoes, materiais, tarefas, atualizadoEm: serverTimestamp() });
+        lote.set(doc(db, 'fasesProfessor', f.id), { mundo: MUNDO, professor: { paraVoce: linhasDe(ed.roteiro) }, atualizadoEm: serverTimestamp() }, { merge: true });
+        await lote.commit();
+        dlg.onclick = null; dlg.onsubmit = null; dlg.close();
+      } catch { msg.textContent = 'Não consegui salvar agora.'; }
+    };
   }
 
   return () => {
     paradas.forEach((p) => p());
     paradasTurma.forEach((p) => p());
+    if (paraProf) paraProf();
     app.onclick = null; app.onchange = null; app.onsubmit = null;
+    dlg.onclick = null; dlg.onsubmit = null;
     if (dlg.open) dlg.close();
   };
 }

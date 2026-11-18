@@ -251,3 +251,43 @@ ol { padding-left: 22px; }
 .resumo { padding: 10px 12px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; }
 .previa { padding: 12px; margin: 12px 0; border: 1px solid var(--borda); border-radius: 12px; background: var(--cartao); }
 input[type='file'] { padding: 10px; }
+/* ---------- Bloco 1.5: etapas, trava, links, editor ---------- */
+.chip.sit-naoconcluida { border-color: #b7791f; color: #b7791f; }
+.mini.cheio { background: var(--ok); color: var(--destaque-texto); }
+.mini:disabled { opacity: 0.4; cursor: default; }
+hr { border: 0; border-top: 1px solid var(--borda); margin: 16px 0; }
+h3 { margin: 16px 0 6px; font-size: 1rem; }
+
+.etapas { padding-left: 0; list-style: none; counter-reset: etapa; }
+.etapa {
+  counter-increment: etapa; position: relative; margin: 0 0 10px; padding: 10px 12px 10px 44px;
+  background: var(--campo); border: 1px solid var(--borda); border-radius: 12px;
+}
+.etapa::before {
+  content: counter(etapa); position: absolute; left: 10px; top: 10px; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--destaque); color: var(--destaque-texto); font-weight: 700; font-size: 0.9rem;
+}
+.etapa p { margin: 0 0 6px; }
+.etapa.trava, li.trava { color: var(--suave); border-style: dashed; font-style: italic; }
+.materiais { list-style: none; padding: 0; margin: 0; }
+.materiais li { margin: 0 0 6px; padding: 8px 12px; background: var(--campo); border: 1px solid var(--borda); border-radius: 10px; }
+.links { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+a.link {
+  display: inline-block; padding: 6px 12px; border-radius: 999px; text-decoration: none;
+  border: 1px solid var(--destaque); color: var(--destaque); font-size: 0.92rem; word-break: break-word;
+}
+details.mais { margin: 6px 0 0; padding: 6px 10px; background: transparent; border-color: var(--borda); font-size: 0.93rem; }
+details.mais summary { font-weight: 600; color: var(--destaque); }
+.campo { margin-top: 10px; }
+.campos { margin: 6px 0 0 4px; }
+
+.acoes-aluno { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.roteiro { margin: 10px 0; }
+.roteiro ul { padding-left: 18px; }
+.roteiro li { margin: 0 0 6px; }
+
+dialog { max-height: 90vh; overflow-y: auto; }
+.card-ed { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 12px; }
+.card-ed legend { padding: 0 6px; font-size: 0.85rem; color: var(--suave); }
+.card-ed textarea, .card-ed input[type='text'], .card-ed input:not([type]) { margin-bottom: 4px; }
+.editor .linha-btn { margin-top: 6px; }

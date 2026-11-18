@@ -23,7 +23,7 @@ beforeEach(async () => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'turmas/1A'), {
       nome: '1º ano A', codigo: 'ABC12', aberta: true, teste: false,
-      estadoFases: { m1f1: 'aberta', m1f2: 'trancada', m1f3: 'encerrada', m1f4: 'adiada' },
+      estadoFases: { m1f1: 'aberta', m1f2: 'trancada', m1f3: 'encerrada', m1f4: 'adiada', m1f5: 'aberta' },
     });
     await setDoc(doc(db, 'mundos/m1'), { nome: 'Vila dos Planos' });
     await setDoc(doc(db, 'fases/m1f1'), { mundo: 'm1', nome: 'Casa de Partida', tarefas: [{ id: 't1', texto: 'x' }] });
@@ -31,6 +31,9 @@ beforeEach(async () => {
     await setDoc(doc(db, 'progresso/ativo1_m1f1'), { uid: 'ativo1', turma: '1A', fase: 'm1f1', tarefas: { t1: true }, concluida: false });
     await setDoc(doc(db, 'avaliacoes/ativo1_m1f1'), { uid: 'ativo1', turma: '1A', fase: 'm1f1', faltou: false, validada: true, mencoes: { EMT1ADM102: 'A' } });
     await setDoc(doc(db, 'avaliacoes/outro1_m1f1'), { uid: 'outro1', turma: '1B', fase: 'm1f1', faltou: true });
+    await setDoc(doc(db, 'turmas/TESTE'), { nome: 'Teste', codigo: 'TST01', aberta: true, teste: true, estadoFases: {} });
+    await setDoc(doc(db, 'alunos/teste1'), { turma: 'TESTE', codigo: 'TST01', apelido: 'Teste', status: 'ativo' });
+    await setDoc(doc(db, 'progresso/teste1_m1f1'), { uid: 'teste1', turma: 'TESTE', fase: 'm1f1', tarefas: {}, concluida: false });
     await setDoc(doc(db, 'turmas/1B'), { nome: '1º ano B', codigo: 'XYZ99', aberta: true, teste: false });
     await setDoc(doc(db, 'turmas/FECH'), { nome: 'Fechada', codigo: 'FECH1', aberta: false, teste: false });
     await setDoc(doc(db, 'codigos/ABC12'), { turma: '1A', aberta: true });
@@ -170,14 +173,14 @@ test('aluno marca tarefas e conclui numa fase aberta', async () => {
 
 test('aluno cria progresso novo só da própria turma, em fase liberada e com o id certo', async () => {
   const db = aluno('ativo1');
-  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'), prog('ativo1', 'm1f3')));
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f5'), prog('ativo1', 'm1f5')));
   await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f2'), prog('ativo1', 'm1f2')));
   await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f4'), prog('ativo1', 'm1f4')));
   await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f9'), prog('ativo1', 'm1f9')));
-  await assertFails(setDoc(doc(db, 'progresso/errado'), prog('ativo1', 'm1f3')));
-  await assertFails(setDoc(doc(db, 'progresso/outro1_m1f3'), prog('outro1', 'm1f3')));
-  await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f3'), prog('ativo1', 'm1f3', { turma: '1B' })));
-  await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f3'), prog('ativo1', 'm1f3', { validada: true })));
+  await assertFails(setDoc(doc(db, 'progresso/errado'), prog('ativo1', 'm1f5')));
+  await assertFails(setDoc(doc(db, 'progresso/outro1_m1f3'), prog('outro1', 'm1f5')));
+  await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f5'), prog('ativo1', 'm1f5', { turma: '1B' })));
+  await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f5'), prog('ativo1', 'm1f5', { validada: true })));
 });
 
 test('aluno não mexe no progresso de fase trancada ou adiada, nem no de outro aluno', async () => {
@@ -229,28 +232,73 @@ test('professor gerencia conteúdo, estados, faltas e validações', async () =>
 test('os mesmos padrões de escrita do aplicativo funcionam (primeira tarefa, concluir, desmarcar)', async () => {
   const db = aluno('ativo1');
   // primeira tarefa de uma fase ainda sem progresso (setDoc com merge cria o documento)
-  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'),
-    { tarefas: { t1: true }, atualizadoEm: serverTimestamp(), uid: 'ativo1', turma: '1A', fase: 'm1f3', concluida: false }, { merge: true }));
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f5'),
+    { tarefas: { t1: true }, atualizadoEm: serverTimestamp(), uid: 'ativo1', turma: '1A', fase: 'm1f5', concluida: false }, { merge: true }));
   // segunda tarefa: documento já existe, só muda o que mudou
-  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'),
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f5'),
     { tarefas: { t2: true }, atualizadoEm: serverTimestamp() }, { merge: true }));
   // concluir
-  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'),
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f5'),
     { concluida: true, concluidaEm: serverTimestamp(), atualizadoEm: serverTimestamp() }, { merge: true }));
   // desmarcar
-  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'),
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f5'),
     { concluida: false, concluidaEm: null, atualizadoEm: serverTimestamp() }, { merge: true }));
 });
 
 test('concluir uma fase sem nenhuma tarefa marcada cria o progresso corretamente', async () => {
   const db = aluno('ativo1');
-  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'),
-    { concluida: true, concluidaEm: serverTimestamp(), atualizadoEm: serverTimestamp(), uid: 'ativo1', turma: '1A', fase: 'm1f3', tarefas: {} }, { merge: true }));
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f5'),
+    { concluida: true, concluidaEm: serverTimestamp(), atualizadoEm: serverTimestamp(), uid: 'ativo1', turma: '1A', fase: 'm1f5', tarefas: {} }, { merge: true }));
 });
 
 test('o professor valida e o aluno enxerga a própria validação em tempo real', async () => {
-  await assertSucceeds(setDoc(doc(prof(), 'avaliacoes/ativo1_m1f3'),
-    { uid: 'ativo1', turma: '1A', fase: 'm1f3', validada: true, mencoes: { EMT1ADM103: 'PA' }, atualizadoEm: serverTimestamp() }, { merge: true }));
-  const snap = await assertSucceeds(getDoc(doc(aluno('ativo1'), 'avaliacoes/ativo1_m1f3')));
+  await assertSucceeds(setDoc(doc(prof(), 'avaliacoes/ativo1_m1f5'),
+    { uid: 'ativo1', turma: '1A', fase: 'm1f5', validada: true, mencoes: { EMT1ADM103: 'PA' }, atualizadoEm: serverTimestamp() }, { merge: true }));
+  const snap = await assertSucceeds(getDoc(doc(aluno('ativo1'), 'avaliacoes/ativo1_m1f5')));
   assert.equal(snap.data().mencoes.EMT1ADM103, 'PA');
+});
+// ---------- fase encerrada, liberação, respostas e limpeza ----------
+test('em fase encerrada, o aluno só edita se faltou ou se o professor liberou', async () => {
+  const db = aluno('ativo1');
+  const dados = { tarefas: { t1: true }, atualizadoEm: serverTimestamp(), uid: 'ativo1', turma: '1A', fase: 'm1f3', concluida: false };
+  await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f3'), dados, { merge: true }));
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'avaliacoes/ativo1_m1f3'), { uid: 'ativo1', turma: '1A', fase: 'm1f3', faltou: true });
+  });
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'), dados, { merge: true }));
+});
+
+test('o professor libera um aluno para fazer depois do encerramento', async () => {
+  const db = aluno('ativo1');
+  const dados = { tarefas: { t1: true }, atualizadoEm: serverTimestamp(), uid: 'ativo1', turma: '1A', fase: 'm1f3', concluida: false };
+  await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f3'), dados, { merge: true }));
+  await assertSucceeds(setDoc(doc(prof(), 'avaliacoes/ativo1_m1f3'), { uid: 'ativo1', turma: '1A', fase: 'm1f3', liberado: true }, { merge: true }));
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f3'), dados, { merge: true }));
+});
+
+test('aluno escreve respostas dos campos de uma tarefa', async () => {
+  const db = aluno('ativo1');
+  await assertSucceeds(setDoc(doc(db, 'progresso/ativo1_m1f1'),
+    { respostas: { t2: { jogos: 'Minecraft', series: 'Stranger Things' } }, atualizadoEm: serverTimestamp() }, { merge: true }));
+  await assertFails(setDoc(doc(db, 'progresso/ativo1_m1f1'),
+    { respostas: 'texto solto', atualizadoEm: serverTimestamp() }, { merge: true }));
+});
+
+test('professor apaga alunos e dados só na turma de teste', async () => {
+  const db = prof();
+  await assertSucceeds(deleteDoc(doc(db, 'progresso/teste1_m1f1')));
+  await assertSucceeds(deleteDoc(doc(db, 'alunos/teste1')));
+  await assertFails(deleteDoc(doc(db, 'progresso/ativo1_m1f1')));
+  await assertFails(deleteDoc(doc(db, 'alunos/outro1')));
+});
+
+test('professor move um aluno de turma e libera etapas durante a aula', async () => {
+  const db = prof();
+  await assertSucceeds(updateDoc(doc(db, 'alunos/ativo1'), { turma: '1B' }));
+  await assertSucceeds(updateDoc(doc(db, 'turmas/1A'), { 'liberacoes.m1f1.i4': true }));
+  await assertSucceeds(updateDoc(doc(db, 'turmas/1A'), { 'liberacoes.m1f1.i4': false }));
+});
+
+test('aluno não altera as liberações da turma', async () => {
+  await assertFails(updateDoc(doc(aluno('ativo1'), 'turmas/1A'), { 'liberacoes.m1f1.i4': true }));
 });

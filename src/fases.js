@@ -15,6 +15,7 @@ export const SITUACAO_ROTULO = {
   validada: 'Validada',
   concluida: 'Concluída',
   afazer: 'A fazer',
+  naoconcluida: 'Não concluída',
   andamento: 'Em andamento',
   inicio: 'Não iniciada',
 };
@@ -28,17 +29,44 @@ export function contarTarefas(fase, prog) {
 }
 
 // Situação de um aluno numa fase, a partir do que ele marcou e do que o professor registrou.
-export function situacao(fase, prog, aval) {
+export function situacao(fase, prog, aval, estado) {
   if (aval?.validada) return 'validada';
   if (prog?.concluida) return 'concluida';
+  if (estado === 'encerrada') return aval?.faltou || aval?.liberado ? 'afazer' : 'naoconcluida';
   if (aval?.faltou) return 'afazer';
   return contarTarefas(fase, prog).feitas > 0 ? 'andamento' : 'inicio';
+}
+
+// O aluno pode editar enquanto a fase está aberta. Depois de encerrada, só se faltou ou se o professor liberou.
+export function podeEditar(estado, aval) {
+  return estado === 'aberta' || (estado === 'encerrada' && (aval?.faltou === true || aval?.liberado === true));
 }
 
 export function textoPlaca(textos, fase) {
   const placas = textos?.placas ?? [];
   if (!placas.length) return 'Em obra.';
   return placas[((fase.ordem ?? 0) + new Date().getDate()) % placas.length];
+}
+
+// As etapas (instruções) podem ser texto simples ou objetos com "saiba mais", links e trava.
+export function normInstrucoes(f) {
+  return (f.instrucoes ?? []).map((x, i) => (typeof x === 'string' ? { id: `i${i + 1}`, texto: x } : { ...x, id: x.id ?? `i${i + 1}` }));
+}
+
+export function normMateriais(f) {
+  return (f.materiais ?? []).map((x, i) => ({ ...x, id: x.id ?? `m${i + 1}` }));
+}
+
+// Item travado só aparece depois que o professor libera na turma.
+export function liberado(turma, faseId, item, chave) {
+  return item[chave] !== true || turma?.liberacoes?.[faseId]?.[item.id] === true;
+}
+
+export function urlSegura(u) {
+  try {
+    const x = new URL(String(u).trim());
+    return x.protocol === 'https:' || x.protocol === 'http:' ? x.href : '#';
+  } catch { return '#'; }
 }
 
 // Texto estável (ordena as chaves) para comparar conteúdo sem depender da ordem.
@@ -62,7 +90,8 @@ export function parteAluno(f, mundo) {
     atitude: f.atitude ?? '',
     porGrupo: f.porGrupo ?? [],
     missao: f.missao ?? '',
-    instrucoes: f.instrucoes ?? [],
+    instrucoes: normInstrucoes(f),
+    materiais: normMateriais(f),
     tarefas: f.tarefas ?? [],
     habilidades: f.habilidades ?? [],
     evidencias: f.evidencias ?? {},

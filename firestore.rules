@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Regras da etapa 1. Tudo é negado, exceto o que está liberado abaixo.
+// Tudo é negado, exceto o que está liberado abaixo.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -20,6 +20,32 @@ service cloud.firestore {
 
     function temCadastro() {
       return logado() && exists(/databases/$(database)/documents/alunos/$(request.auth.uid));
+    }
+
+    function ativo() {
+      return temCadastro() && meuAluno().status == 'ativo';
+    }
+
+    // Turma de teste: a única em que o professor pode apagar dados de alunos.
+    function turmaDeTeste(turma) {
+      return turma is string && turma != ''
+        && get(/databases/$(database)/documents/turmas/$(turma)).data.get('teste', false) == true;
+    }
+
+    function estadoFase(turma, fase) {
+      return get(/databases/$(database)/documents/turmas/$(turma)).data.get('estadoFases', {}).get(fase, 'trancada');
+    }
+
+    // Depois que a fase é encerrada, só faz quem faltou ou quem o professor liberou.
+    function liberadoDepoisDeEncerrar(uid, fase) {
+      return exists(/databases/$(database)/documents/avaliacoes/$(uid + '_' + fase))
+        && (get(/databases/$(database)/documents/avaliacoes/$(uid + '_' + fase)).data.get('faltou', false) == true
+            || get(/databases/$(database)/documents/avaliacoes/$(uid + '_' + fase)).data.get('liberado', false) == true);
+    }
+
+    function podeEditarFase(turma, fase, uid) {
+      return estadoFase(turma, fase) == 'aberta'
+        || (estadoFase(turma, fase) == 'encerrada' && liberadoDepoisDeEncerrar(uid, fase));
     }
 
     // Códigos de entrada: o aluno só consegue buscar um código que já sabe (get), nunca listar.
@@ -71,17 +97,9 @@ service cloud.firestore {
             && (!('ultimoAcesso' in request.resource.data.diff(resource.data).affectedKeys())
                 || request.resource.data.ultimoAcesso == request.time));
 
-      // O histórico não se apaga: o professor só recusa cadastros ainda pendentes.
-      allow delete: if ehProfessor() && resource.data.status == 'pendente';
-    }
-
-    function ativo() {
-      return temCadastro() && meuAluno().status == 'ativo';
-    }
-
-    // A fase da turma está liberada para o aluno trabalhar (aberta, ou encerrada para quem precisa fazer depois).
-    function faseLiberada(turma, fase) {
-      return get(/databases/$(database)/documents/turmas/$(turma)).data.get('estadoFases', {}).get(fase, 'trancada') in ['aberta', 'encerrada'];
+      // O histórico não se apaga: o professor só recusa cadastros pendentes e limpa a turma de teste.
+      allow delete: if ehProfessor()
+        && (resource.data.status == 'pendente' || turmaDeTeste(resource.data.get('turma', '')));
     }
 
     // Conteúdo do mundo e das fases: o aluno ativo lê, só o professor altera.
@@ -100,38 +118,42 @@ service cloud.firestore {
       allow read, write: if ehProfessor();
     }
 
-    // Progresso do aluno em cada fase: tarefas marcadas e "concluí". O id é uid_fase.
+    // Progresso do aluno em cada fase: tarefas marcadas, respostas e "concluí". O id é uid_fase.
     match /progresso/{pid} {
       allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
 
       allow create: if ativo()
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['uid', 'turma', 'fase', 'tarefas', 'concluida', 'concluidaEm', 'atualizadoEm'])
+        && request.resource.data.keys().hasOnly(['uid', 'turma', 'fase', 'tarefas', 'respostas', 'concluida', 'concluidaEm', 'atualizadoEm'])
         && request.resource.data.keys().hasAll(['uid', 'turma', 'fase', 'tarefas', 'concluida', 'atualizadoEm'])
         && request.resource.data.fase is string
         && pid == request.auth.uid + '_' + request.resource.data.fase
         && request.resource.data.turma == meuAluno().turma
-        && faseLiberada(request.resource.data.turma, request.resource.data.fase)
+        && podeEditarFase(request.resource.data.turma, request.resource.data.fase, request.auth.uid)
         && request.resource.data.tarefas is map
         && request.resource.data.tarefas.size() <= 30
+        && (!('respostas' in request.resource.data) || request.resource.data.respostas is map)
         && request.resource.data.concluida is bool
         && request.resource.data.atualizadoEm == request.time
         && (!('concluidaEm' in request.resource.data) || request.resource.data.concluidaEm == request.time);
 
       allow update: if ativo()
         && resource.data.uid == request.auth.uid
-        && faseLiberada(resource.data.turma, resource.data.fase)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tarefas', 'concluida', 'concluidaEm', 'atualizadoEm'])
+        && podeEditarFase(resource.data.turma, resource.data.fase, request.auth.uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tarefas', 'respostas', 'concluida', 'concluidaEm', 'atualizadoEm'])
         && request.resource.data.tarefas is map
         && request.resource.data.tarefas.size() <= 30
+        && (!('respostas' in request.resource.data) || request.resource.data.respostas is map)
         && request.resource.data.concluida is bool
         && request.resource.data.atualizadoEm == request.time
         && (!('concluidaEm' in request.resource.data.diff(resource.data).affectedKeys())
             || request.resource.data.concluidaEm == request.time
             || request.resource.data.concluidaEm == null);
+
+      allow delete: if ehProfessor() && turmaDeTeste(resource.data.get('turma', ''));
     }
 
-    // Avaliações (falta, validação, A, PA, NA): o aluno lê só as próprias, só o professor escreve.
+    // Avaliações (falta, liberação, validação, A, PA, NA): o aluno lê só as próprias, só o professor escreve.
     match /avaliacoes/{pid} {
       allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
       allow write: if ehProfessor();
