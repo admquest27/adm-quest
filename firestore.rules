@@ -75,7 +75,66 @@ service cloud.firestore {
       allow delete: if ehProfessor() && resource.data.status == 'pendente';
     }
 
-    // Faltas ficam dentro de cada fase (etapa 2), em coleção própria do professor.
-    // O aluno não vê frequência, só que a fase ficou pendente.
+    function ativo() {
+      return temCadastro() && meuAluno().status == 'ativo';
+    }
+
+    // A fase da turma está liberada para o aluno trabalhar (aberta, ou encerrada para quem precisa fazer depois).
+    function faseLiberada(turma, fase) {
+      return get(/databases/$(database)/documents/turmas/$(turma)).data.get('estadoFases', {}).get(fase, 'trancada') in ['aberta', 'encerrada'];
+    }
+
+    // Conteúdo do mundo e das fases: o aluno ativo lê, só o professor altera.
+    match /mundos/{id} {
+      allow read: if ehProfessor() || ativo();
+      allow write: if ehProfessor();
+    }
+
+    match /fases/{id} {
+      allow read: if ehProfessor() || ativo();
+      allow write: if ehProfessor();
+    }
+
+    // Notas "Para você", dossiês, enigmas e códigos: nunca visíveis ao aluno.
+    match /fasesProfessor/{id} {
+      allow read, write: if ehProfessor();
+    }
+
+    // Progresso do aluno em cada fase: tarefas marcadas e "concluí". O id é uid_fase.
+    match /progresso/{pid} {
+      allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
+
+      allow create: if ativo()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'turma', 'fase', 'tarefas', 'concluida', 'concluidaEm', 'atualizadoEm'])
+        && request.resource.data.keys().hasAll(['uid', 'turma', 'fase', 'tarefas', 'concluida', 'atualizadoEm'])
+        && request.resource.data.fase is string
+        && pid == request.auth.uid + '_' + request.resource.data.fase
+        && request.resource.data.turma == meuAluno().turma
+        && faseLiberada(request.resource.data.turma, request.resource.data.fase)
+        && request.resource.data.tarefas is map
+        && request.resource.data.tarefas.size() <= 30
+        && request.resource.data.concluida is bool
+        && request.resource.data.atualizadoEm == request.time
+        && (!('concluidaEm' in request.resource.data) || request.resource.data.concluidaEm == request.time);
+
+      allow update: if ativo()
+        && resource.data.uid == request.auth.uid
+        && faseLiberada(resource.data.turma, resource.data.fase)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tarefas', 'concluida', 'concluidaEm', 'atualizadoEm'])
+        && request.resource.data.tarefas is map
+        && request.resource.data.tarefas.size() <= 30
+        && request.resource.data.concluida is bool
+        && request.resource.data.atualizadoEm == request.time
+        && (!('concluidaEm' in request.resource.data.diff(resource.data).affectedKeys())
+            || request.resource.data.concluidaEm == request.time
+            || request.resource.data.concluidaEm == null);
+    }
+
+    // Avaliações (falta, validação, A, PA, NA): o aluno lê só as próprias, só o professor escreve.
+    match /avaliacoes/{pid} {
+      allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
+      allow write: if ehProfessor();
+    }
   }
 }

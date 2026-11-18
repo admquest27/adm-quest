@@ -189,3 +189,65 @@ dialog {
   background: var(--cartao); color: var(--texto);
 }
 dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+
+/* ---------- Bloco 1: fases ---------- */
+#app.alto { place-items: start center; }
+.esq { text-align: left; }
+.esq h1 { text-align: center; margin-top: 8px; }
+.centro-txt { text-align: center; }
+textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px;
+  background: var(--campo); color: var(--texto); font: inherit; resize: vertical;
+}
+.cab-aluno { display: flex; align-items: center; gap: 12px; text-align: left; margin-bottom: 4px; }
+.cab-aluno > div { flex: 1; }
+
+.fase {
+  width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+  margin: 0 0 8px; padding: 12px; text-align: left; font-size: 1rem; color: var(--texto);
+  background: var(--campo); border: 2px solid var(--borda); border-radius: 12px;
+}
+button.fase { cursor: pointer; }
+button.fase:hover { border-color: var(--destaque); }
+.fase.afazer { border-color: var(--erro); }
+.fase .cod { min-width: 38px; font-weight: 700; color: var(--suave); }
+.fase .nm { flex: 1; font-weight: 600; }
+.fase.obra { border-style: dashed; opacity: 0.85; }
+.fase .placa { width: 100%; font-size: 0.85rem; color: var(--suave); font-style: italic; }
+
+.chip.sit-validada { border-color: var(--ok); color: var(--ok); }
+.chip.sit-concluida { border-color: var(--destaque); color: var(--destaque); }
+.chip.sit-afazer { border-color: var(--erro); color: var(--erro); }
+.chip.sit-andamento { border-color: var(--suave); color: var(--texto); }
+.chip.m-A { border-color: var(--ok); color: var(--ok); }
+.chip.m-PA { border-color: #b7791f; color: #b7791f; }
+.chip.m-NA { border-color: var(--erro); color: var(--erro); }
+
+.banner {
+  padding: 10px 12px; border-radius: 10px; font-size: 0.95rem;
+  border: 1px solid var(--erro); background: color-mix(in srgb, var(--erro) 10%, var(--cartao));
+}
+.mencoes { padding: 10px 12px; margin: 8px 0; border: 1px solid var(--ok); border-radius: 10px; }
+.mencoes p { margin: 4px 0; }
+.tarefas { list-style: none; padding: 0; margin: 0; }
+.tarefas li { margin: 0 0 6px; }
+.tarefas .check { padding: 10px; background: var(--campo); border: 1px solid var(--borda); border-radius: 10px; cursor: pointer; }
+.tarefas input[type='checkbox'] { width: 24px; height: 24px; min-height: 24px; flex: none; }
+details { margin: 12px 0; padding: 10px 12px; background: var(--campo); border: 1px solid var(--borda); border-radius: 10px; }
+summary { cursor: pointer; font-weight: 600; }
+.crit { margin-top: 10px; }
+dl { display: grid; grid-template-columns: 34px 1fr; gap: 4px 8px; margin: 6px 0 0; font-size: 0.92rem; }
+dt { font-weight: 700; }
+dd { margin: 0; }
+ol { padding-left: 22px; }
+
+.fase-prof {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 8px 10px; margin: 0 0 8px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px;
+}
+.nome-fase { flex: 1; min-width: 160px; text-align: left; border: 0; background: transparent; color: var(--texto); font-size: 1rem; cursor: pointer; padding: 4px 0; }
+.nome-fase .nota { display: block; margin: 2px 0 0; }
+.fase-prof select { width: auto; min-width: 120px; min-height: 40px; }
+.resumo { padding: 10px 12px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; }
+.previa { padding: 12px; margin: 12px 0; border: 1px solid var(--borda); border-radius: 12px; background: var(--cartao); }
+input[type='file'] { padding: 10px; }
