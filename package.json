@@ -1,20 +1,22 @@
 {
-    "name":  "adm-quest",
-    "private":  true,
-    "version":  "0.0.1",
-    "type":  "module",
-    "scripts":  {
-                    "dev":  "vite --host",
-                    "build":  "vite build",
-                    "preview":  "vite preview --host",
-                    "test":  "firebase emulators:exec --only firestore --project demo-adm-quest \"node --test tests/\""
-                },
-    "dependencies":  {
-                         "firebase":  "^13.4.0"
-                     },
-    "devDependencies":  {
-                            "@firebase/rules-unit-testing":  "^6.0.0",
-                            "firebase-admin":  "^14.5.1",
-                            "vite":  "^8.3.8"
-                        }
+    "name": "adm-quest",
+    "private": true,
+    "version": "0.0.1",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --host",
+        "build": "vite build",
+        "preview": "vite preview --host",
+        "test": "firebase emulators:exec --only firestore --project demo-adm-quest \"node --test tests/\""
+    },
+    "dependencies": {
+        "firebase": "^13.4.0"
+    },
+    "devDependencies": {
+        "@firebase/rules-unit-testing": "^6.0.0",
+        "eslint": "^10.15.0",
+        "firebase-admin": "^14.5.1",
+        "globals": "^17.14.0",
+        "vite": "^8.3.8"
+    }
 }

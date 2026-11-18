@@ -1,18 +1,21 @@
 import { signOut } from 'firebase/auth';
 import {
-  collection, doc, onSnapshot, query, where, setDoc, updateDoc, deleteDoc, getDoc, getDocs, writeBatch, serverTimestamp,
+  collection, doc, onSnapshot, query, where, setDoc, updateDoc, deleteDoc, deleteField, getDoc, getDocs, writeBatch, serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { app, tela, esc, hoje, guardar, ler } from './ui.js';
 import { imgAvatar } from './avatar.js';
 import {
   MUNDO, ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno,
-  normInstrucoes, normMateriais, liberado,
+  etapasDe, normMateriais, liberado,
 } from './fases.js';
+import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } from './registros.js';
+import { htmlEstatisticas } from './estatisticas.js';
+import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const ROTULO = { pendente: 'Pendente', ativo: 'Ativo', saiu: 'Saiu', bloqueado: 'Bloqueado' };
-const ABAS = ['turma', 'fases', 'turmas', 'conteudo'];
+const ABAS = ['turma', 'fases', 'painel', 'turmas', 'conteudo'];
 
 function codigoAleatorio() {
   const n = new Uint32Array(5);
@@ -45,12 +48,12 @@ function paraLinks(txt) {
 
 const deLinks = (lista) => (lista ?? []).map((l) => `${l.titulo} | ${l.url}`).join('\n');
 
-export function iniciarProfessor() {
+export function iniciarProfessor(user, opcoes = {}) {
   const st = {
     aba: ABAS.includes(ler('aba')) ? ler('aba') : 'turma',
     turma: ler('turma') || '',
     turmas: [], alunos: [], fases: [], mundo: null,
-    progresso: {}, aval: {}, profFase: null,
+    progresso: {}, aval: {}, comentarios: [], anotacoes: [], profFase: null,
     faseSel: null, importacao: null, aviso: '',
     carregou: { turmas: false, alunos: false },
   };
@@ -91,19 +94,19 @@ export function iniciarProfessor() {
     desenhar();
   }, () => {}));
 
+  // progresso, avaliações, atitudes e anotações só da turma escolhida
   function ligarTurma() {
     if (turmaLigada === st.turma) return;
     turmaLigada = st.turma;
     paradasTurma.forEach((p) => p());
     paradasTurma = [];
-    st.progresso = {}; st.aval = {};
+    st.progresso = {}; st.aval = {}; st.comentarios = []; st.anotacoes = [];
     if (!st.turma) return;
-    paradasTurma.push(onSnapshot(query(collection(db, 'progresso'), where('turma', '==', st.turma)), (s) => {
-      st.progresso = {}; s.docs.forEach((d) => { st.progresso[d.id] = d.data(); }); desenhar();
-    }, () => {}));
-    paradasTurma.push(onSnapshot(query(collection(db, 'avaliacoes'), where('turma', '==', st.turma)), (s) => {
-      st.aval = {}; s.docs.forEach((d) => { st.aval[d.id] = d.data(); }); desenhar();
-    }, () => {}));
+    const dosAlunos = (nome, fn) => paradasTurma.push(onSnapshot(query(collection(db, nome), where('turma', '==', st.turma)), fn, () => {}));
+    dosAlunos('progresso', (s) => { st.progresso = {}; s.docs.forEach((d) => { st.progresso[d.id] = d.data(); }); desenhar(); });
+    dosAlunos('avaliacoes', (s) => { st.aval = {}; s.docs.forEach((d) => { st.aval[d.id] = d.data(); }); desenhar(); });
+    dosAlunos('comentarios', (s) => { st.comentarios = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
+    dosAlunos('anotacoes', (s) => { st.anotacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
   }
 
   // notas do professor da fase aberta no painel
@@ -132,7 +135,8 @@ export function iniciarProfessor() {
     if (st.aba === 'turmas' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
     const pend = pendentesTotal();
     const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'turmas' ? htmlTurmas() : htmlConteudo();
+    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'painel' ? htmlEstatisticas(st) : aba === 'turmas' ? htmlTurmas() : htmlConteudo();
+    const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['painel', 'Painel'], ['turmas', 'Turmas'], ['conteudo', 'Conteúdo']];
     tela(
       `<header class="topo">
         <strong>ADM Quest</strong>
@@ -144,13 +148,17 @@ export function iniciarProfessor() {
       ${st.aviso ? `<p class="aviso">${esc(st.aviso)}</p>` : ''}
       <main class="corpo">${corpo}</main>
       <nav class="abas" aria-label="Seções">
-        <button data-acao="aba" data-v="turma" class="${aba === 'turma' ? 'sel' : ''}">Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}</button>
-        <button data-acao="aba" data-v="fases" class="${aba === 'fases' ? 'sel' : ''}">Fases</button>
-        <button data-acao="aba" data-v="turmas" class="${aba === 'turmas' ? 'sel' : ''}">Turmas</button>
-        <button data-acao="aba" data-v="conteudo" class="${aba === 'conteudo' ? 'sel' : ''}">Conteúdo</button>
+        ${nav.map(([id, rot]) => `<button data-acao="aba" data-v="${id}" class="${aba === id ? 'sel' : ''}">${rot}</button>`).join('')}
       </nav>`,
       'pagina'
     );
+  }
+
+  function htmlRadar() {
+    const radar = calcularRadar(st);
+    if (!radar.length) return '';
+    return `<details class="radar"><summary>Radar: ${radar.length} aluno(s) sem comentário ou conversa há mais de duas semanas</summary>
+      <ul class="lista">${radar.map((r) => `<li class="aluno"><span class="num">${r.aluno.numeroChamada ?? '—'}</span><span class="nome">${esc(r.aluno.apelido)}</span><span class="nota">${r.nunca ? 'nunca registrado' : `${r.dias} dias`}</span><button class="mini" data-acao="registros" data-uid="${esc(r.aluno.uid)}">Registrar</button></li>`).join('')}</ul></details>`;
   }
 
   function htmlTurma() {
@@ -164,11 +172,13 @@ export function iniciarProfessor() {
         <span class="nome">${esc(a.apelido)}</span>
         <span class="chip ${esc(a.status)}">${esc(ROTULO[a.status] ?? a.status)}</span>
         ${a.status === 'pendente' ? `<button class="mini ok" data-acao="aprovar" data-uid="${esc(a.uid)}">Aprovar</button><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Recusar</button>` : ''}
+        ${a.status === 'ativo' ? `<span class="acoes-aluno"><button class="mini" data-acao="registros" data-uid="${esc(a.uid)}">Registros</button><button class="mini" data-acao="ver-aluno" data-uid="${esc(a.uid)}">Ver como aluno</button></span>` : ''}
       </li>`).join('');
     const orfaos = st.alunos.filter((a) => !a.turma);
     const htmlOrfaos = orfaos.length ? `<h2>Cadastros sem turma (testes antigos)</h2>
       <ul class="lista">${orfaos.map((a) => `<li class="aluno"><span class="nome">Cadastro de teste</span><span class="chip">${esc(ROTULO[a.status] ?? a.status)}</span><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Apagar</button></li>`).join('')}</ul>` : '';
     return `<h2>${lista.length} cadastro(s) · ${ativos} ativo(s)</h2>
+      ${htmlRadar()}
       <p class="nota">Toque no aluno para editar, mover de turma ou marcar que saiu.</p>
       <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ainda. Passe o código da turma.</li>'}</ul>${htmlOrfaos}`;
   }
@@ -221,7 +231,7 @@ export function iniciarProfessor() {
     const turmaDoc = turmaAtual();
 
     const travaveis = [
-      ...normInstrucoes(f).map((it, i) => ({ item: it, rotulo: `Etapa ${i + 1}: ${it.texto.slice(0, 60)}${it.texto.length > 60 ? '…' : ''}`, chave: 'travada' })),
+      ...etapasDe(f).map((it, i) => ({ item: it, rotulo: `Etapa ${i + 1}: ${it.texto.slice(0, 60)}${it.texto.length > 60 ? '…' : ''}`, chave: 'travada' })),
       ...normMateriais(f).map((m) => ({ item: m, rotulo: `Material: ${m.titulo || m.url}`, chave: 'travado' })),
     ].filter((x) => x.item[x.chave] === true);
     const htmlLiberar = travaveis.length ? `<h2>Liberar durante a aula</h2>
@@ -230,25 +240,27 @@ export function iniciarProfessor() {
         return `<li class="aluno"><span class="nome">${esc(x.rotulo)}</span><button class="mini ${lib ? 'ok' : ''}" data-acao="liberar" data-item="${esc(x.item.id)}">${lib ? 'Liberada ✓ (tocar para travar)' : 'Liberar para a turma'}</button></li>`;
       }).join('')}</ul>` : '';
 
-    const temCampos = (f.tarefas ?? []).some((t) => t.campos?.length);
+    const campos = temCampos(f);
     const linhas = ativosDaTurma().map((a) => {
       const id = progId(a.uid, f.id);
       const p = st.progresso[id];
       const v = st.aval[id];
       const sit = situacao(f, p, v, est);
       const { total, feitas } = contarTarefas(f, p);
-      const mencoes = Object.entries(v?.mencoes ?? {}).filter(([, m]) => m).map(([c, m]) => `${c.replace('EMT1ADM', '')}: ${m}`).join(' · ');
+      const cont = ['andamento', 'afazer', 'naoconcluida'].includes(sit) && total ? ` ${feitas}/${total}` : '';
+      const mencoes = Object.entries(v?.mencoes ?? {}).filter(([, m]) => m).map(([c, m]) => `<span class="chip m-${esc(m)}">${esc(c.replace('EMT1ADM', ''))}: ${esc(m)}</span>`).join('');
       return `<li class="aluno">
         <span class="num">${a.numeroChamada ?? '—'}</span>
         ${a.avatar ? imgAvatar(a.avatar, 'avatar p') : '<span class="avatar p vazio-av"></span>'}
         <span class="nome">${esc(a.apelido)}</span>
-        <span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}${total && sit === 'andamento' ? ` ${feitas}/${total}` : ''}</span>
+        <span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}${cont}</span>
         <div class="acoes-aluno">
           <button class="mini ${v?.faltou ? 'ruim' : ''}" data-acao="faltou" data-uid="${esc(a.uid)}">${v?.faltou ? 'Faltou ✓' : 'Faltou?'}</button>
           <button class="mini ${v?.validada ? 'ok cheio' : ''}" data-acao="validar" data-uid="${esc(a.uid)}">${v?.validada ? 'Validada ✓' : 'Validar'}</button>
-          ${(f.habilidades ?? []).length ? `<button class="mini" data-acao="mencao" data-uid="${esc(a.uid)}">${mencoes ? esc(mencoes) : 'Menção'}</button>` : ''}
+          ${(f.habilidades ?? []).length ? `<button class="mini mencao" data-acao="mencao" data-uid="${esc(a.uid)}">${mencoes || 'Menção'}</button>` : ''}
           ${est === 'encerrada' && !p?.concluida ? `<button class="mini ${v?.liberado ? 'ok' : ''}" data-acao="liberar-aluno" data-uid="${esc(a.uid)}">${v?.liberado ? 'Liberado ✓' : 'Liberar p/ fazer'}</button>` : ''}
-          ${temCampos ? `<button class="mini" data-acao="respostas" data-uid="${esc(a.uid)}">Respostas</button>` : ''}
+          ${campos ? `<button class="mini" data-acao="respostas" data-uid="${esc(a.uid)}">Respostas</button>` : ''}
+          <button class="mini" data-acao="registros-fase" data-uid="${esc(a.uid)}">Registros</button>
         </div>
       </li>`;
     }).join('');
@@ -260,6 +272,7 @@ export function iniciarProfessor() {
           ${ESTADOS.map((e) => `<option value="${e}" ${e === est ? 'selected' : ''}>${ESTADO_ROTULO[e]}</option>`).join('')}
         </select>
         <button class="mini" data-acao="editar-fase" data-id="${esc(f.id)}">Editar fase</button>
+        ${campos ? `<button class="mini" data-acao="respostas-turma" data-id="${esc(f.id)}">Respostas da turma</button>` : ''}
       </div>
       <details class="roteiro"><summary>Roteiro da aula (só você vê)</summary>
         ${roteiro.length ? `<ul>${roteiro.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : '<p class="nota">Sem roteiro. Escreva um em "Editar fase".</p>'}
@@ -303,7 +316,7 @@ export function iniciarProfessor() {
       <div class="previa">
         <p><strong>${esc(imp.nome)}</strong>: mundo "${esc(imp.json.mundo?.nome ?? '')}" com ${imp.itens.length} fase(s).</p>
         <ul class="lista">${imp.itens.map((i) => `<li class="aluno"><span class="cod">${esc(i.codigo)}</span><span class="nome">${esc(i.nome)}</span><span class="chip ${i.estado === 'nova' ? 'ativo' : i.estado === 'alterada' ? 'pendente' : ''}">${i.estado === 'nova' ? 'Nova' : i.estado === 'alterada' ? 'Alterada' : 'Igual'}</span></li>`).join('')}</ul>
-        <p class="nota">As fases "alteradas" terão o texto substituído pelo do arquivo, inclusive edições que você fez na tela. Os ids das fases nunca mudam, e o progresso dos alunos é mantido.</p>
+        <p class="nota">As fases "alteradas" terão o texto substituído pelo do arquivo, inclusive edições que você fez na tela. Os ids das fases nunca mudam. Se o formato das etapas mudou, o progresso antigo dos alunos nessas fases deixa de contar (só importa em testes).</p>
         <div class="linha-btn"><button class="botao" data-acao="gravar-import">Gravar conteúdo</button><button class="botao secundario" data-acao="descartar-import">Descartar</button></div>
       </div>` : '';
     return `<h2>Importar conteúdo</h2>
@@ -367,20 +380,24 @@ export function iniciarProfessor() {
     if (!b) return;
     const acao = b.dataset.acao;
     try {
-      if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; guardar('aba', st.aba); desenhar(); }
+      if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; guardar('aba', st.aba); ligarProf(); desenhar(); }
       else if (acao === 'aprovar') { e.stopPropagation(); await updateDoc(doc(db, 'alunos', b.dataset.uid), { status: 'ativo', dataEntrada: hoje() }); }
       else if (acao === 'recusar') {
         e.stopPropagation();
         if (confirm('Recusar este cadastro? O aluno poderá se cadastrar de novo.')) await deleteDoc(doc(db, 'alunos', b.dataset.uid));
       }
       else if (acao === 'editar') { abrirEdicao(b.dataset.uid); }
+      else if (acao === 'registros') { e.stopPropagation(); abrirRegistros(st, dlg, b.dataset.uid, null); }
+      else if (acao === 'registros-fase') { abrirRegistros(st, dlg, b.dataset.uid, st.faseSel); }
+      else if (acao === 'ver-aluno') { e.stopPropagation(); opcoes.verComoAluno?.(b.dataset.uid); }
       else if (acao === 'fase') { st.faseSel = b.dataset.id; ligarProf(); desenhar(); }
       else if (acao === 'voltar-fases') { st.faseSel = null; ligarProf(); desenhar(); }
       else if (acao === 'faltou') { await alternarFalta(b.dataset.uid); }
       else if (acao === 'validar') { await alternarValidada(b.dataset.uid); }
       else if (acao === 'validar-todos') { await validarTodos(); }
       else if (acao === 'mencao') { abrirMencao(b.dataset.uid); }
-      else if (acao === 'respostas') { abrirRespostas(b.dataset.uid); }
+      else if (acao === 'respostas') { abrirRespostasAluno(st, dlg, st.faseSel, b.dataset.uid); }
+      else if (acao === 'respostas-turma') { abrirRespostasTurma(st, dlg, b.dataset.id); }
       else if (acao === 'liberar') { await alternarLiberacaoItem(b.dataset.item); }
       else if (acao === 'liberar-aluno') { await alternarLiberadoAluno(b.dataset.uid); }
       else if (acao === 'editar-fase') { abrirEdicaoFase(b.dataset.id); }
@@ -513,16 +530,14 @@ export function iniciarProfessor() {
 
   // ---------- janelas ----------
   async function docsDoAluno(uid) {
-    const [p, v] = await Promise.all([
-      getDocs(query(collection(db, 'progresso'), where('uid', '==', uid))),
-      getDocs(query(collection(db, 'avaliacoes'), where('uid', '==', uid))),
-    ]);
-    return [...p.docs, ...v.docs];
+    const lista = await Promise.all(['progresso', 'avaliacoes', 'comentarios', 'anotacoes'].map((c) => getDocs(query(collection(db, c), where('uid', '==', uid)))));
+    return lista.flatMap((s) => s.docs);
   }
 
   function abrirEdicao(uid) {
     const a = st.alunos.find((x) => x.uid === uid);
     if (!a) return;
+    dlg.onclick = null;
     const turmaDoAluno = st.turmas.find((t) => t.id === a.turma);
     const outras = st.turmas.filter((t) => t.id !== a.turma);
     dlg.innerHTML = `
@@ -602,23 +617,27 @@ export function iniciarProfessor() {
     const habs = st.mundo?.habilidades ?? {};
     const campos = (f.habilidades ?? []).map((cod) => `
       <label for="m-${esc(cod)}">${esc(cod)} <span class="nota">${esc(habs[cod] ?? '')}${(f.porGrupo ?? []).includes(cod) ? ' · menção de grupo' : ''}</span></label>
-      <select id="m-${esc(cod)}" data-hab="${esc(cod)}">
-        ${['', 'A', 'PA', 'NA'].map((o) => `<option value="${o}" ${(v.mencoes?.[cod] ?? '') === o ? 'selected' : ''}>${o || 'Sem menção ainda'}</option>`).join('')}
-      </select>
+      <div class="mencoes-botoes" data-hab="${esc(cod)}">
+        ${[['A', 'A'], ['PA', 'PA'], ['NA', 'NA'], ['', 'Limpar']].map(([o, rot]) => `<button type="button" class="mini ${o ? `m-${o}` : ''} ${(v.mencoes?.[cod] ?? '') === o ? 'sel' : ''}" data-m="${o}">${rot}</button>`).join('')}
+      </div>
       <details class="mais"><summary>Critérios</summary><dl><dt>A</dt><dd>${esc(f.criterios?.[cod]?.A ?? '')}</dd><dt>PA</dt><dd>${esc(f.criterios?.[cod]?.PA ?? '')}</dd><dt>NA</dt><dd>${esc(f.criterios?.[cod]?.NA ?? '')}</dd></dl></details>`).join('');
+    dlg.onclick = null;
     dlg.innerHTML = `
       <div class="form">
         <h2>${esc(a.apelido)} · ${esc(f.codigo)}</h2>
         ${campos}
-        <p class="nota" id="m-estado">Cada escolha é salva na hora.</p>
+        <p class="nota" id="m-estado">Cada escolha é salva na hora. O aluno só vê a menção depois que você valida a fase.</p>
         <button class="botao" type="button" id="m-fechar">Fechar</button>
       </div>`;
     document.getElementById('m-fechar').onclick = () => dlg.close();
-    dlg.querySelectorAll('[data-hab]').forEach((s) => {
-      s.onchange = async () => {
+    dlg.querySelectorAll('.mencoes-botoes').forEach((grupo) => {
+      grupo.onclick = async (ev) => {
+        const b = ev.target.closest('[data-m]');
+        if (!b) return;
         const out = document.getElementById('m-estado');
         try {
-          await setDoc(refAval(uid), { ...baseAval(uid), mencoes: { [s.dataset.hab]: s.value || null } }, { merge: true });
+          await setDoc(refAval(uid), { ...baseAval(uid), mencoes: { [grupo.dataset.hab]: b.dataset.m || null } }, { merge: true });
+          grupo.querySelectorAll('[data-m]').forEach((x) => x.classList.toggle('sel', x === b));
           out.textContent = 'Salvo ✓';
         } catch { out.textContent = 'Não consegui salvar.'; }
       };
@@ -626,28 +645,18 @@ export function iniciarProfessor() {
     dlg.showModal();
   }
 
-  function abrirRespostas(uid) {
-    const f = st.fases.find((x) => x.id === st.faseSel);
-    const a = st.alunos.find((x) => x.uid === uid);
-    const p = st.progresso[progId(uid, f.id)];
-    const blocos = (f.tarefas ?? []).filter((t) => t.campos?.length).map((t) => `
-      <h3>${esc(t.texto)}</h3>
-      ${t.campos.map((c) => `<p><strong>${esc(c.rotulo)}</strong><br>${esc(p?.respostas?.[t.id]?.[c.id] || '(sem resposta)')}</p>`).join('')}`).join('');
-    dlg.innerHTML = `<div class="form"><h2>${esc(a?.apelido ?? '')} · respostas</h2>${blocos || '<p class="nota">Esta fase não tem campos de resposta.</p>'}<button class="botao" type="button" id="r-fechar">Fechar</button></div>`;
-    document.getElementById('r-fechar').onclick = () => dlg.close();
-    dlg.showModal();
-  }
-
-  // editor completo da fase: etapas, materiais, tarefas e roteiro
+  // editor completo da fase: etapas (com saiba mais, links, campos e trava), materiais e roteiro
   function abrirEdicaoFase(faseId) {
     const f = st.fases.find((x) => x.id === faseId);
     if (!f) return;
     const ed = {
       nome: f.nome ?? '',
       missao: f.missao ?? '',
-      etapas: normInstrucoes(f).map((i) => ({ id: i.id, texto: i.texto ?? '', saibaMais: i.saibaMais ?? '', links: deLinks(i.links), travada: i.travada === true })),
+      etapas: etapasDe(f).map((e) => ({
+        id: e.id, texto: e.texto ?? '', saibaMais: e.saibaMais ?? '', links: deLinks(e.links), travada: e.travada === true, semMarcar: e.semMarcar === true,
+        campos: e.campos ?? [], camposTxt: (e.campos ?? []).map((c) => (c.dica ? `${c.rotulo} | ${c.dica}` : c.rotulo)).join('\n'),
+      })),
       materiais: normMateriais(f).map((m) => ({ id: m.id, titulo: m.titulo ?? '', url: m.url ?? '', descricao: m.descricao ?? '', travado: m.travado === true })),
-      tarefas: (f.tarefas ?? []).map((t) => ({ id: t.id, texto: t.texto ?? '', saibaMais: t.saibaMais ?? '', campos: t.campos ?? [], camposTxt: (t.campos ?? []).map((c) => (c.dica ? `${c.rotulo} | ${c.dica}` : c.rotulo)).join('\n') })),
       roteiro: (st.profFase?.professor?.paraVoce ?? []).join('\n'),
     };
 
@@ -666,15 +675,18 @@ export function iniciarProfessor() {
           <label for="f-missao">Missão (o que o aluno lê primeiro)</label>
           <textarea id="f-missao" rows="5">${esc(ed.missao)}</textarea>
 
-          <h3>Passo a passo (etapas)</h3>
-          <p class="nota">Cada etapa pode ter "saiba mais", links e ficar travada até você liberar durante a aula.</p>
+          <h3>Passo a passo</h3>
+          <p class="nota">Cada etapa é uma coisa que o aluno faz e marca como "feito". Pode ter "saiba mais", links, campos para escrever e ficar travada até você liberar.</p>
           ${ed.etapas.map((e, i) => `<fieldset class="card-ed"><legend>Etapa ${i + 1}</legend>
             <textarea data-sec="etapas" data-i="${i}" data-f="texto" rows="3" placeholder="O que o aluno deve fazer">${esc(e.texto)}</textarea>
             <label>Saiba mais (opcional)</label>
             <textarea data-sec="etapas" data-i="${i}" data-f="saibaMais" rows="3">${esc(e.saibaMais)}</textarea>
+            <label>Campos para o aluno escrever (um por linha: Rótulo | dica)</label>
+            <textarea data-sec="etapas" data-i="${i}" data-f="camposTxt" rows="2" placeholder="Jogos de que você gosta | de celular, de computador...">${esc(e.camposTxt)}</textarea>
             <label>Links (um por linha: Título | endereço)</label>
             <textarea data-sec="etapas" data-i="${i}" data-f="links" rows="2" placeholder="Apresentação da aula | https://...">${esc(e.links)}</textarea>
             <label class="check"><input type="checkbox" data-sec="etapas" data-i="${i}" data-f="travada" ${e.travada ? 'checked' : ''}> Só aparece depois que eu liberar</label>
+            <label class="check"><input type="checkbox" data-sec="etapas" data-i="${i}" data-f="semMarcar" ${e.semMarcar ? 'checked' : ''}> Só informação (o aluno não marca "feito")</label>
             ${botoes('etapas', i, ed.etapas.length)}</fieldset>`).join('')}
           <button type="button" class="mini" data-ed="add" data-sec="etapas">+ Etapa</button>
 
@@ -686,16 +698,6 @@ export function iniciarProfessor() {
             <label class="check"><input type="checkbox" data-sec="materiais" data-i="${i}" data-f="travado" ${m.travado ? 'checked' : ''}> Só aparece depois que eu liberar</label>
             ${botoes('materiais', i, ed.materiais.length)}</fieldset>`).join('')}
           <button type="button" class="mini" data-ed="add" data-sec="materiais">+ Material</button>
-
-          <h3>Tarefas do aluno</h3>
-          ${ed.tarefas.map((t, i) => `<fieldset class="card-ed"><legend>Tarefa ${i + 1}</legend>
-            <textarea data-sec="tarefas" data-i="${i}" data-f="texto" rows="2">${esc(t.texto)}</textarea>
-            <label>Saiba mais (opcional)</label>
-            <textarea data-sec="tarefas" data-i="${i}" data-f="saibaMais" rows="3">${esc(t.saibaMais)}</textarea>
-            <label>Campos para o aluno escrever (um por linha: Rótulo | dica)</label>
-            <textarea data-sec="tarefas" data-i="${i}" data-f="camposTxt" rows="2" placeholder="Jogos de que você gosta">${esc(t.camposTxt)}</textarea>
-            ${botoes('tarefas', i, ed.tarefas.length)}</fieldset>`).join('')}
-          <button type="button" class="mini" data-ed="add" data-sec="tarefas">+ Tarefa</button>
 
           <h3>Roteiro da aula (só você vê)</h3>
           <textarea id="f-roteiro" rows="6">${esc(ed.roteiro)}</textarea>
@@ -719,14 +721,13 @@ export function iniciarProfessor() {
     pintar();
     dlg.onclick = (ev) => {
       const b = ev.target.closest('[data-ed]');
-      if (ev.target.id === 'f-cancelar') { dlg.onclick = null; dlg.close(); return; }
+      if (ev.target.id === 'f-cancelar') { dlg.close(); return; }
       if (!b) return;
       lerCampos();
       const sec = b.dataset.sec; const i = Number(b.dataset.i); const lista = ed[sec];
       if (b.dataset.ed === 'add') {
-        if (sec === 'etapas') lista.push({ id: proximoId(lista, 'i'), texto: '', saibaMais: '', links: '', travada: false });
+        if (sec === 'etapas') lista.push({ id: proximoId(lista, 'e'), texto: '', saibaMais: '', links: '', travada: false, semMarcar: false, campos: [], camposTxt: '' });
         if (sec === 'materiais') lista.push({ id: proximoId(lista, 'm'), titulo: '', url: '', descricao: '', travado: false });
-        if (sec === 'tarefas') lista.push({ id: proximoId(lista, 't'), texto: '', saibaMais: '', campos: [], camposTxt: '' });
       } else if (b.dataset.ed === 'remove') {
         if (!confirm('Remover este item?')) return;
         lista.splice(i, 1);
@@ -734,7 +735,6 @@ export function iniciarProfessor() {
       else if (b.dataset.ed === 'desce' && i < lista.length - 1) { [lista[i + 1], lista[i]] = [lista[i], lista[i + 1]]; }
       pintar();
     };
-    dlg.addEventListener('close', () => { dlg.onclick = null; }, { once: true });
     dlg.showModal();
 
     dlg.onsubmit = async (ev) => {
@@ -742,11 +742,17 @@ export function iniciarProfessor() {
       ev.preventDefault();
       lerCampos();
       const msg = document.getElementById('f-msg');
-      const instrucoes = ed.etapas.filter((e) => e.texto.trim()).map((e) => {
+      const etapas = ed.etapas.filter((e) => e.texto.trim()).map((e) => {
         const o = { id: e.id, texto: e.texto.trim() };
         if (e.saibaMais.trim()) o.saibaMais = e.saibaMais.trim();
+        const campos = linhasDe(e.camposTxt).map((l, i) => {
+          const [rot, ...dica] = l.split('|');
+          return { id: e.campos?.[i]?.id ?? `c${i + 1}`, rotulo: rot.trim(), ...(dica.join('|').trim() ? { dica: dica.join('|').trim() } : {}) };
+        });
+        if (campos.length) o.campos = campos;
         const l = paraLinks(e.links); if (l.length) o.links = l;
         if (e.travada) o.travada = true;
+        if (e.semMarcar) o.semMarcar = true;
         return o;
       });
       const materiais = ed.materiais.filter((m) => /^https?:\/\//i.test(m.url.trim())).map((m) => {
@@ -755,33 +761,28 @@ export function iniciarProfessor() {
         if (m.travado) o.travado = true;
         return o;
       });
-      const tarefas = ed.tarefas.filter((t) => t.texto.trim()).map((t) => {
-        const o = { id: t.id, texto: t.texto.trim() };
-        if (t.saibaMais.trim()) o.saibaMais = t.saibaMais.trim();
-        const campos = linhasDe(t.camposTxt).map((l, i) => {
-          const [rot, ...dica] = l.split('|');
-          return { id: t.campos?.[i]?.id ?? `c${i + 1}`, rotulo: rot.trim(), ...(dica.join('|').trim() ? { dica: dica.join('|').trim() } : {}) };
-        });
-        if (campos.length) o.campos = campos;
-        return o;
-      });
       if (!ed.nome.trim()) { msg.textContent = 'A fase precisa de um nome.'; return; }
       try {
         const lote = writeBatch(db);
-        lote.update(doc(db, 'fases', f.id), { nome: ed.nome.trim(), missao: ed.missao.trim(), instrucoes, materiais, tarefas, atualizadoEm: serverTimestamp() });
+        lote.update(doc(db, 'fases', f.id), {
+          nome: ed.nome.trim(), missao: ed.missao.trim(), etapas, materiais,
+          instrucoes: deleteField(), tarefas: deleteField(), atualizadoEm: serverTimestamp(),
+        });
         lote.set(doc(db, 'fasesProfessor', f.id), { mundo: MUNDO, professor: { paraVoce: linhasDe(ed.roteiro) }, atualizadoEm: serverTimestamp() }, { merge: true });
         await lote.commit();
-        dlg.onclick = null; dlg.onsubmit = null; dlg.close();
+        dlg.close();
       } catch { msg.textContent = 'Não consegui salvar agora.'; }
     };
   }
+
+  dlg.addEventListener('close', () => { dlg.onclick = null; dlg.onsubmit = null; dlg.onchange = null; });
 
   return () => {
     paradas.forEach((p) => p());
     paradasTurma.forEach((p) => p());
     if (paraProf) paraProf();
     app.onclick = null; app.onchange = null; app.onsubmit = null;
-    dlg.onclick = null; dlg.onsubmit = null;
+    dlg.onclick = null; dlg.onsubmit = null; dlg.onchange = null;
     if (dlg.open) dlg.close();
   };
 }

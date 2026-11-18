@@ -31,10 +31,22 @@ async function entrar() {
   }
 }
 
+// O professor pode ver o jogo como um aluno (somente leitura) e voltar ao painel.
+function comoProfessor(user) {
+  if (parar) parar();
+  parar = iniciarProfessor(user, {
+    verComoAluno: (uid) => {
+      if (parar) parar();
+      parar = iniciarAluno(user, { uid, aoSair: () => comoProfessor(user) });
+    },
+  });
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (parar) { parar(); parar = null; }
   if (!user) { telaLogin(); return; }
   carregando('O Consultor Cinzento está chegando. Exatamente no prazo.');
   const token = await user.getIdTokenResult(true);
-  parar = token.claims.professor === true ? iniciarProfessor(user) : iniciarAluno(user);
+  if (token.claims.professor === true) comoProfessor(user);
+  else parar = iniciarAluno(user);
 });

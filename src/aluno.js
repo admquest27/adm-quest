@@ -3,17 +3,25 @@ import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, s
 import { auth, db } from './firebase.js';
 import { app, tela, esc, carregando } from './ui.js';
 import { FANTASIAS, TONS, imgAvatar } from './avatar.js';
-import { MUNDO, SITUACAO_ROTULO, progId, contarTarefas, situacao, podeEditar, textoPlaca, normInstrucoes, normMateriais, liberado, urlSegura } from './fases.js';
+import {
+  MUNDO, SITUACAO_ROTULO, progId, contarTarefas, situacao, podeEditar, textoPlaca, etapasDe, normMateriais, liberado, urlSegura,
+} from './fases.js';
 
-export function iniciarAluno(user) {
-  const ref = doc(db, 'alunos', user.uid);
+// opcoes.uid + opcoes.aoSair: o professor vê o jogo como um aluno (somente leitura).
+export function iniciarAluno(user, opcoes = {}) {
+  const alvo = opcoes.uid ?? user.uid;
+  const ver = Boolean(opcoes.uid);
+  const ref = doc(db, 'alunos', alvo);
   const st = {
     dados: null, editandoAvatar: false, acesso: false, escolha: { fantasia: 'heroi', tom: 2 },
-    turma: null, fases: [], mundo: null, progresso: {}, aval: {}, faseAberta: null, aviso: '',
+    turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
   };
   let paradasAtivo = [];
 
-  carregando('Procurando o seu cadastro...');
+  const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>` : '');
+  const mostrar = (html, classe) => tela(faixa() + html, classe);
+
+  carregando('Procurando o cadastro...');
 
   const parar = onSnapshot(
     ref,
@@ -22,7 +30,7 @@ export function iniciarAluno(user) {
       st.dados = snap.data();
       desenhar();
     },
-    () => telaErro('Não consegui ler o seu cadastro. Tente de novo em instantes.')
+    () => telaErro('Não consegui ler o cadastro. Tente de novo em instantes.')
   );
 
   // ---------- dados do jogo (só para aluno ativo) ----------
@@ -37,14 +45,18 @@ export function iniciarAluno(user) {
         st.fases = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.ordem - b.ordem);
         redesenha();
       }, () => {}),
-      onSnapshot(query(collection(db, 'progresso'), where('uid', '==', user.uid)), (s) => {
+      onSnapshot(query(collection(db, 'progresso'), where('uid', '==', alvo)), (s) => {
         st.progresso = {};
         s.docs.forEach((d) => { st.progresso[d.data().fase] = d.data(); });
         redesenha();
       }, () => {}),
-      onSnapshot(query(collection(db, 'avaliacoes'), where('uid', '==', user.uid)), (s) => {
+      onSnapshot(query(collection(db, 'avaliacoes'), where('uid', '==', alvo)), (s) => {
         st.aval = {};
         s.docs.forEach((d) => { st.aval[d.data().fase] = d.data(); });
+        redesenha();
+      }, () => {}),
+      onSnapshot(query(collection(db, 'comentarios'), where('uid', '==', alvo), where('visivel', '==', true)), (s) => {
+        st.recados = s.docs.map((d) => d.data()).sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
         redesenha();
       }, () => {}),
     ];
@@ -57,11 +69,12 @@ export function iniciarAluno(user) {
 
   // ---------- telas ----------
   function telaErro(texto) {
-    tela(`<section class="cartao"><h1>Ops</h1><p>${esc(texto)}</p><button id="sair" class="botao secundario">Sair</button></section>`, 'centro');
+    mostrar(`<section class="cartao"><h1>Ops</h1><p>${esc(texto)}</p><button id="sair" class="botao secundario">Sair</button></section>`, 'centro');
   }
 
   function telaPrimeiroAcesso(mensagem = '') {
-    tela(
+    if (ver) { mostrar('<section class="cartao"><h1>Sem cadastro</h1><p>Este aluno ainda não tem cadastro.</p></section>', 'centro'); return; }
+    mostrar(
       `<section class="cartao">
         <h1>Bem-vindo!</h1>
         <p class="sub">Digite o código da turma e escolha o seu apelido no jogo.</p>
@@ -87,11 +100,11 @@ export function iniciarAluno(user) {
     switch (d.status) {
       case 'ativo': return telaAtivo();
       case 'saiu':
-        return tela('<section class="cartao"><h1>Até a próxima!</h1><p>Obrigado pela jornada. Foi bom ter você por aqui.</p><button id="sair" class="botao secundario">Sair</button></section>', 'centro');
+        return mostrar('<section class="cartao"><h1>Até a próxima!</h1><p>Obrigado pela jornada. Foi bom ter você por aqui.</p><button id="sair" class="botao secundario">Sair</button></section>', 'centro');
       case 'bloqueado':
-        return tela('<section class="cartao"><h1>Acesso pausado</h1><p>Converse com o professor para voltar ao jogo.</p><button id="sair" class="botao secundario">Sair</button></section>', 'centro');
+        return mostrar('<section class="cartao"><h1>Acesso pausado</h1><p>Converse com o professor para voltar ao jogo.</p><button id="sair" class="botao secundario">Sair</button></section>', 'centro');
       default:
-        return tela(
+        return mostrar(
           `<section class="cartao">
             <h1>Quase lá</h1>
             <p>Cadastro recebido, <strong>${esc(d.apelido)}</strong>! O professor precisa aprovar a sua entrada. Esta tela muda sozinha quando isso acontecer.</p>
@@ -103,17 +116,17 @@ export function iniciarAluno(user) {
   }
 
   function telaAtivo() {
-    if (!st.acesso) {
+    if (!st.acesso && !ver) {
       st.acesso = true;
       updateDoc(ref, { ultimoAcesso: serverTimestamp() }).catch(() => {});
     }
     ligarDados();
-    if (!st.dados.avatar || st.editandoAvatar) return telaAvatar();
+    if ((!st.dados.avatar || st.editandoAvatar) && !ver) return telaAvatar();
     if (st.faseAberta) return telaCartao();
     return telaLista();
   }
 
-  const nomeTurma = () => st.turma?.nome ?? '';
+  const dataCurta = (ts) => (ts?.toMillis ? new Date(ts.toMillis()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '');
 
   function telaLista() {
     const estados = st.turma?.estadoFases ?? {};
@@ -122,22 +135,27 @@ export function iniciarAluno(user) {
       const est = estados[f.id] ?? 'trancada';
       const cod = `<span class="cod">${esc(f.codigo)}</span><span class="nm">${esc(f.nome)}</span>`;
       if (est === 'aberta' || est === 'encerrada') {
-        const sit = situacao(f, st.progresso[f.id], st.aval[f.id], est);
-        return `<li><button class="fase ${sit === 'afazer' ? 'afazer' : ''}" data-fase="${esc(f.id)}">${cod}<span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}</span></button></li>`;
+        const p = st.progresso[f.id];
+        const sit = situacao(f, p, st.aval[f.id], est);
+        const { total, feitas } = contarTarefas(f, p);
+        const cont = ['andamento', 'afazer', 'naoconcluida'].includes(sit) && total ? ` ${feitas}/${total}` : '';
+        return `<li><button class="fase ${sit === 'afazer' ? 'afazer' : ''}" data-fase="${esc(f.id)}">${cod}<span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}${cont}</span></button></li>`;
       }
       const placa = est === 'adiada' ? textos.adiada : est === 'cancelada' ? textos.cancelada : textoPlaca(textos, f);
       return `<li><div class="fase obra e-${est}">${cod}<span class="placa">${esc(placa ?? 'Em obra.')}</span></div></li>`;
     }).join('');
-    tela(
+    const recados = st.recados.length ? `<h2>Recados do professor</h2><ul class="lista">${st.recados.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
+    mostrar(
       `<section class="cartao largo">
         <div class="cab-aluno">
           ${imgAvatar(st.dados.avatar, 'avatar p')}
-          <div><strong>${esc(st.dados.apelido)}</strong><br><span class="nota">${esc(nomeTurma())}</span></div>
-          <button id="trocar" class="mini">Avatar</button>
+          <div><strong>${esc(st.dados.apelido)}</strong><br><span class="nota">${esc(st.turma?.nome ?? '')}</span></div>
+          ${ver ? '' : '<button id="trocar" class="mini">Avatar</button>'}
         </div>
         <h2>${esc(st.mundo?.nome ?? 'Vila dos Planos')}</h2>
         <ul class="lista">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
-        <button id="sair" class="botao secundario">Sair</button>
+        ${recados}
+        ${ver ? '' : '<button id="sair" class="botao secundario">Sair</button>'}
       </section>`,
       'centro alto'
     );
@@ -153,8 +171,9 @@ export function iniciarAluno(user) {
     const p = st.progresso[f.id];
     const a = st.aval[f.id];
     const sit = situacao(f, p, a, est);
-    const editavel = podeEditar(est, a);
+    const editavel = !ver && podeEditar(est, a);
     const { total, feitas } = contarTarefas(f, p);
+    const faltam = total - feitas;
     const habs = st.mundo?.habilidades ?? {};
     const dis = editavel ? '' : 'disabled';
 
@@ -169,50 +188,57 @@ export function iniciarAluno(user) {
       ? `<div class="mencoes"><strong>Sua menção nesta fase</strong>${Object.entries(a.mencoes).filter(([, v]) => v).map(([cod, v]) => `<p>${esc(cod)}: <span class="chip m-${esc(v)}">${esc(v)}</span></p>`).join('')}</div>`
       : '';
 
-    const etapas = normInstrucoes(f).map((it, i) => {
+    const etapas = etapasDe(f).map((it, i) => {
       if (!liberado(st.turma, f.id, it, 'travada')) {
         return `<li class="etapa trava"><span aria-hidden="true">🔒</span> Etapa ${i + 1}: aguarde o professor liberar.</li>`;
       }
-      return `<li class="etapa"><p>${esc(it.texto)}</p>${it.links?.length ? `<p class="links">${links(it.links)}</p>` : ''}${saibaMais(it.saibaMais)}</li>`;
+      const marcavel = it.semMarcar !== true;
+      const feita = p?.tarefas?.[it.id] === true;
+      const campos = (it.campos ?? []).map((c) => `<label class="campo" for="r-${esc(it.id)}-${esc(c.id)}">${esc(c.rotulo)}${c.dica ? ` <span class="nota">${esc(c.dica)}</span>` : ''}</label>
+        <textarea id="r-${esc(it.id)}-${esc(c.id)}" rows="2" maxlength="600" data-resp="${esc(it.id)}" data-campo="${esc(c.id)}" ${dis}>${esc(p?.respostas?.[it.id]?.[c.id] ?? '')}</textarea>`).join('');
+      const camposOk = (it.campos ?? []).every((c) => (p?.respostas?.[it.id]?.[c.id] ?? '').trim());
+      const faltaCampo = marcavel && (it.campos ?? []).length > 0 && !camposOk && !feita;
+      return `<li class="etapa ${feita ? 'feita' : ''}">
+        <p class="txt">${esc(it.texto)}</p>
+        ${it.links?.length ? `<p class="links">${links(it.links)}</p>` : ''}
+        ${campos ? `<div class="campos">${campos}</div>` : ''}
+        ${saibaMais(it.saibaMais)}
+        ${marcavel ? `<label class="check feito"><input type="checkbox" data-tarefa="${esc(it.id)}" ${feita ? 'checked' : ''} ${editavel && !faltaCampo ? '' : 'disabled'}> Feito</label>${faltaCampo && editavel ? '<span class="nota">Preencha os campos para marcar como feito.</span>' : ''}` : ''}
+      </li>`;
     }).join('');
 
     const materiais = normMateriais(f).map((m) => liberado(st.turma, f.id, m, 'travado')
       ? `<li>${links([m])}${m.descricao ? ` <span class="nota">${esc(m.descricao)}</span>` : ''}</li>`
       : '<li class="trava"><span aria-hidden="true">🔒</span> Material que o professor vai liberar durante a aula.</li>').join('');
 
-    const tarefas = (f.tarefas ?? []).map((t) => {
-      const campos = (t.campos ?? []).map((c) => `<label class="campo" for="r-${esc(t.id)}-${esc(c.id)}">${esc(c.rotulo)}${c.dica ? ` <span class="nota">${esc(c.dica)}</span>` : ''}</label>
-        <textarea id="r-${esc(t.id)}-${esc(c.id)}" rows="2" maxlength="600" data-resp="${esc(t.id)}" data-campo="${esc(c.id)}" ${dis}>${esc(p?.respostas?.[t.id]?.[c.id] ?? '')}</textarea>`).join('');
-      return `<li class="tarefa"><label class="check"><input type="checkbox" data-tarefa="${esc(t.id)}" ${p?.tarefas?.[t.id] ? 'checked' : ''} ${dis}> ${esc(t.texto)}</label>
-        ${campos ? `<div class="campos">${campos}</div>` : ''}${saibaMais(t.saibaMais)}</li>`;
-    }).join('');
-
     const faltou = a?.faltou && !p?.concluida;
-    tela(
+    const podeConcluir = editavel && (faltam === 0 || p?.concluida === true);
+    mostrar(
       `<section class="cartao largo esq">
         <button id="voltar" class="mini">← Fases</button>
         <h1>${esc(f.codigo)} · ${esc(f.nome)}</h1>
         <p class="centro-txt"><span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}</span>${est === 'encerrada' ? ' <span class="chip">Fase encerrada</span>' : ''}</p>
-        ${faltou ? '<p class="banner">Você não estava na dinâmica desta fase, então ela ficou <strong>a fazer</strong>. Leia a missão, faça as tarefas (peça ajuda ao professor ou aos colegas) e marque como concluída quando terminar.</p>' : ''}
-        ${est === 'encerrada' && !editavel && !p?.concluida ? '<p class="banner">O professor encerrou esta fase. Se você precisa terminá-la, converse com ele.</p>' : ''}
+        ${faltou ? '<p class="banner">Você não estava na dinâmica desta fase, então ela ficou <strong>a fazer</strong>. Leia a missão, faça as etapas (peça ajuda ao professor ou aos colegas) e marque como concluída quando terminar.</p>' : ''}
+        ${est === 'encerrada' && !editavel && !ver && !p?.concluida ? '<p class="banner">O professor encerrou esta fase. Se você precisa terminá-la, converse com ele.</p>' : ''}
         ${mencoes}
         <h2>Missão</h2>
         <p>${esc(f.missao)}</p>
-        <h2>Passo a passo</h2>
+        <h2>Passo a passo${total ? ` <span class="nota">(${feitas} de ${total} feitas)</span>` : ''}</h2>
         <ol class="etapas">${etapas}</ol>
         ${materiais ? `<h2>Material de apoio</h2><ul class="materiais">${materiais}</ul>` : ''}
-        ${total ? `<h2>Minhas tarefas <span class="nota">(${feitas} de ${total})</span></h2><ul class="tarefas">${tarefas}</ul>` : ''}
         ${criterios ? `<details><summary>Como serei avaliado</summary>${criterios}</details>` : f.avaliacao ? `<p class="nota">${esc(f.avaliacao)}</p>` : ''}
         ${f.cartaoResumo ? `<details><summary>Resumo da fase</summary><p>${esc(f.cartaoResumo)}</p></details>` : ''}
         <p class="erro" id="msg">${esc(st.aviso)}</p>
-        ${f.tipo === 'chefao' ? '' : `<button id="concluir" class="botao ${p?.concluida ? 'secundario' : ''}" ${dis}>${p?.concluida ? 'Desmarcar como concluída' : 'Marcar a fase como concluída'}</button>`}
+        ${f.tipo === 'chefao' || ver ? '' : `<button id="concluir" class="botao ${p?.concluida ? 'secundario' : ''}" ${podeConcluir ? '' : 'disabled'}>${p?.concluida ? 'Desmarcar como concluída' : 'Marcar a fase como concluída'}</button>
+          ${!p?.concluida && faltam > 0 && editavel ? `<p class="nota centro-txt">Faltam ${faltam} etapa(s) para poder concluir a fase.</p>` : ''}`}
       </section>`,
       'centro alto'
     );
   }
+
   function telaAvatar() {
     const mestre = st.escolha.fantasia === 'mestre';
-    tela(
+    mostrar(
       `<section class="cartao largo">
         <h1>Escolha o seu avatar</h1>
         <div class="avatar-grande">${imgAvatar(st.escolha, 'avatar g')}</div>
@@ -240,18 +266,21 @@ export function iniciarAluno(user) {
     if (el) el.textContent = texto;
   }
 
-  async function marcarTarefa(faseId, tarefaId, valor) {
+  const refProg = (faseId) => doc(db, 'progresso', progId(alvo, faseId));
+  const baseNova = (faseId) => ({ uid: alvo, turma: st.dados.turma, fase: faseId });
+
+  async function marcarTarefa(faseId, etapaId, valor) {
     const p = st.progresso[faseId];
-    const dados = { tarefas: { [tarefaId]: valor }, atualizadoEm: serverTimestamp() };
-    if (!p) Object.assign(dados, { uid: user.uid, turma: st.dados.turma, fase: faseId, concluida: false });
-    await setDoc(doc(db, 'progresso', progId(user.uid, faseId)), dados, { merge: true });
+    const dados = { tarefas: { [etapaId]: valor }, atualizadoEm: serverTimestamp() };
+    if (!p) Object.assign(dados, baseNova(faseId), { concluida: false });
+    await setDoc(refProg(faseId), dados, { merge: true });
   }
 
-  async function marcarResposta(faseId, tarefaId, campoId, valor) {
+  async function marcarResposta(faseId, etapaId, campoId, valor) {
     const p = st.progresso[faseId];
-    const dados = { respostas: { [tarefaId]: { [campoId]: valor } }, atualizadoEm: serverTimestamp() };
-    if (!p) Object.assign(dados, { uid: user.uid, turma: st.dados.turma, fase: faseId, tarefas: {}, concluida: false });
-    await setDoc(doc(db, 'progresso', progId(user.uid, faseId)), dados, { merge: true });
+    const dados = { respostas: { [etapaId]: { [campoId]: valor } }, atualizadoEm: serverTimestamp() };
+    if (!p) Object.assign(dados, baseNova(faseId), { tarefas: {}, concluida: false });
+    await setDoc(refProg(faseId), dados, { merge: true });
   }
 
   async function alternarConcluida(faseId) {
@@ -260,11 +289,11 @@ export function iniciarAluno(user) {
     const nova = !p?.concluida;
     if (nova && f) {
       const { total, feitas } = contarTarefas(f, p);
-      if (feitas < total && !confirm(`Ainda faltam ${total - feitas} tarefa(s). Marcar a fase como concluída mesmo assim?`)) return;
+      if (feitas < total) { aviso(`Faltam ${total - feitas} etapa(s) para concluir a fase.`); return; }
     }
     const dados = { concluida: nova, concluidaEm: nova ? serverTimestamp() : null, atualizadoEm: serverTimestamp() };
-    if (!p) Object.assign(dados, { uid: user.uid, turma: st.dados.turma, fase: faseId, tarefas: {} });
-    await setDoc(doc(db, 'progresso', progId(user.uid, faseId)), dados, { merge: true });
+    if (!p) Object.assign(dados, baseNova(faseId), { tarefas: {} });
+    await setDoc(refProg(faseId), dados, { merge: true });
   }
 
   app.onclick = async (e) => {
@@ -272,8 +301,10 @@ export function iniciarAluno(user) {
     if (!b) return;
     try {
       if (b.id === 'sair') { signOut(auth); return; }
+      if (b.id === 'sair-ver') { opcoes.aoSair?.(); return; }
       if (b.dataset.fase) { st.faseAberta = b.dataset.fase; st.aviso = ''; desenhar(); return; }
       if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; desenhar(); return; }
+      if (ver) return;
       if (b.id === 'concluir') { await alternarConcluida(st.faseAberta); return; }
       if (b.id === 'trocar') { st.escolha = { ...st.dados.avatar }; st.editandoAvatar = true; desenhar(); return; }
       if (b.dataset.f) { st.escolha.fantasia = b.dataset.f; telaAvatar(); return; }
@@ -295,6 +326,7 @@ export function iniciarAluno(user) {
   };
 
   app.onchange = async (e) => {
+    if (ver) return;
     const r = e.target.closest('textarea[data-resp]');
     if (r) {
       try { await marcarResposta(st.faseAberta, r.dataset.resp, r.dataset.campo, r.value.trim()); aviso(''); }
@@ -304,7 +336,7 @@ export function iniciarAluno(user) {
     const c = e.target.closest('input[data-tarefa]');
     if (!c) return;
     try { await marcarTarefa(st.faseAberta, c.dataset.tarefa, c.checked); }
-    catch { c.checked = !c.checked; aviso('Não consegui salvar a tarefa. Tente de novo.'); }
+    catch { c.checked = !c.checked; aviso('Não consegui salvar. Tente de novo.'); }
   };
 
   app.oninput = (e) => {

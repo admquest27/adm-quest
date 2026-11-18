@@ -302,3 +302,30 @@ test('professor move um aluno de turma e libera etapas durante a aula', async ()
 test('aluno não altera as liberações da turma', async () => {
   await assertFails(updateDoc(doc(aluno('ativo1'), 'turmas/1A'), { 'liberacoes.m1f1.i4': true }));
 });
+// ---------- comentários e anotações ----------
+test('aluno lê só os comentários visíveis que são dele; anotações nunca', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'comentarios/c1'), { uid: 'ativo1', turma: '1A', marca: 'Atitude colaborativa', texto: 'Ajudou um colega', visivel: true });
+    await setDoc(doc(db, 'comentarios/c2'), { uid: 'ativo1', turma: '1A', marca: 'Foco em resultados', texto: 'Entregou fora do prazo', visivel: false });
+    await setDoc(doc(db, 'comentarios/c3'), { uid: 'outro1', turma: '1B', marca: 'Visão crítica', texto: 'Questionou', visivel: true });
+    await setDoc(doc(db, 'anotacoes/a1'), { uid: 'ativo1', turma: '1A', texto: 'Conversa sobre o grupo' });
+  });
+  const db = aluno('ativo1');
+  await assertSucceeds(getDoc(doc(db, 'comentarios/c1')));
+  await assertFails(getDoc(doc(db, 'comentarios/c2')));
+  await assertFails(getDoc(doc(db, 'comentarios/c3')));
+  await assertFails(getDoc(doc(db, 'anotacoes/a1')));
+  await assertFails(getDocs(collection(db, 'anotacoes')));
+  await assertFails(setDoc(doc(db, 'comentarios/novo'), { uid: 'ativo1', visivel: true, texto: 'x' }));
+  await assertFails(updateDoc(doc(db, 'comentarios/c2'), { visivel: true }));
+});
+
+test('professor registra e lê comentários e anotações', async () => {
+  const db = prof();
+  await assertSucceeds(setDoc(doc(db, 'comentarios/n1'), { uid: 'ativo1', turma: '1A', marca: 'Atitude colaborativa', tipo: 'positivo', texto: 'Ajudou', visivel: false }));
+  await assertSucceeds(setDoc(doc(db, 'anotacoes/n1'), { uid: 'ativo1', turma: '1A', texto: 'Conversa' }));
+  await assertSucceeds(getDocs(collection(db, 'comentarios')));
+  await assertSucceeds(getDocs(collection(db, 'anotacoes')));
+  await assertFails(deleteDoc(doc(db, 'comentarios/n1')));
+});

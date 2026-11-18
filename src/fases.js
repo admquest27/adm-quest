@@ -22,9 +22,27 @@ export const SITUACAO_ROTULO = {
 
 export const progId = (uid, fase) => `${uid}_${fase}`;
 
+// Uma fase é uma lista única de etapas. Cada etapa pode ter "saiba mais", links, campos de resposta
+// e ficar travada até o professor liberar. Fases antigas (instruções separadas) continuam funcionando.
+export function etapasDe(f) {
+  if (Array.isArray(f.etapas)) return f.etapas.map((e, i) => ({ ...e, id: e.id ?? `e${i + 1}` }));
+  return (f.instrucoes ?? []).map((x, i) => (typeof x === 'string' ? { id: `i${i + 1}`, texto: x } : { ...x, id: x.id ?? `i${i + 1}` }));
+}
+
+export const marcaveis = (f) => etapasDe(f).filter((e) => e.semMarcar !== true);
+
+export function normMateriais(f) {
+  return (f.materiais ?? []).map((x, i) => ({ ...x, id: x.id ?? `m${i + 1}` }));
+}
+
+// Item travado só aparece depois que o professor libera na turma.
+export function liberado(turma, faseId, item, chave) {
+  return item[chave] !== true || turma?.liberacoes?.[faseId]?.[item.id] === true;
+}
+
 export function contarTarefas(fase, prog) {
-  const lista = fase.tarefas ?? [];
-  const feitas = lista.filter((t) => prog?.tarefas?.[t.id] === true).length;
+  const lista = marcaveis(fase);
+  const feitas = lista.filter((e) => prog?.tarefas?.[e.id] === true).length;
   return { total: lista.length, feitas };
 }
 
@@ -46,20 +64,6 @@ export function textoPlaca(textos, fase) {
   const placas = textos?.placas ?? [];
   if (!placas.length) return 'Em obra.';
   return placas[((fase.ordem ?? 0) + new Date().getDate()) % placas.length];
-}
-
-// As etapas (instruções) podem ser texto simples ou objetos com "saiba mais", links e trava.
-export function normInstrucoes(f) {
-  return (f.instrucoes ?? []).map((x, i) => (typeof x === 'string' ? { id: `i${i + 1}`, texto: x } : { ...x, id: x.id ?? `i${i + 1}` }));
-}
-
-export function normMateriais(f) {
-  return (f.materiais ?? []).map((x, i) => ({ ...x, id: x.id ?? `m${i + 1}` }));
-}
-
-// Item travado só aparece depois que o professor libera na turma.
-export function liberado(turma, faseId, item, chave) {
-  return item[chave] !== true || turma?.liberacoes?.[faseId]?.[item.id] === true;
 }
 
 export function urlSegura(u) {
@@ -90,9 +94,8 @@ export function parteAluno(f, mundo) {
     atitude: f.atitude ?? '',
     porGrupo: f.porGrupo ?? [],
     missao: f.missao ?? '',
-    instrucoes: normInstrucoes(f),
+    etapas: etapasDe(f),
     materiais: normMateriais(f),
-    tarefas: f.tarefas ?? [],
     habilidades: f.habilidades ?? [],
     evidencias: f.evidencias ?? {},
     criterios: f.criterios ?? {},

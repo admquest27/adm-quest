@@ -153,6 +153,18 @@ service cloud.firestore {
       allow delete: if ehProfessor() && turmaDeTeste(resource.data.get('turma', ''));
     }
 
+    // Comentários de atitudes: o aluno só lê os que o professor marcou como visíveis e que são dele.
+    match /comentarios/{id} {
+      allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid && resource.data.get('visivel', false) == true);
+      allow create, update: if ehProfessor();
+      allow delete: if ehProfessor() && turmaDeTeste(resource.data.get('turma', ''));
+    }
+
+    // Conversas anotadas pelo professor: só ele vê.
+    match /anotacoes/{id} {
+      allow read, write: if ehProfessor();
+    }
+
     // Avaliações (falta, liberação, validação, A, PA, NA): o aluno lê só as próprias, só o professor escreve.
     match /avaliacoes/{pid} {
       allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
