@@ -116,7 +116,6 @@ test('professor lê tudo e gerencia turmas, códigos e alunos', async () => {
   await assertSucceeds(setDoc(doc(db, 'turmas/TESTE'), { nome: 'Teste', codigo: 'TST01', aberta: true, teste: true }));
   await assertSucceeds(setDoc(doc(db, 'codigos/TST01'), { turma: 'TESTE', aberta: true }));
   await assertSucceeds(updateDoc(doc(db, 'alunos/pend1'), { status: 'ativo', numeroChamada: 3, dataEntrada: '2027-02-01' }));
-  await assertSucceeds(setDoc(doc(db, 'chamadas/1A_2027-02-09'), { turma: '1A', data: '2027-02-09', faltas: [] }));
 });
 
 test('professor recusa cadastro pendente, mas não apaga aluno ativo', async () => {

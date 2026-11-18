@@ -75,9 +75,7 @@ service cloud.firestore {
       allow delete: if ehProfessor() && resource.data.status == 'pendente';
     }
 
-    // Chamadas (faltas): só o professor. O aluno não vê frequência.
-    match /chamadas/{id} {
-      allow read, write: if ehProfessor();
-    }
+    // Faltas ficam dentro de cada fase (etapa 2), em coleção própria do professor.
+    // O aluno não vê frequência, só que a fase ficou pendente.
   }
 }

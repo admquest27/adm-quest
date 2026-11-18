@@ -1,7 +1,6 @@
 import { signOut } from 'firebase/auth';
 import {
-  collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, writeBatch,
-  arrayUnion, arrayRemove, serverTimestamp,
+  collection, doc, onSnapshot, updateDoc, deleteDoc, getDoc, writeBatch, serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { app, tela, esc, hoje, guardar, ler } from './ui.js';
@@ -31,17 +30,14 @@ function ordenar(alunos) {
 
 export function iniciarProfessor() {
   const st = {
-    aba: ler('aba') || 'turma',
+    aba: ler('aba') === 'turmas' ? 'turmas' : 'turma',
     turma: ler('turma') || '',
     turmas: [],
     alunos: [],
-    data: hoje(),
-    chamada: [],
     aviso: '',
     carregou: { turmas: false, alunos: false },
   };
   const paradas = [];
-  let paraChamada = null;
   let dlg = document.getElementById('dlg');
   if (!dlg) {
     dlg = document.createElement('dialog');
@@ -54,7 +50,6 @@ export function iniciarProfessor() {
     st.turmas = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
     if (!st.turmas.some((t) => t.id === st.turma)) st.turma = st.turmas[0]?.id ?? '';
     st.carregou.turmas = true;
-    assinarChamada();
     desenhar();
   }, () => { st.aviso = 'Não consegui ler as turmas.'; desenhar(); }));
 
@@ -63,15 +58,6 @@ export function iniciarProfessor() {
     st.carregou.alunos = true;
     desenhar();
   }, () => { st.aviso = 'Não consegui ler os alunos.'; desenhar(); }));
-
-  function assinarChamada() {
-    if (paraChamada) { paraChamada(); paraChamada = null; }
-    if (!st.turma) { st.chamada = []; return; }
-    paraChamada = onSnapshot(doc(db, 'chamadas', `${st.turma}_${st.data}`), (s) => {
-      st.chamada = s.exists() ? (s.data().faltas ?? []) : [];
-      if (st.aba === 'chamada') desenhar();
-    }, () => {});
-  }
 
   // ---------- telas ----------
   const pendentesTotal = () => st.alunos.filter((a) => a.status === 'pendente').length;
@@ -95,10 +81,9 @@ export function iniciarProfessor() {
         <button id="sair" class="mini">Sair</button>
       </header>
       ${st.aviso ? `<p class="aviso">${esc(st.aviso)}</p>` : ''}
-      <main class="corpo">${aba === 'turma' ? htmlTurma() : aba === 'chamada' ? htmlChamada() : htmlTurmas()}</main>
+      <main class="corpo">${aba === 'turma' ? htmlTurma() : htmlTurmas()}</main>
       <nav class="abas" aria-label="Seções">
         <button data-acao="aba" data-v="turma" class="${aba === 'turma' ? 'sel' : ''}">Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}</button>
-        <button data-acao="aba" data-v="chamada" class="${aba === 'chamada' ? 'sel' : ''}">Chamada</button>
         <button data-acao="aba" data-v="turmas" class="${aba === 'turmas' ? 'sel' : ''}">Turmas</button>
       </nav>`,
       'pagina'
@@ -126,21 +111,6 @@ export function iniciarProfessor() {
       <ul class="lista">${orfaos.map((a) => `<li class="aluno"><span class="nome">Cadastro de teste</span><span class="chip">${esc(ROTULO[a.status] ?? a.status)}</span><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Apagar</button></li>`).join('')}</ul>` : '';
     return `<h2>${lista.length} cadastro(s) · ${ativos} ativo(s)</h2>
       <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ainda. Passe o código da turma.</li>'}</ul>${htmlOrfaos}`;
-  }
-
-  function htmlChamada() {
-    if (!st.turma) return '<p class="vazio">Crie uma turma primeiro.</p>';
-    const lista = alunosDaTurma().filter((a) => a.status === 'ativo');
-    const faltas = st.chamada.filter((u) => lista.some((a) => a.uid === u)).length;
-    const linhas = lista.map((a) => {
-      const falta = st.chamada.includes(a.uid);
-      return `<li><button class="falta ${falta ? 'sim' : ''}" data-acao="falta" data-uid="${esc(a.uid)}">
-        <span class="num">${a.numeroChamada ?? '—'}</span><span class="nome">${esc(a.apelido)}</span><span class="marca">${falta ? 'Faltou' : 'Presente'}</span></button></li>`;
-    }).join('');
-    return `<div class="linha-data"><label for="data">Dia</label><input type="date" id="data" value="${esc(st.data)}"></div>
-      <h2>${faltas} falta(s) de ${lista.length}</h2>
-      <p class="nota">Toque só em quem faltou.</p>
-      <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ativo nesta turma.</li>'}</ul>`;
   }
 
   function htmlTurmas() {
@@ -185,12 +155,6 @@ export function iniciarProfessor() {
         if (confirm('Recusar este cadastro? O aluno poderá se cadastrar de novo.')) await deleteDoc(doc(db, 'alunos', b.dataset.uid));
       }
       else if (acao === 'editar') { abrirEdicao(b.dataset.uid); }
-      else if (acao === 'falta') {
-        const uid = b.dataset.uid;
-        const ref = doc(db, 'chamadas', `${st.turma}_${st.data}`);
-        const faltou = st.chamada.includes(uid);
-        await setDoc(ref, { turma: st.turma, data: st.data, faltas: faltou ? arrayRemove(uid) : arrayUnion(uid) }, { merge: true });
-      }
       else if (acao === 'aberta') {
         const t = st.turmas.find((x) => x.id === b.dataset.id);
         const nova = !t.aberta;
@@ -204,8 +168,7 @@ export function iniciarProfessor() {
   };
 
   app.onchange = (e) => {
-    if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); assinarChamada(); desenhar(); }
-    else if (e.target.id === 'data') { if (e.target.value) { st.data = e.target.value; assinarChamada(); desenhar(); } }
+    if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); desenhar(); }
   };
 
   app.onsubmit = async (e) => {
@@ -287,7 +250,6 @@ export function iniciarProfessor() {
 
   return () => {
     paradas.forEach((p) => p());
-    if (paraChamada) paraChamada();
     app.onclick = null; app.onchange = null; app.onsubmit = null;
     if (dlg.open) dlg.close();
   };
