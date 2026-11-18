@@ -1,33 +1,82 @@
 rules_version = '2';
 
-// Regras iniciais (etapa 0). Tudo é negado, exceto o que está liberado abaixo.
+// Regras da etapa 1. Tudo é negado, exceto o que está liberado abaixo.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // O professor é identificado por uma marca na conta (custom claim),
     // aplicada por ferramentas/definir-professor.mjs. Nenhum e-mail fica aqui.
-    function ehProfessor() {
-      return request.auth != null && request.auth.token.professor == true;
-    }
-
     function logado() {
       return request.auth != null;
     }
 
-    // Cadastro do aluno: ele cria só o próprio documento, sempre como "pendente".
-    // Só o professor aprova (muda o status), liga ao número de chamada etc.
-    match /alunos/{uid} {
-      allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
-      allow create: if logado()
-        && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['status', 'criadoEm'])
-        && request.resource.data.status == 'pendente'
-        && request.resource.data.criadoEm == request.time;
-      allow update, delete: if ehProfessor();
+    function ehProfessor() {
+      return logado() && request.auth.token.get('professor', false) == true;
     }
 
-    // Todo o resto: só o professor.
-    match /{document=**} {
+    function meuAluno() {
+      return get(/databases/$(database)/documents/alunos/$(request.auth.uid)).data;
+    }
+
+    function temCadastro() {
+      return logado() && exists(/databases/$(database)/documents/alunos/$(request.auth.uid));
+    }
+
+    // Códigos de entrada: o aluno só consegue buscar um código que já sabe (get), nunca listar.
+    match /codigos/{codigo} {
+      allow get: if logado();
+      allow list, write: if ehProfessor();
+    }
+
+    // Turmas: o aluno lê só a própria turma. Só o professor altera.
+    match /turmas/{turma} {
+      allow read: if ehProfessor() || (temCadastro() && meuAluno().turma == turma);
+      allow write: if ehProfessor();
+    }
+
+    // Cadastro do aluno.
+    match /alunos/{uid} {
+      allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
+
+      // O aluno cria só o próprio documento, sempre "pendente", com um código válido e aberto.
+      allow create: if logado()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['turma', 'codigo', 'apelido', 'status', 'criadoEm'])
+        && request.resource.data.keys().hasAll(['turma', 'codigo', 'apelido', 'status', 'criadoEm'])
+        && request.resource.data.status == 'pendente'
+        && request.resource.data.criadoEm == request.time
+        && request.resource.data.apelido is string
+        && request.resource.data.apelido.size() >= 2
+        && request.resource.data.apelido.size() <= 16
+        && request.resource.data.codigo is string
+        && request.resource.data.codigo.matches('^[A-Z0-9]{4,10}$')
+        && request.resource.data.turma is string
+        && get(/databases/$(database)/documents/codigos/$(request.resource.data.codigo)).data.turma == request.resource.data.turma
+        && get(/databases/$(database)/documents/codigos/$(request.resource.data.codigo)).data.aberta == true;
+
+      // Aluno ativo só altera o avatar e o último acesso. O professor altera tudo.
+      allow update: if ehProfessor()
+        || (logado()
+            && request.auth.uid == uid
+            && resource.data.status == 'ativo'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatar', 'ultimoAcesso'])
+            && (!('avatar' in request.resource.data.diff(resource.data).affectedKeys())
+                || (request.resource.data.avatar is map
+                    && request.resource.data.avatar.keys().hasOnly(['fantasia', 'tom'])
+                    && request.resource.data.avatar.fantasia is string
+                    && request.resource.data.avatar.fantasia.size() <= 20
+                    && request.resource.data.avatar.tom is int
+                    && request.resource.data.avatar.tom >= 0
+                    && request.resource.data.avatar.tom <= 5))
+            && (!('ultimoAcesso' in request.resource.data.diff(resource.data).affectedKeys())
+                || request.resource.data.ultimoAcesso == request.time));
+
+      // O histórico não se apaga: o professor só recusa cadastros ainda pendentes.
+      allow delete: if ehProfessor() && resource.data.status == 'pendente';
+    }
+
+    // Chamadas (faltas): só o professor. O aluno não vê frequência.
+    match /chamadas/{id} {
       allow read, write: if ehProfessor();
     }
   }

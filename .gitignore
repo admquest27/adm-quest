@@ -18,3 +18,4 @@ exportacoes/
 dados/
 backups/
 ferramentas/saida/
+*.log
