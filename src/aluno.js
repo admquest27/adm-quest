@@ -144,7 +144,8 @@ export function iniciarAluno(user, opcoes = {}) {
       const placa = est === 'adiada' ? textos.adiada : est === 'cancelada' ? textos.cancelada : textoPlaca(textos, f);
       return `<li><div class="fase obra e-${est}">${cod}<span class="placa">${esc(placa ?? 'Em obra.')}</span></div></li>`;
     }).join('');
-    const recados = st.recados.length ? `<h2>Recados do professor</h2><ul class="lista">${st.recados.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
+    const gerais = st.recados.filter((r) => !r.fase);
+    const recados = gerais.length ? `<h2>Recados do professor</h2><ul class="lista">${gerais.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
     mostrar(
       `<section class="cartao largo">
         <div class="cab-aluno">
@@ -211,6 +212,8 @@ export function iniciarAluno(user, opcoes = {}) {
       ? `<li>${links([m])}${m.descricao ? ` <span class="nota">${esc(m.descricao)}</span>` : ''}</li>`
       : '<li class="trava"><span aria-hidden="true">🔒</span> Material que o professor vai liberar durante a aula.</li>').join('');
 
+    const recadosFase = st.recados.filter((r) => r.fase === f.id);
+    const htmlRecados = recadosFase.length ? `<div class="recados-fase"><strong>Recado do professor nesta fase</strong>${recadosFase.map((r) => `<p class="${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><br>${esc(r.texto)}</p>`).join('')}</div>` : '';
     const faltou = a?.faltou && !p?.concluida;
     const podeConcluir = editavel && (faltam === 0 || p?.concluida === true);
     mostrar(
@@ -221,6 +224,7 @@ export function iniciarAluno(user, opcoes = {}) {
         ${faltou ? '<p class="banner">Você não estava na dinâmica desta fase, então ela ficou <strong>a fazer</strong>. Leia a missão, faça as etapas (peça ajuda ao professor ou aos colegas) e marque como concluída quando terminar.</p>' : ''}
         ${est === 'encerrada' && !editavel && !ver && !p?.concluida ? '<p class="banner">O professor encerrou esta fase. Se você precisa terminá-la, converse com ele.</p>' : ''}
         ${mencoes}
+        ${htmlRecados}
         <h2>Missão</h2>
         <p>${esc(f.missao)}</p>
         <h2>Passo a passo${total ? ` <span class="nota">(${feitas} de ${total} feitas)</span>` : ''}</h2>

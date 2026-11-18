@@ -340,3 +340,17 @@ dialog { max-height: 90vh; overflow-y: auto; }
 .etapa.feita { border-color: var(--ok); }
 .etapa .check.feito { margin-top: 8px; font-weight: 600; }
 .abas button { font-size: 0.88rem; padding: 0 2px; }
+/* ---------- painel clicável, ficha, recados na fase, aviso de versão ---------- */
+.clicavel { cursor: pointer; }
+.clicavel:hover, .clicavel:focus-visible { border-color: var(--destaque); outline: none; }
+.clicavel-bloco { list-style: none; cursor: pointer; }
+.clicavel-bloco .reg { margin: 0 0 8px; }
+.recados-fase { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--ok); border-radius: 10px; background: color-mix(in srgb, var(--ok) 8%, var(--cartao)); }
+.recados-fase p { margin: 6px 0 0; }
+.recados-fase p.atencao { border-left: 3px solid #b7791f; padding-left: 8px; }
+.aviso-versao {
+  position: fixed; left: 0; right: 0; bottom: 64px; z-index: 50; margin: 0 12px; padding: 10px 14px;
+  background: var(--destaque); color: var(--destaque-texto); border-radius: 12px; text-align: center; font-size: 0.95rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.aviso-versao .mini { margin-left: 8px; border-color: currentColor; color: inherit; }

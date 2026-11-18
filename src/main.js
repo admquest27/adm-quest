@@ -6,6 +6,29 @@ import { iniciarProfessor } from './professor.js';
 
 let parar = null;
 
+// Avisa quando existe uma versão nova do site, para ninguém ficar com uma versão antiga na memória do navegador.
+function mostrarAvisoVersao() {
+  if (document.getElementById('aviso-versao')) return;
+  const d = document.createElement('div');
+  d.id = 'aviso-versao';
+  d.className = 'aviso-versao';
+  d.innerHTML = 'Há uma versão nova do jogo. <button type="button" class="mini">Atualizar agora</button>';
+  d.querySelector('button').onclick = () => location.reload();
+  document.body.appendChild(d);
+}
+
+async function verificarVersao() {
+  try {
+    const r = await fetch(`${import.meta.env.BASE_URL}versao.txt?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const nova = (await r.text()).trim();
+    if (nova && nova !== __VERSAO__) mostrarAvisoVersao();
+  } catch { /* sem rede: tenta de novo depois */ }
+}
+verificarVersao();
+setInterval(verificarVersao, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) verificarVersao(); });
+
 function telaLogin(erro) {
   tela(
     `<section class="cartao">

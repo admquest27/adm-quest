@@ -54,7 +54,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     turma: ler('turma') || '',
     turmas: [], alunos: [], fases: [], mundo: null,
     progresso: {}, aval: {}, comentarios: [], anotacoes: [], profFase: null,
-    faseSel: null, importacao: null, aviso: '',
+    faseSel: null, importacao: null, aviso: '', painelVista: null,
     carregou: { turmas: false, alunos: false },
   };
   const paradas = [];
@@ -261,6 +261,7 @@ export function iniciarProfessor(user, opcoes = {}) {
           ${est === 'encerrada' && !p?.concluida ? `<button class="mini ${v?.liberado ? 'ok' : ''}" data-acao="liberar-aluno" data-uid="${esc(a.uid)}">${v?.liberado ? 'Liberado ✓' : 'Liberar p/ fazer'}</button>` : ''}
           ${campos ? `<button class="mini" data-acao="respostas" data-uid="${esc(a.uid)}">Respostas</button>` : ''}
           <button class="mini" data-acao="registros-fase" data-uid="${esc(a.uid)}">Registros</button>
+          <button class="mini" data-acao="ver-aluno" data-uid="${esc(a.uid)}">Ver como aluno</button>
         </div>
       </li>`;
     }).join('');
@@ -380,7 +381,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (!b) return;
     const acao = b.dataset.acao;
     try {
-      if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; guardar('aba', st.aba); ligarProf(); desenhar(); }
+      if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; st.painelVista = null; guardar('aba', st.aba); ligarProf(); desenhar(); }
       else if (acao === 'aprovar') { e.stopPropagation(); await updateDoc(doc(db, 'alunos', b.dataset.uid), { status: 'ativo', dataEntrada: hoje() }); }
       else if (acao === 'recusar') {
         e.stopPropagation();
@@ -390,6 +391,8 @@ export function iniciarProfessor(user, opcoes = {}) {
       else if (acao === 'registros') { e.stopPropagation(); abrirRegistros(st, dlg, b.dataset.uid, null); }
       else if (acao === 'registros-fase') { abrirRegistros(st, dlg, b.dataset.uid, st.faseSel); }
       else if (acao === 'ver-aluno') { e.stopPropagation(); opcoes.verComoAluno?.(b.dataset.uid); }
+      else if (acao === 'painel-ver') { st.painelVista = { tipo: b.dataset.tipo, id: b.dataset.id }; desenhar(); window.scrollTo(0, 0); }
+      else if (acao === 'painel-voltar') { st.painelVista = null; desenhar(); }
       else if (acao === 'fase') { st.faseSel = b.dataset.id; ligarProf(); desenhar(); }
       else if (acao === 'voltar-fases') { st.faseSel = null; ligarProf(); desenhar(); }
       else if (acao === 'faltou') { await alternarFalta(b.dataset.uid); }
@@ -425,6 +428,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         await updateDoc(doc(db, 'turmas', st.turma), { [`estadoFases.${e.target.dataset.estado}`]: novo });
       }
       else if (e.target.id === 'arq') { await lerArquivo(e.target.files?.[0]); }
+      else if (e.target.id === 'painel-aluno') { if (e.target.value) { st.painelVista = { tipo: 'aluno', id: e.target.value }; desenhar(); window.scrollTo(0, 0); } }
     } catch { falha('Não consegui salvar essa alteração. Tente de novo.'); }
   };
 
