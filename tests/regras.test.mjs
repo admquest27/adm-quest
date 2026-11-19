@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, serverTimestamp, writeBatch, query, where } from 'firebase/firestore';
 
 let env;
 
@@ -381,4 +381,80 @@ test('AdmBux: ninguém compra em nome de outro; o professor lê as compras', asy
   await assertSucceeds(setDoc(doc(aluno('ativo1'), 'compras/ativo1'), baseCompras([])));
   await assertSucceeds(getDoc(doc(prof(), 'compras/ativo1')));
   await assertFails(getDoc(doc(aluno('outro1'), 'compras/ativo1')));
+});
+// ---------- Colegas, guildas e grupos ----------
+const semearGrupos = () => env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore();
+  await updateDoc(doc(db, 'turmas/1A'), { atividades: { m1f7: { modo: 'alunos', tamanho: 2, aberta: true }, m1f6: { modo: 'professor', tamanho: 4, aberta: true }, guilda: { modo: 'alunos', tamanho: 4, aberta: false } } });
+  await setDoc(doc(db, 'alunos/ativo2'), { turma: '1A', codigo: 'ABC12', apelido: 'Duda', status: 'ativo' });
+  await setDoc(doc(db, 'alunos/ativo3'), { turma: '1A', codigo: 'ABC12', apelido: 'Edu', status: 'ativo' });
+  await setDoc(doc(db, 'grupos/gg'), { turma: '1A', atividade: 'guilda', membros: ['ativo1', 'ativo2'], convites: [], criador: 'ativo1' });
+});
+const criarGrupo = (uid, gid, atv, convites) => {
+  const db = aluno(uid);
+  const b = writeBatch(db);
+  b.set(doc(db, 'grupos', gid), { turma: '1A', atividade: atv, membros: [uid], convites, criador: uid, criadoEm: serverTimestamp() });
+  b.set(doc(db, 'vagas', `${atv}_${uid}`), { uid, turma: '1A', atividade: atv, grupo: gid });
+  return b.commit();
+};
+const aceitar = (uid, gid, atv, membros, convites) => {
+  const db = aluno(uid);
+  const b = writeBatch(db);
+  b.update(doc(db, 'grupos', gid), { membros, convites });
+  b.set(doc(db, 'vagas', `${atv}_${uid}`), { uid, turma: '1A', atividade: atv, grupo: gid });
+  return b.commit();
+};
+
+test('perfis: o aluno publica só o que bate com o cadastro; só a própria turma lê', async () => {
+  await semearGrupos();
+  const p = { turma: '1A', apelido: 'Ana', visual: { titulo: 't-ceo' }, atualizadoEm: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(aluno('ativo1'), 'perfis/ativo1'), p));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'perfis/ativo1'), { ...p, apelido: 'Outra' }));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'perfis/ativo1'), { ...p, visual: { titulo: 'x'.repeat(40) } }));
+  await assertFails(setDoc(doc(aluno('ativo2'), 'perfis/ativo1'), p));
+  await assertSucceeds(getDoc(doc(aluno('ativo2'), 'perfis/ativo1')));
+  await assertFails(getDoc(doc(aluno('outro1'), 'perfis/ativo1')));
+  await assertSucceeds(getDocs(query(collection(aluno('ativo2'), 'perfis'), where('turma', '==', '1A'))));
+  await assertFails(getDocs(collection(aluno('ativo2'), 'perfis')));
+});
+
+test('grupos: criar com convite, aceitar, e não entrar em dois grupos da mesma atividade', async () => {
+  await semearGrupos();
+  await assertFails(criarGrupo('ativo1', 'g0', 'm1f7', ['ativo2', 'ativo3'])); // passa do tamanho 2
+  await assertSucceeds(criarGrupo('ativo1', 'g1', 'm1f7', ['ativo2']));
+  await assertFails(criarGrupo('ativo1', 'g2', 'm1f7', [])); // já tem vaga nesta atividade
+  await assertFails(aceitar('ativo3', 'g1', 'm1f7', ['ativo1', 'ativo3'], ['ativo2'])); // não foi convidado
+  await assertSucceeds(aceitar('ativo2', 'g1', 'm1f7', ['ativo1', 'ativo2'], []));
+  await assertFails(criarGrupo('ativo2', 'g3', 'm1f7', [])); // ativo2 já está num grupo
+  // grupo sem vaga não é aceito
+  await assertFails(setDoc(doc(aluno('ativo3'), 'grupos/g4'), { turma: '1A', atividade: 'm1f7', membros: ['ativo3'], convites: [], criador: 'ativo3', criadoEm: serverTimestamp() }));
+});
+
+test('grupos: recusar, sair e regras de quem monta', async () => {
+  await semearGrupos();
+  await assertSucceeds(criarGrupo('ativo1', 'g1', 'm1f7', ['ativo2']));
+  await assertSucceeds(updateDoc(doc(aluno('ativo2'), 'grupos/g1'), { convites: [] }));
+  await assertFails(updateDoc(doc(aluno('ativo3'), 'grupos/g1'), { convites: ['ativo3'] })); // só quem criou convida
+  await assertSucceeds(updateDoc(doc(aluno('ativo1'), 'grupos/g1'), { convites: ['ativo3'] }));
+  await assertSucceeds(aceitar('ativo3', 'g1', 'm1f7', ['ativo1', 'ativo3'], []));
+  const db = aluno('ativo3');
+  const b = writeBatch(db);
+  b.update(doc(db, 'grupos/g1'), { membros: ['ativo1'] });
+  b.delete(doc(db, 'vagas/m1f7_ativo3'));
+  await assertSucceeds(b.commit());
+  await assertFails(criarGrupo('ativo2', 'g5', 'm1f6', [])); // nesta atividade quem monta é o professor
+  await assertFails(criarGrupo('ativo3', 'g6', 'guilda', [])); // atividade fechada
+  await assertFails(criarGrupo('outro1', 'g7', 'm1f7', [])); // outra turma
+  await assertSucceeds(setDoc(doc(prof(), 'grupos/g8'), { turma: '1A', atividade: 'm1f6', membros: ['ativo2', 'ativo3'], convites: [] }));
+});
+
+test('guilda: um integrante propõe nome e escudo, os outros confirmam, ninguém de fora mexe', async () => {
+  await semearGrupos();
+  const proposta = { nome: 'Os Planejadores', escudo: { forma: 'classico', cor1: '#3b5bdb', cor2: '#f5d97a', simbolo: '🦉' }, por: 'ativo1', confirmacoes: ['ativo1'] };
+  await assertFails(updateDoc(doc(aluno('ativo3'), 'grupos/gg'), { proposta: { ...proposta, por: 'ativo3', confirmacoes: ['ativo3'] } }));
+  await assertSucceeds(updateDoc(doc(aluno('ativo1'), 'grupos/gg'), { proposta }));
+  await assertFails(updateDoc(doc(aluno('ativo2'), 'grupos/gg'), { proposta: { ...proposta, nome: 'Outro nome', confirmacoes: ['ativo1', 'ativo2'] } }));
+  await assertSucceeds(updateDoc(doc(aluno('ativo2'), 'grupos/gg'), { proposta: { ...proposta, confirmacoes: ['ativo1', 'ativo2'] } }));
+  await assertFails(updateDoc(doc(aluno('ativo1'), 'grupos/gg'), { nome: 'Aprovado por mim' }));
+  await assertSucceeds(updateDoc(doc(prof(), 'grupos/gg'), { nome: 'Os Planejadores' }));
 });

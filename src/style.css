@@ -567,3 +567,40 @@ dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
 .cab-aluno.tem-fundo .titulo-aluno { background: rgba(255, 255, 255, 0.92); }
 .item-loja { grid-template-columns: 64px 1fr auto; }
 .chip.limitado { white-space: normal; font-size: 0.72rem; }
+/* ---------- Guildas e grupos ---------- */
+.avatar.pq { width: 28px; height: 28px; }
+.pessoas { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.pessoa { display: inline-flex; align-items: center; gap: 6px; background: var(--campo); border: 1px solid var(--borda); border-radius: 999px; padding: 2px 10px 2px 2px; font-size: 0.92rem; }
+.bloco-grupo { border: 1px solid var(--borda); border-radius: 12px; padding: 10px 12px; margin: 12px 0; background: var(--campo); }
+.bloco-grupo h2 { margin-top: 0; font-size: 1.05rem; }
+.convites { margin: 6px 0; }
+.convite { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.escolha { border-top: 1px dashed var(--borda); margin-top: 8px; padding-top: 8px; }
+.escolha-lista { list-style: none; padding: 0; margin: 6px 0; max-height: 320px; overflow-y: auto; }
+.escolha-lista .check { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+.escolha-lista input { width: 22px; height: 22px; }
+.guilda-cab { display: flex; align-items: center; gap: 12px; }
+.guilda-cab h1 { margin: 0; }
+.escudo-vazio { width: 72px; height: 76px; border: 3px dashed var(--borda); border-radius: 10px; display: grid; place-items: center; font-size: 2rem; color: var(--suave); }
+.escudo text { font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.guilda-btn { display: inline-flex; align-items: center; gap: 4px; }
+.guilda-btn svg { vertical-align: middle; }
+.escudo-editor { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; margin: 10px 0; }
+.escudo-previa { flex: 0 0 auto; }
+.opcoes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.opcao-escudo, .simbolo { background: var(--cartao); border: 2px solid var(--borda); border-radius: 8px; padding: 2px; min-width: 40px; min-height: 40px; font-size: 1.3rem; }
+.cor { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--borda); }
+.opcao-escudo.sel, .simbolo.sel, .cor.sel { border-color: var(--destaque); box-shadow: 0 0 0 2px var(--destaque); }
+.proposta { border: 1px solid var(--borda); border-radius: 10px; padding: 8px 10px; margin: 8px 0; }
+.grupos-lista { margin-top: 8px; }
+.grupo-card { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--borda); border-radius: 10px; margin-bottom: 8px; background: var(--cartao); }
+.grupo-topo { display: flex; align-items: center; gap: 8px; }
+.chips-membros { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip .x { border: 0; background: transparent; color: inherit; font-size: 1rem; line-height: 1; padding: 0 2px; cursor: pointer; }
+.chip.pendente { opacity: 0.65; font-style: italic; }
+.sem-grupo { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.gr-config { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 6px 0; }
+.gr-config label, .gr-tipo { display: inline-flex; gap: 6px; align-items: center; font-size: 0.92rem; }
+.pessoa .avatar { flex: 0 0 auto; width: 28px; height: 28px; }
+.guilda-cab h1 { text-align: left; font-size: 1.5rem; }
+.guilda-cab > div { min-width: 0; }

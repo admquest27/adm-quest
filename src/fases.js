@@ -106,6 +106,8 @@ export function parteAluno(f, mundo) {
     tarefaTrilha: f.tarefaTrilha ?? '',
     folgaAntes: f.folgaAntes ?? 0,
     anexaA: f.anexaA ?? '',
+    // como a fase trabalha em grupo: { tipo: 'guilda' | 'fase', tamanho } (o professor ajusta por turma)
+    grupo: f.grupo ?? null,
   };
 }
 

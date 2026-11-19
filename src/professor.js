@@ -13,6 +13,8 @@ import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } f
 import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
 import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
+import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
+import { ATV_GUILDA, configGuilda } from './grupos.js';
 import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO } from './calendario.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
 
@@ -138,6 +140,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     dosAlunos('comentarios', (s) => { st.comentarios = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
     paradasTurma.push(onSnapshot(doc(db, 'planos', st.turma), (s) => { st.plano = s.exists() ? s.data() : null; desenhar(); }, () => {}));
     dosAlunos('anotacoes', (s) => { st.anotacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
+    dosAlunos('grupos', (s) => { st.grupos = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); });
   }
 
   // notas do professor da fase aberta no painel
@@ -166,7 +169,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (st.aba === 'mais' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
     const pend = pendentesTotal();
     const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlConteudo()}`;
+    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlConteudo()}`;
     const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['mais', 'Mais']];
     tela(
       `<header class="topo">
@@ -208,8 +211,10 @@ export function iniciarProfessor(user, opcoes = {}) {
     const orfaos = st.alunos.filter((a) => !a.turma);
     const htmlOrfaos = orfaos.length ? `<h2>Cadastros sem turma (testes antigos)</h2>
       <ul class="lista">${orfaos.map((a) => `<li class="aluno"><span class="nome">Cadastro de teste</span><span class="chip">${esc(ROTULO[a.status] ?? a.status)}</span><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Apagar</button></li>`).join('')}</ul>` : '';
+    const guildas = htmlGrupos(st, { atv: ATV_GUILDA, cfg: configGuilda(turmaAtual()), faseId: null, ativos: ativosDaTurma(), titulo: 'Guildas deste mundo' });
     return `<h2>${lista.length} cadastro(s) · ${ativos} ativo(s)</h2>
       ${htmlRadar()}
+      ${guildas}
       <p class="nota">Toque no aluno para editar, mover de turma ou marcar que saiu.</p>
       <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ainda. Passe o código da turma.</li>'}</ul>${htmlOrfaos}`;
   }
@@ -325,10 +330,24 @@ export function iniciarProfessor(user, opcoes = {}) {
       ${f.tipo === 'chefao' ? roteiroDia('din', 'Roteiro do dia do castelo') : `${roteiroDia('din', 'Roteiro da terça (dinâmica, na sala)')}${roteiroDia('cons', 'Roteiro da segunda (laboratório)')}`}
       ${material ? `<details class="roteiro"><summary>Material do professor (só você vê)</summary>${material}</details>` : ''}
       ${htmlLiberar}
+      ${htmlGruposDaFase(st, f, turmaDoc, ativosDaTurma())}
       <p class="resumo"><strong>${r.concluidas}</strong> de <strong>${r.presentes}</strong> presentes concluíram (${pct}%)${pct >= 80 ? ' · meta de 80% atingida' : ''}<br>
         <span class="nota">${r.validadas} validada(s) · ${r.faltas} faltou · ${r.total} aluno(s) ativo(s)</span></p>
       <button class="mini" data-acao="validar-todos">Validar todos que concluíram</button>
       <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ativo nesta turma.</li>'}</ul>`;
+  }
+
+  // Recursos do jogo que aparecem aos poucos para os alunos, um de cada vez, quando você ligar.
+  function htmlRecursos() {
+    const r = turmaAtual()?.recursos ?? {};
+    const item = (id, nome, texto) => `<li class="aluno"><div class="nome"><strong>${nome}</strong><br><span class="nota">${texto}</span></div>
+      <button class="mini ${r[id] ? 'ok cheio' : ''}" data-acao="recurso" data-id="${id}">${r[id] ? 'Ligado ✓' : 'Desligado'}</button></li>`;
+    return `<h2>Recursos do jogo nesta turma</h2>
+      <p class="nota">Tudo é novo para os alunos. Ligue cada recurso quando a turma estiver pronta; o que acontece antes continua contando.</p>
+      <ul class="lista">
+        ${item('admbux', 'AdmBux, loja e conquistas', 'As moedas já são contadas desde a primeira fase validada; ao ligar, o aluno vê o saldo acumulado.')}
+        ${item('guildas', 'Guildas', 'Botão "Guilda" no topo: integrantes, nome e escudo. Os grupos de cada fase funcionam mesmo desligado.')}
+      </ul>`;
   }
 
   function htmlTurmas() {
@@ -438,6 +457,8 @@ export function iniciarProfessor(user, opcoes = {}) {
         await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, alternarSegunda: (id) => alternarLiberacaoItem('seg', id), irParaFase: (id) => { st.aba = 'fases'; st.faseSel = id; guardar('aba', 'fases'); ligarProf(); desenhar(); } });
         return;
       }
+      if (acao.startsWith('gr-')) { await tratarGrupos(acao, b, { st, dlg, ativos: ativosDaTurma(), falha }); return; }
+      if (acao === 'recurso') { const r = turmaAtual()?.recursos?.[b.dataset.id] === true; await updateDoc(doc(db, 'turmas', st.turma), { [`recursos.${b.dataset.id}`]: !r }); return; }
       if (acao === 'exportar-painel') { abrirExportacao(st, dlg); return; }
       if (acao === 'exportar-aluno') { exportarAluno(st, b.dataset.uid); return; }
       if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; st.painelVista = null; guardar('aba', st.aba); ligarProf(); desenhar(); }
@@ -482,6 +503,7 @@ export function iniciarProfessor(user, opcoes = {}) {
 
   app.onchange = async (e) => {
     try {
+      if (await mudarConfigGrupos(e.target, st)) return;
       if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); st.faseSel = null; ligarTurma(); ligarProf(); desenhar(); }
       else if (e.target.dataset?.estado) {
         const novo = e.target.value;

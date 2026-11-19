@@ -180,6 +180,173 @@ service cloud.firestore {
       allow write: if ehProfessor();
     }
 
+    // ---------- Colegas, guildas e grupos ----------
+
+    // Perfil público dentro da turma: só apelido, avatar e os enfeites em uso (ids da loja).
+    // O próprio aluno mantém, sempre igual ao cadastro; os colegas da mesma turma leem.
+    function idLoja(v) {
+      return v is string && v.size() <= 30;
+    }
+
+    match /perfis/{uid} {
+      allow read: if ehProfessor() || (ativo() && resource.data.turma == meuAluno().turma);
+      allow create, update: if ehProfessor()
+        || (ativo()
+            && request.auth.uid == uid
+            && request.resource.data.keys().hasOnly(['turma', 'apelido', 'avatar', 'visual', 'atualizadoEm'])
+            && request.resource.data.turma == meuAluno().turma
+            && request.resource.data.apelido == meuAluno().apelido
+            && request.resource.data.get('avatar', null) == meuAluno().get('avatar', null)
+            && (!('visual' in request.resource.data)
+                || (request.resource.data.visual is map
+                    && request.resource.data.visual.keys().hasOnly(['titulo', 'moldura', 'fundo'])
+                    && idLoja(request.resource.data.visual.get('titulo', ''))
+                    && idLoja(request.resource.data.visual.get('moldura', ''))
+                    && idLoja(request.resource.data.visual.get('fundo', ''))))
+            && request.resource.data.atualizadoEm == request.time);
+      allow delete: if ehProfessor();
+    }
+
+    // Configuração de cada atividade em grupo, guardada na turma: atividades.{id} = { modo, tamanho, aberta }.
+    function atividade(turma, atv) {
+      return get(/databases/$(database)/documents/turmas/$(turma)).data.get('atividades', {}).get(atv, {});
+    }
+
+    function alunosMontam(turma, atv) {
+      return atividade(turma, atv).get('aberta', false) == true && atividade(turma, atv).get('modo', 'alunos') == 'alunos';
+    }
+
+    function tamanho(turma, atv) {
+      return atividade(turma, atv).get('tamanho', 4);
+    }
+
+    function vaga(atv, uid) {
+      return /databases/$(database)/documents/vagas/$(atv + '_' + uid);
+    }
+
+    // Grupo de uma atividade (ou guilda). Os alunos montam por convite: quem cria convida; cada convidado aceita ou recusa.
+    match /grupos/{gid} {
+      function eu() { return request.auth.uid; }
+      function antes() { return resource.data; }
+      function depois() { return request.resource.data; }
+      function soMudou(campos) { return depois().diff(antes()).affectedKeys().hasOnly(campos); }
+
+      function aceitar() {
+        return antes().convites.hasAny([eu()])
+          && depois().membros == antes().membros.concat([eu()])
+          && depois().convites == antes().convites.removeAll([eu()])
+          && depois().membros.size() <= tamanho(antes().turma, antes().atividade)
+          && existsAfter(vaga(antes().atividade, eu()))
+          && getAfter(vaga(antes().atividade, eu())).data.grupo == gid;
+      }
+
+      function recusar() {
+        return antes().convites.hasAny([eu()])
+          && depois().membros == antes().membros
+          && depois().convites == antes().convites.removeAll([eu()]);
+      }
+
+      function convidar() {
+        return antes().criador == eu()
+          && depois().membros == antes().membros
+          && depois().convites is list
+          && !depois().convites.hasAny(antes().membros)
+          && depois().membros.size() + depois().convites.size() <= tamanho(antes().turma, antes().atividade);
+      }
+
+      function sair() {
+        return antes().membros.hasAny([eu()])
+          && antes().criador != eu()
+          && depois().membros == antes().membros.removeAll([eu()])
+          && depois().convites == antes().convites
+          && !existsAfter(vaga(antes().atividade, eu()));
+      }
+
+      // Nome e escudo da guilda: um integrante propõe, os outros confirmam, o professor aprova.
+      function propostaValida(p) {
+        return p is map
+          && p.keys().hasOnly(['nome', 'escudo', 'por', 'confirmacoes'])
+          && p.nome is string && p.nome.size() >= 2 && p.nome.size() <= 24
+          && p.escudo is map && p.escudo.keys().hasOnly(['forma', 'cor1', 'cor2', 'simbolo'])
+          && p.escudo.forma is string && p.escudo.forma.size() <= 12
+          && p.escudo.cor1 is string && p.escudo.cor1.size() <= 9
+          && p.escudo.cor2 is string && p.escudo.cor2.size() <= 9
+          && p.escudo.simbolo is string && p.escudo.simbolo.size() <= 12
+          && p.confirmacoes is list;
+      }
+
+      function propor() {
+        return antes().membros.hasAny([eu()])
+          && propostaValida(depois().proposta)
+          && depois().proposta.por == eu()
+          && depois().proposta.confirmacoes == [eu()];
+      }
+
+      function confirmar() {
+        return antes().membros.hasAny([eu()])
+          && 'proposta' in antes()
+          && !antes().proposta.confirmacoes.hasAny([eu()])
+          && depois().proposta.nome == antes().proposta.nome
+          && depois().proposta.escudo == antes().proposta.escudo
+          && depois().proposta.por == antes().proposta.por
+          && depois().proposta.confirmacoes == antes().proposta.confirmacoes.concat([eu()]);
+      }
+
+      allow read: if ehProfessor() || (ativo() && resource.data.turma == meuAluno().turma);
+
+      allow create: if ehProfessor()
+        || (ativo()
+            && depois().keys().hasOnly(['turma', 'atividade', 'membros', 'convites', 'criador', 'criadoEm'])
+            && depois().turma == meuAluno().turma
+            && depois().atividade is string
+            && alunosMontam(depois().turma, depois().atividade)
+            && depois().criador == eu()
+            && depois().membros == [eu()]
+            && depois().convites is list
+            && !depois().convites.hasAny([eu()])
+            && depois().convites.size() + 1 <= tamanho(depois().turma, depois().atividade)
+            && depois().criadoEm == request.time
+            && existsAfter(vaga(depois().atividade, eu())));
+
+      allow update: if ehProfessor()
+        || (ativo()
+            && antes().turma == meuAluno().turma
+            && ((soMudou(['membros', 'convites'])
+                 && alunosMontam(antes().turma, antes().atividade)
+                 && (aceitar() || recusar() || convidar() || sair()))
+                || (soMudou(['proposta']) && (propor() || confirmar()))));
+
+      allow delete: if ehProfessor()
+        || (ativo()
+            && antes().turma == meuAluno().turma
+            && antes().criador == eu()
+            && antes().membros == [eu()]
+            && alunosMontam(antes().turma, antes().atividade)
+            && !existsAfter(vaga(antes().atividade, eu())));
+    }
+
+    // Uma vaga por aluno em cada atividade: impede estar em dois grupos ao mesmo tempo. O id é atividade_uid.
+    match /vagas/{vid} {
+      allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
+      allow create: if ehProfessor()
+        || (ativo()
+            && request.resource.data.keys().hasOnly(['uid', 'turma', 'atividade', 'grupo'])
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.turma == meuAluno().turma
+            && request.resource.data.atividade is string
+            && vid == request.resource.data.atividade + '_' + request.auth.uid
+            && request.resource.data.grupo is string
+            && existsAfter(/databases/$(database)/documents/grupos/$(request.resource.data.grupo))
+            && getAfter(/databases/$(database)/documents/grupos/$(request.resource.data.grupo)).data.membros.hasAny([request.auth.uid])
+            && getAfter(/databases/$(database)/documents/grupos/$(request.resource.data.grupo)).data.atividade == request.resource.data.atividade);
+      allow update: if ehProfessor();
+      allow delete: if ehProfessor()
+        || (logado()
+            && resource.data.uid == request.auth.uid
+            && (!existsAfter(/databases/$(database)/documents/grupos/$(resource.data.grupo))
+                || !getAfter(/databases/$(database)/documents/grupos/$(resource.data.grupo)).data.membros.hasAny([request.auth.uid])));
+    }
+
     // AdmBux: loja, conquistas e valores. O aluno ativo lê; só o professor altera.
     match /economia/{id} {
       allow read: if ehProfessor() || ativo();

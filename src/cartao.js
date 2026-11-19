@@ -30,7 +30,7 @@ function etapaHtml(it, n, ctx) {
 }
 
 export function htmlCartao(ctx) {
-  const { f, p, a, est, mundo, recados, ver, editavel, aviso, turma } = ctx;
+  const { f, p, a, est, mundo, recados, ver, editavel, aviso, turma, grupoHtml } = ctx;
   const sit = situacao(f, p, a, est);
   const { total, feitas } = contarTarefas(f, p);
   const faltam = total - feitas;
@@ -86,6 +86,7 @@ export function htmlCartao(ctx) {
     ${mencoes}${htmlRecados}
     <p class="missao">${esc(f.missao)}</p>
     ${total ? `<div class="progresso" aria-label="${feitas} de ${total} etapas feitas"><span style="width:${pct}%"></span></div><p class="nota centro-txt">${feitas} de ${total} etapas feitas</p>` : ''}
+    ${grupoHtml ?? ''}
     ${legenda}
     ${partes}
     ${materiais ? `<h2>Material de apoio</h2><ul class="materiais">${materiais}</ul>` : ''}

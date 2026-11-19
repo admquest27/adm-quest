@@ -6,6 +6,10 @@ import { FANTASIAS, TONS, imgAvatar } from './avatar.js';
 import { htmlCartao } from './cartao.js';
 import { calcularCarteira, CONQUISTAS, podeComprar } from './economia.js';
 import { htmlCarteira, visual, avatarComMoldura, conquistasNovas } from './carteira.js';
+import { ATV_GUILDA, configDaFase, configGuilda, atividadeDaFase, grupoDe, convitesPara, svgEscudo, nomeGuilda } from './grupos.js';
+import {
+  htmlFormacao, htmlGuilda, criarGrupo, aceitarConvite, recusarConvite, convidarMais, sairDoGrupo, desfazerGrupo, proporNome, confirmarProposta,
+} from './gruposAluno.js';
 import {
   MUNDO, SITUACAO_ROTULO, progId, contarTarefas, situacao, podeEditar, textoPlaca, etapasDe, etapaLiberada,
 } from './fases.js';
@@ -19,6 +23,7 @@ export function iniciarAluno(user, opcoes = {}) {
     dados: null, editandoAvatar: false, acesso: false, escolha: { fantasia: 'heroi', tom: 2 },
     turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
     eco: null, carteira: null, compras: null, naCarteira: false,
+    grupos: [], perfis: {}, naGuilda: false, montando: null, rascunho: null, perfilEnviado: '',
   };
   let paradasAtivo = [];
 
@@ -40,7 +45,8 @@ export function iniciarAluno(user, opcoes = {}) {
   // ---------- dados do jogo (só para aluno ativo) ----------
   function ligarDados() {
     if (paradasAtivo.length) return;
-    const redesenha = () => { if (st.dados?.status === 'ativo') desenhar(); };
+    // não redesenha enquanto o aluno digita o nome da guilda (perderia o foco)
+    const redesenha = () => { if (st.dados?.status === 'ativo' && document.activeElement?.id !== 'gd-nome') desenhar(); };
     const turma = st.dados.turma;
     paradasAtivo = [
       onSnapshot(doc(db, 'turmas', turma), (s) => { st.turma = s.exists() ? s.data() : null; redesenha(); }, () => {}),
@@ -66,6 +72,14 @@ export function iniciarAluno(user, opcoes = {}) {
       onSnapshot(doc(db, 'economia', 'geral'), (s) => { st.eco = s.exists() ? s.data() : null; redesenha(); }, () => {}),
       onSnapshot(doc(db, 'carteiras', alvo), (s) => { st.carteira = s.exists() ? s.data() : null; redesenha(); }, () => {}),
       onSnapshot(doc(db, 'compras', alvo), (s) => { st.compras = s.exists() ? s.data() : null; redesenha(); }, () => {}),
+      onSnapshot(query(collection(db, 'grupos'), where('turma', '==', turma)), (s) => {
+        st.grupos = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+        redesenha();
+      }, () => {}),
+      onSnapshot(query(collection(db, 'perfis'), where('turma', '==', turma)), (s) => {
+        st.perfis = Object.fromEntries(s.docs.map((d) => [d.id, d.data()]));
+        redesenha();
+      }, () => {}),
     ];
   }
 
@@ -129,7 +143,10 @@ export function iniciarAluno(user, opcoes = {}) {
     }
     ligarDados();
     if ((!st.dados.avatar || st.editandoAvatar) && !ver) return telaAvatar();
-    if (st.naCarteira) return telaCarteira();
+    sincronizarPerfil();
+    const rec = st.turma?.recursos ?? {};
+    if (st.naCarteira && rec.admbux) return telaCarteira();
+    if (st.naGuilda && rec.guildas) return telaGuilda();
     if (st.faseAberta) return telaCartao();
     return telaLista();
   }
@@ -158,7 +175,11 @@ export function iniciarAluno(user, opcoes = {}) {
     const c = carteira();
     const vis = visual(st.eco, st.compras);
     const conq = { ...CONQUISTAS, ...(st.eco?.conquistas ?? {}) };
-    const novas = ver ? [] : conquistasNovas(alvo, c.conquistas).novas;
+    const rec = st.turma?.recursos ?? {};
+    const novas = ver || !rec.admbux ? [] : conquistasNovas(alvo, c.conquistas).novas;
+    const minhaGuilda = grupoDe(st.grupos, ATV_GUILDA, alvo);
+    const pendentes = st.grupos.filter((g) => g.convites?.includes(alvo) && !grupoDe(st.grupos, g.atividade, alvo));
+    const avisoConvite = pendentes.length ? `<p class="banner">Você tem ${pendentes.length === 1 ? 'um convite' : `${pendentes.length} convites`} para entrar num grupo. ${pendentes.map((g) => (g.atividade === ATV_GUILDA ? (rec.guildas ? 'Veja em Guilda.' : '') : `Veja na fase ${esc(st.fases.find((f) => f.id === g.atividade)?.codigo ?? '')}.`)).join(' ')}</p>` : '';
     const avisoConq = novas.length ? `<div class="conquista-nova" role="status"><span class="trofeu" aria-hidden="true">🏆</span><div><strong>Conquista desbloqueada!</strong>${novas.map((id) => `<p>${esc(conq[id]?.nome ?? id)}: ${esc(conq[id]?.texto ?? '')} (+${c.V.conquista} AdmBux)</p>`).join('')}</div><button id="ok-conquista" class="mini">Legal!</button></div>` : '';
     const recados = gerais.length ? `<h2>Recados do professor</h2><ul class="lista">${gerais.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
     mostrar(
@@ -167,9 +188,11 @@ export function iniciarAluno(user, opcoes = {}) {
         <div class="cab-aluno ${vis.fundo ? `tem-fundo fundo-${esc(vis.fundo)}` : ''}">
           ${avatarComMoldura(st.dados.avatar, vis.moldura)}
           <div><strong>${esc(st.dados.apelido)}</strong>${vis.titulo ? `<br><span class="titulo-aluno">${esc(vis.titulo)}</span>` : ''}<br><span class="nota">${esc(st.turma?.nome ?? '')}</span></div>
-          <div class="cab-botoes"><button id="abrir-carteira" class="mini moeda-btn" aria-label="Minhas AdmBux: ${c.saldo}">🪙 ${c.saldo}</button>
+          <div class="cab-botoes">${rec.admbux ? `<button id="abrir-carteira" class="mini moeda-btn" aria-label="Minhas AdmBux: ${c.saldo}">🪙 ${c.saldo}</button>` : ''}
+          ${rec.guildas ? `<button id="abrir-guilda" class="mini guilda-btn" aria-label="Minha guilda">${minhaGuilda?.escudo ? svgEscudo(minhaGuilda.escudo, 18) : '🛡️'} Guilda</button>` : ''}
           ${ver ? '' : '<button id="trocar" class="mini">Avatar</button>'}</div>
         </div>
+        ${avisoConvite}
         <h2>${esc(st.mundo?.nome ?? 'Vila dos Planos')}</h2>
         <ul class="lista">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
         ${excelAbertos ? `<h2>Trilha de Excel</h2><ul class="lista">${excelAbertos}</ul>` : ''}
@@ -187,8 +210,72 @@ export function iniciarAluno(user, opcoes = {}) {
     const a = st.aval[f.id];
     mostrar(htmlCartao({
       f, p: st.progresso[f.id], a, est, turma: st.turma, mundo: st.mundo, recados: st.recados, ver,
-      editavel: !ver && podeEditar(est, a), aviso: st.aviso,
+      editavel: !ver && podeEditar(est, a), aviso: st.aviso, grupoHtml: blocoGrupo(f),
     }), 'centro alto');
+  }
+
+  // Bloco "Seu grupo" no cartão da fase.
+  function blocoGrupo(f) {
+    const cfg = configDaFase(st.turma, f);
+    if (!cfg) return '';
+    const atv = atividadeDaFase(cfg, f);
+    if (cfg.tipo === 'guilda') {
+      const g = grupoDe(st.grupos, atv, alvo);
+      const rec = st.turma?.recursos ?? {};
+      const corpo = g
+        ? `<div class="guilda-cab">${g.escudo ? svgEscudo(g.escudo, 40) : ''}<div><strong>${esc(nomeGuilda(g))}</strong><p class="nota">${g.membros.map((u) => esc(st.perfis[u]?.apelido ?? 'Colega')).join(', ')}</p></div></div>`
+        : `<p class="nota">Você ainda não está numa guilda. ${rec.guildas ? 'Toque em Guilda, no topo da tela de fases.' : 'O professor vai organizar as guildas.'}</p>`;
+      return `<div class="bloco-grupo"><h2>Sua guilda nesta fase</h2>${corpo}</div>`;
+    }
+    const ctx = { atv, cfg: configDaFase(st.turma, f), grupos: st.grupos, perfis: st.perfis, eu: alvo, ver, montando: st.montando?.atv === atv ? st.montando : null };
+    return `<div class="bloco-grupo"><h2>${cfg.tamanho === 2 ? 'Sua dupla' : cfg.tamanho === 3 ? 'Seu trio' : 'Seu grupo'} nesta fase</h2>${htmlFormacao(ctx)}</div>`;
+  }
+
+  function ctxGuilda() {
+    return { atv: ATV_GUILDA, cfg: configGuilda(st.turma), grupos: st.grupos, perfis: st.perfis, eu: alvo, ver, montando: st.montando?.atv === ATV_GUILDA ? st.montando : null, rascunho: st.rascunho, aviso: st.aviso };
+  }
+
+  function telaGuilda() {
+    mostrar(htmlGuilda(ctxGuilda()), 'centro alto');
+  }
+
+  // Perfil que os colegas da turma veem (apelido, avatar e enfeites em uso), sempre igual ao cadastro.
+  function sincronizarPerfil() {
+    if (ver || !st.dados?.avatar) return;
+    const u = st.compras?.usando ?? {};
+    const perfil = { turma: st.dados.turma, apelido: st.dados.apelido, avatar: st.dados.avatar, visual: { titulo: u.titulo ?? '', moldura: u.moldura ?? '', fundo: u.fundo ?? '' } };
+    const chave = JSON.stringify(perfil);
+    if (chave === st.perfilEnviado) return;
+    st.perfilEnviado = chave;
+    setDoc(doc(db, 'perfis', alvo), { ...perfil, atualizadoEm: serverTimestamp() }).catch(() => { st.perfilEnviado = ''; });
+  }
+
+  async function acaoGrupo(b) {
+    const g = st.grupos.find((x) => x.id === b.dataset.g);
+    const acao = b.dataset.grupo;
+    // atividade em que o aluno está agindo: a da fase aberta ou a guilda
+    const f = st.faseAberta ? st.fases.find((x) => x.id === st.faseAberta) : null;
+    const atv = st.naGuilda ? ATV_GUILDA : f ? atividadeDaFase(configDaFase(st.turma, f), f) : null;
+    if (acao === 'montar') { st.montando = { atv, g: 'novo', sel: [] }; desenhar(); return; }
+    if (acao === 'convidar') { st.montando = { atv, g: g.id, sel: [] }; desenhar(); return; }
+    if (acao === 'cancelar') { st.montando = null; desenhar(); return; }
+    if (acao === 'enviar') {
+      const m = st.montando;
+      if (m.g === 'novo') await criarGrupo({ atv: m.atv, turma: st.dados.turma, eu: alvo, convites: m.sel });
+      else await convidarMais(st.grupos.find((x) => x.id === m.g), m.sel);
+      st.montando = null; aviso(''); return;
+    }
+    if (acao === 'aceitar') { await aceitarConvite(g, alvo, convitesPara(st.grupos, g.atividade, alvo).filter((x) => x.id !== g.id)); return; }
+    if (acao === 'recusar') { await recusarConvite(g, alvo); return; }
+    if (acao === 'sair') { if (confirm('Sair deste grupo?')) await sairDoGrupo(g, alvo); return; }
+    if (acao === 'desfazer') { if (confirm('Desfazer este grupo?')) await desfazerGrupo(g, alvo); return; }
+    if (acao === 'propor') {
+      const r = { nome: '', forma: 'classico', cor1: '#3b5bdb', cor2: '#e0a800', simbolo: '⭐', ...(st.rascunho ?? {}) };
+      r.nome = (document.getElementById('gd-nome')?.value ?? r.nome).trim();
+      if (r.nome.length < 2) { aviso('Escreva um nome com pelo menos 2 letras.'); return; }
+      await proporNome(g, alvo, r); st.rascunho = null; aviso(''); return;
+    }
+    if (acao === 'confirmar') { await confirmarProposta(g, alvo); }
   }
 
   function carteira() {
@@ -297,6 +384,16 @@ export function iniciarAluno(user, opcoes = {}) {
       if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; desenhar(); return; }
       if (b.id === 'abrir-carteira') { st.naCarteira = true; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
       if (b.id === 'voltar-carteira') { st.naCarteira = false; st.aviso = ''; desenhar(); return; }
+      if (b.id === 'abrir-guilda') { st.naGuilda = true; st.montando = null; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
+      if (b.id === 'voltar-guilda') { st.naGuilda = false; st.montando = null; st.aviso = ''; desenhar(); return; }
+      if (ver) return;
+      if (b.dataset.grupo) { await acaoGrupo(b); return; }
+      if (b.dataset.escudo) {
+        st.rascunho = { nome: '', forma: 'classico', cor1: '#3b5bdb', cor2: '#e0a800', simbolo: '⭐', ...(st.rascunho ?? {}) };
+        st.rascunho.nome = document.getElementById('gd-nome')?.value ?? st.rascunho.nome;
+        st.rascunho[b.dataset.escudo] = b.dataset.v;
+        desenhar(); return;
+      }
       if (ver) return;
       if (b.id === 'concluir') { await alternarConcluida(st.faseAberta); return; }
       if (b.id === 'ok-conquista') { conquistasNovas(alvo, carteira().conquistas).marcar(); desenhar(); return; }
@@ -323,6 +420,13 @@ export function iniciarAluno(user, opcoes = {}) {
 
   app.onchange = async (e) => {
     if (ver) return;
+    const esc2 = e.target.closest('input[data-escolha]');
+    if (esc2 && st.montando) {
+      const u = esc2.dataset.escolha;
+      st.montando.sel = esc2.checked ? [...st.montando.sel, u] : st.montando.sel.filter((x) => x !== u);
+      desenhar();
+      return;
+    }
     const r = e.target.closest('textarea[data-resp]');
     if (r) {
       try { await marcarResposta(st.faseAberta, r.dataset.resp, r.dataset.campo, r.value.trim()); aviso(''); }
@@ -336,6 +440,7 @@ export function iniciarAluno(user, opcoes = {}) {
   };
 
   app.oninput = (e) => {
+    if (e.target.id === 'gd-nome') { st.rascunho = { forma: 'classico', cor1: '#3b5bdb', cor2: '#e0a800', simbolo: '⭐', ...(st.rascunho ?? {}), nome: e.target.value }; return; }
     if (e.target.id === 'codigo') e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   };
 

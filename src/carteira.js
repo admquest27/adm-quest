@@ -49,7 +49,7 @@ export function htmlCarteira({ c, eco, compras, avatar, mundoAtual, ver, aviso }
   };
   const loja = Object.keys(TIPOS).map((t) => {
     const lista = itens.filter((i) => i.tipo === t);
-    return lista.length ? `<h3>${TIPOS[t]}</h3><ul class="loja">${lista.map(cartao).join('')}</ul>` : '';
+    return lista.length ? `<details class="loja-sec" ${t === 'titulo' ? 'open' : ''}><summary>${TIPOS[t]} (${lista.length})</summary><ul class="loja">${lista.map(cartao).join('')}</ul></details>` : '';
   }).join('');
 
   const textos = { ...CONQUISTAS, ...(eco?.conquistas ?? {}) };
