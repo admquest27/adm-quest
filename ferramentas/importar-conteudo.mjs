@@ -43,6 +43,10 @@ for (const f of json.fases) {
   console.log(`  ${f.id.padEnd(9)} ${f.nome.padEnd(26)} ${estado.padEnd(8)} etapas: ${antigas} -> ${novas}`);
 }
 
+const doBanco = await db.collection('fases').where('mundo', '==', mundoId).get();
+const sobras = doBanco.docs.map((d) => d.id).filter((id) => !ids.has(id));
+if (sobras.length) console.log(`\n  Fases no banco que não estão no arquivo (serão removidas, sem tocar no progresso dos alunos): ${sobras.join(', ')}`);
+
 if (flag !== '--confirmar') {
   console.log('\nNada foi gravado. Para gravar, rode de novo com --confirmar no final.');
   process.exit(0);
@@ -59,5 +63,6 @@ for (const f of json.fases) {
   lote.set(db.collection('fases').doc(f.id), { ...parteAluno(f, mundoId), atualizadoEm: FieldValue.serverTimestamp() });
   lote.set(db.collection('fasesProfessor').doc(f.id), { mundo: mundoId, professor: f.professor ?? {}, atualizadoEm: FieldValue.serverTimestamp() });
 }
+for (const id of sobras) { lote.delete(db.collection('fases').doc(id)); lote.delete(db.collection('fasesProfessor').doc(id)); }
 await lote.commit();
 console.log(`\nGravado: ${json.fases.length} fase(s).`);

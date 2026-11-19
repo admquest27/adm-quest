@@ -3,7 +3,7 @@
 import { doc, setDoc, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc, hoje } from './ui.js';
-import { ESTADO_ROTULO, MUNDO } from './fases.js';
+import { ESTADO_ROTULO, MUNDO, etapasDe } from './fases.js';
 import {
   addDias, diaSemana, segundaDa, diasEntre, formatar, bloqueadosDe, limiteDoBimestre, gerarAgenda, diferencas, bimestreDe, dataDe, montarDias,
 } from './agenda.js';
@@ -98,16 +98,34 @@ function roteiroDoItem(p, st, it) {
   else if (it.tipo === 'antes') { const f = faseDe(p, it.faseId); titulo = `Preparação para a ${f.codigo} ${f.nome}`; blocos = prof(f.id).antes ?? PADRAO.antes; editavel = 'antes'; }
   else if (it.tipo === 'folga') { const f = faseDe(p, it.faseId); titulo = `Semana coringa antes da ${f.codigo} ${f.nome}`; blocos = prof(f.id).folga ?? PADRAO.folga; editavel = 'folga'; }
   else { titulo = it.parte === 'seg' ? 'Semana de recuperação · segunda' : 'Fechamento do mundo · terça'; blocos = it.parte === 'seg' ? PADRAO.recup_seg : PADRAO.recup_ter; }
-  // o bloco do Excel recebe o desafio do dia
-  if (it.tipo === 'cons') {
-    const x = p.excel.find((e) => e.anexaA === it.faseId);
-    if (x) {
-      const ess = x.etapas?.find((e) => e.id === 'e1')?.texto ?? '';
-      const bon = x.etapas?.find((e) => e.id === 'e2')?.texto ?? '';
-      blocos = blocos.map((b) => (b.excel ? { ...b, titulo: `${x.codigo}: ${x.nome}`, detalhe: `${b.detalhe}\n${ess}\n${bon}`, excelFase: x.id } : b));
-    }
-  }
+  if (it.tipo === 'cons') blocos = comExcel(faseDe(p, it.faseId), blocos);
   return { titulo, blocos, editavel, faseId: it.faseId };
+}
+
+// O bloco de Excel do roteiro de segunda recebe o desafio que está nas etapas de segunda da fase.
+export function comExcel(f, blocos) {
+  const ex = etapasDe(f).filter((e) => e.excel);
+  if (!ex.length) return blocos;
+  return blocos.map((b) => (b.excel ? { ...b, titulo: 'Excel do dia', detalhe: `${b.detalhe}\n${ex.map((e) => e.texto).join('\n')}`, segDe: f.id } : b));
+}
+
+// Roteiro de um dia de uma fase (a mesma fonte para a Agenda e para o painel da fase).
+export function roteiroDaFase(st, f, tipo) {
+  const blocos = st.profTodas?.[f.id]?.cronograma?.[tipo] ?? PADRAO[tipo] ?? PADRAO.din;
+  return tipo === 'cons' ? comExcel(f, blocos) : blocos;
+}
+
+// Lista de blocos com horário acumulado.
+export function htmlBlocos(blocos, turma) {
+  let relogio = 0;
+  const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  return `<ol class="blocos">${blocos.map((b) => {
+    const ini = relogio; relogio += Number(b.min) || 0;
+    const aberta = b.segDe && turma?.liberacoes?.[b.segDe]?.seg === true;
+    return `<li class="bloco ${b.excel ? 'excel' : ''}"><span class="bloco-t">${hhmm(ini)}</span><div><strong>${esc(b.titulo)}</strong> <span class="chip">${b.min} min</span>
+      <p>${esc(b.detalhe ?? '').replace(/\n/g, '<br>')}</p>
+      ${b.segDe ? `<button class="mini ${aberta ? 'ok' : ''}" data-acao="cal-seg" data-id="${esc(b.segDe)}">${aberta ? 'Parte de segunda liberada ✓' : 'Liberar a parte de segunda para a turma'}</button>` : ''}</div></li>`;
+  }).join('')}</ol>`;
 }
 
 function chipsDoDia(p, st, d, max = 3) {
@@ -118,8 +136,11 @@ function chipsDoDia(p, st, d, max = 3) {
   for (const it of dia.itens) {
     const f = it.faseId ? faseDe(p, it.faseId) : null;
     if (it.tipo === 'din') { chips.push(`<span class="cc din ${it.estouro ? 'estouro' : ''}">${it.fixa ? '📌 ' : ''}${esc(f.codigo)} ${esc(f.nome)}</span>`); linhas.push(`Dinâmica: ${f.codigo} ${f.nome}`); }
-    else if (it.tipo === 'cons') { chips.push(`<span class="cc cons ${it.estouro ? 'estouro' : ''}">${it.fixa ? '📌 ' : ''}Consolida ${esc(f.codigo)}</span>`); linhas.push(`Consolidação: ${f.codigo}`); }
-    else if (it.tipo === 'excel') { chips.push(`<span class="cc excel">${esc(f.codigo)}</span>`); linhas.push(`Excel: ${f.nome}`); }
+    else if (it.tipo === 'cons') {
+      const temExcel = etapasDe(f).some((e) => e.excel);
+      chips.push(`<span class="cc cons ${it.estouro ? 'estouro' : ''}">${it.fixa ? '📌 ' : ''}${esc(f.codigo)} laboratório${temExcel ? ' 💻' : ''}</span>`);
+      linhas.push(`Segunda da ${f.codigo}: conceito, caderno${temExcel ? ' e Excel' : ''}`);
+    }
     else if (it.tipo === 'antes') { chips.push('<span class="cc prep">Preparação</span>'); linhas.push('Preparação'); }
     else if (it.tipo === 'folga') { chips.push('<span class="cc folga">Coringa</span>'); linhas.push('Semana coringa'); }
     else { chips.push(`<span class="cc recup">${it.parte === 'seg' ? 'Recuperação' : 'Fecha o mundo'}</span>`); linhas.push(it.parte === 'seg' ? 'Recuperação' : 'Fechamento do mundo'); }
@@ -199,7 +220,7 @@ function grade(p, st) {
       <button class="mini" data-acao="cal-mes" data-d="1" ${prox ? '' : 'disabled'} aria-label="Próximo mês">›</button>
       <button class="mini" data-acao="cal-mes" data-d="0">Hoje</button></div>
     <div class="cal" style="--cols:${cols.length}"><div class="cal-cab"><span></span>${cols.map((c) => `<span>${DIAS_LONGO[c]}</span>`).join('')}</div>${semanas.join('')}</div>
-    <p class="cal-legenda"><span class="cc din">dinâmica</span><span class="cc cons">consolidação</span><span class="cc excel">Excel</span><span class="cc prep">preparação</span><span class="cc folga">coringa</span><span class="cc recup">recuperação</span><span class="cc ev">seu evento</span></p>
+    <p class="cal-legenda"><span class="cc din">dinâmica</span><span class="cc cons">laboratório (💻 com Excel)</span><span class="cc prep">preparação</span><span class="cc folga">coringa</span><span class="cc recup">recuperação</span><span class="cc ev">seu evento</span></p>
     <p class="nota">Passe o mouse num dia para ver o resumo. Toque ou clique para ver o roteiro da aula.</p>`;
 }
 
@@ -320,20 +341,11 @@ function abrirDia(st, dlg, d, ctx) {
   const itens = dia?.itens ?? [];
   const estados = st.turmas.find((t) => t.id === st.turma)?.estadoFases ?? {};
   const roteiros = itens.map((it) => ({ it, r: roteiroDoItem(p, st, it) })).filter((x) => x.r);
-  const resumos = itens.filter((it) => it.tipo === 'excel').map((it) => faseDe(p, it.faseId));
-  let relogio = 0;
-  const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  const turmaDoc = st.turmas.find((t) => t.id === st.turma);
   const corpo = roteiros.length ? roteiros.map(({ it, r }) => {
-    relogio = 0;
     const total = soma(r.blocos);
     const f = r.faseId ? faseDe(p, r.faseId) : null;
-    const lista = r.blocos.map((b) => {
-      const ini = relogio; relogio += Number(b.min) || 0;
-      const x = b.excelFase ? faseDe(p, b.excelFase) : null;
-      return `<li class="bloco ${b.excel ? 'excel' : ''}"><span class="bloco-t">${hhmm(ini)}</span><div><strong>${esc(b.titulo)}</strong> <span class="chip">${b.min} min</span>
-        <p>${esc(b.detalhe ?? '').replace(/\n/g, '<br>')}</p>
-        ${x ? `<button class="mini ${(estados[x.id] ?? 'trancada') === 'aberta' ? 'ok' : ''}" data-acao="cal-excel" data-id="${esc(x.id)}">${(estados[x.id] ?? 'trancada') === 'aberta' ? 'Excel aberto ✓' : 'Abrir o Excel para a turma'}</button>` : ''}</div></li>`;
-    }).join('');
+    const lista = htmlBlocos(r.blocos, turmaDoc);
     const aberta = f && (estados[f.id] ?? 'trancada') === 'aberta';
     return `<section class="dia-sec"><h3>${esc(r.titulo)}</h3>
       <p class="nota">${total} min no roteiro${total !== p.minutosDia ? ` · a sua aula tem ${p.minutosDia} min (${total > p.minutosDia ? 'passa' : 'sobra'} ${Math.abs(total - p.minutosDia)} min)` : ' · cabe na sua aula'}</p>
@@ -342,12 +354,12 @@ function abrirDia(st, dlg, d, ctx) {
         ${f && ['din', 'cons'].includes(it.tipo) ? `<button class="mini" data-acao="cal-fase" data-id="${esc(f.id)}">Mover ou fixar a data</button>` : ''}
         ${f ? `<button class="mini" data-acao="cal-roteiro" data-id="${esc(f.id)}" data-k="${r.editavel}">Editar o roteiro</button>` : ''}
         ${f && it.tipo !== 'antes' && it.tipo !== 'folga' ? `<button class="mini" data-acao="cal-ver-fase" data-id="${esc(f.id)}">Ver a fase</button>` : ''}</div>
-      <ol class="blocos">${lista}</ol></section>`;
+      ${lista}</section>`;
   }).join('') : `<section class="dia-sec"><h3>${dia?.semAula ? 'Sem aula' : 'Dia livre'}</h3><p>${dia?.semAula ? esc(dia.semAula) : 'Nenhuma fase planejada para este dia. Use como quiser: revisão, atividade que precisou de mais tempo ou um evento.'}</p></section>`;
   const eventos = (dia?.eventos ?? []).map((e) => `<li class="aluno" data-acao="cal-evento" data-id="${esc(e.id)}"><span class="nome">${esc(e.titulo)}</span><span class="chip ${e.bloqueia === 'dia' ? 'm-NA' : ''}">${e.bloqueia === 'dia' ? 'sem aula' : TIPOS[e.tipo] ?? 'lembrete'}</span></li>`).join('');
   dlg.className = 'folha';
   dlg.innerHTML = `<div class="form">
-    <div class="folha-cab"><div><h2>${DIAS_LONGO[diaSemana(d)]}, ${formatar(d, false)}</h2><p class="nota">${d === hoje() ? 'Hoje' : d < hoje() ? 'Já passou' : `Faltam ${diasEntre(hoje(), d)} dia(s)`}${resumos.length ? ` · Excel: ${esc(resumos.map((x) => x.nome).join(', '))}` : ''}</p></div>
+    <div class="folha-cab"><div><h2>${DIAS_LONGO[diaSemana(d)]}, ${formatar(d, false)}</h2><p class="nota">${d === hoje() ? 'Hoje' : d < hoje() ? 'Já passou' : `Faltam ${diasEntre(hoje(), d)} dia(s)`}</p></div>
       <button class="mini" data-acao="cal-fechar" aria-label="Fechar">✕</button></div>
     ${corpo}
     ${eventos ? `<h3>Eventos do dia</h3><ul class="lista">${eventos}</ul>` : ''}
@@ -457,8 +469,8 @@ function dialogoFase(st, dlg, faseId) {
 
 // editor do roteiro de um dia de uma fase
 function dialogoRoteiro(st, dlg, faseId, tipo) {
-  const p = planejar(st);
-  const f = faseDe(p, faseId);
+  const p = { minutosDia: st.plano?.minutosDia ?? 100 };
+  const f = st.fases.find((x) => x.id === faseId);
   if (!f) return;
   const atual = st.profTodas?.[faseId]?.cronograma?.[tipo] ?? PADRAO[tipo] ?? PADRAO.din;
   const blocos = atual.map((b) => ({ ...b }));
@@ -552,9 +564,7 @@ export async function tratarAgenda(acao, b, ctx) {
     case 'cal-abrir':
       if (confirm('Abrir esta fase para a turma agora?')) await mudarEstado(b.dataset.id, 'aberta');
       return true;
-    case 'cal-excel':
-      if (confirm('Abrir o Excel para a turma agora?')) await mudarEstado(b.dataset.id, 'aberta');
-      return true;
+    case 'cal-seg': await ctx.alternarSegunda(b.dataset.id); return true;
     case 'cal-confirmar': {
       const p = planejar(st);
       const mapa = Object.fromEntries(p.ag.itens.filter((i) => i.din).map((i) => [i.faseId, { din: i.din, cons: i.cons ?? null }]));

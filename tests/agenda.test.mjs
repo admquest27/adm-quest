@@ -113,13 +113,13 @@ test('bimestre de uma data, inclusive nas férias', () => {
   assert.equal(bimestreDe(cal, '2026-11-18').id, 1); // antes do ano: o primeiro
 });
 
-test('montarDias: consolidação com Excel, preparação, coringa, recuperação e dias sem aula', () => {
+test('montarDias: consolidação, preparação, coringa, recuperação e dias sem aula', () => {
   const bloq = bloqueadosDe(cal, '1A');
   const fasesX = [...fases, { id: 'x1', tipo: 'excel', anexaA: 'f1' }];
   const ag = gerarAgenda({ fases, bimestre: cal.bimestres[0], bloqueados: bloq });
   const dias = montarDias({ ag, fases: fasesX, bimestre: cal.bimestres[0], bloqueados: bloq, eventos: cal.eventos });
   const tipos = (d) => (dias.get(d)?.itens ?? []).map((i) => `${i.tipo}:${i.faseId ?? i.parte}`);
-  assert.deepEqual(tipos('2027-02-15'), ['cons:f1', 'excel:x1']);
+  assert.deepEqual(tipos('2027-02-15'), ['cons:f1']);
   assert.deepEqual(tipos('2027-02-01'), ['antes:f1']);
   assert.deepEqual(tipos('2027-03-29'), ['antes:f7']);
   assert.deepEqual(tipos('2027-03-23'), ['folga:f7']);

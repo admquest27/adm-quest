@@ -114,15 +114,12 @@ export function montarDias({ ag, fases, bimestre, bloqueados, eventos, diaDin = 
     if (!dias.has(d)) dias.set(d, { data: d, itens: [], semAula: bloqueados.get(d) ?? null, eventos: [] });
     return dias.get(d);
   };
-  const excelDe = (faseId) => fases.find((f) => f.tipo === 'excel' && f.anexaA === faseId);
   for (const d of bloqueados.keys()) if (d >= bimestre.inicio && d <= bimestre.fim) dia(d);
 
   for (const i of ag.itens) {
     if (i.din) dia(i.din).itens.push({ tipo: 'din', faseId: i.faseId, fixa: i.fixaDin, estouro: i.estouro });
     if (i.cons) {
       dia(i.cons).itens.push({ tipo: 'cons', faseId: i.faseId, fixa: i.fixaCons, estouro: i.consEstouro });
-      const x = excelDe(i.faseId);
-      if (x) dia(i.cons).itens.push({ tipo: 'excel', faseId: x.id, deFase: i.faseId });
     }
   }
   for (const f of ag.folgas) dia(f.data).itens.push({ tipo: 'folga', faseId: f.faseId });

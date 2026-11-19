@@ -483,3 +483,23 @@ dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
   .cc { font-size: 0.82rem; }
 }
 .chip { white-space: nowrap; }
+
+/* ---------- cartão da fase: semana em duas partes ---------- */
+.missao { font-size: 1.05rem; line-height: 1.55; margin: 12px 0; padding: 12px 14px; border-left: 4px solid var(--destaque); background: var(--campo); border-radius: 0 12px 12px 0; }
+.progresso { height: 10px; margin: 14px 0 4px; background: var(--borda); border-radius: 6px; overflow: hidden; }
+.progresso span { display: block; height: 100%; background: var(--ok); border-radius: 6px; transition: width 0.3s; }
+.legenda-como { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 0.85rem; color: var(--suave); margin: 6px 0 4px; }
+.parte-dia { margin: 16px 0 0; }
+.parte-dia h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 1.05rem; padding-bottom: 6px; border-bottom: 2px solid var(--borda); }
+.trava-dia { padding: 12px 14px; border: 2px dashed var(--borda); border-radius: 12px; color: var(--suave); }
+.etapas { counter-reset: none; }
+.etapa::before { content: attr(data-n); }
+.etapa .txt { font-size: 1rem; font-weight: 500; }
+.como { display: inline-block; width: 1.5em; text-align: center; }
+.chip.bonus { border-color: #7a42c8; color: #7a42c8; font-size: 0.75rem; }
+.etapa.opcional { border-style: dashed; border-color: #7a42c8; }
+.etapa.opcional::before { background: #7a42c8; }
+.etapa .check.feito { display: inline-flex; min-height: 44px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--borda); background: var(--cartao); }
+.etapa.feita .txt { color: var(--suave); }
+.etapa.feita .check.feito { border-color: var(--ok); color: var(--ok); }
+.roteiro h4 { margin: 12px 0 4px; }

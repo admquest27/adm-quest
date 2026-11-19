@@ -108,3 +108,21 @@ export function parteAluno(f, mundo) {
     anexaA: f.anexaA ?? '',
   };
 }
+
+// Como a etapa é feita: ícone fixo, o mesmo em todo o jogo.
+export const COMO = {
+  grupo: { icone: '👥', rotulo: 'Em grupo' },
+  sozinho: { icone: '✍️', rotulo: 'Sozinho' },
+  caderno: { icone: '📓', rotulo: 'No caderno' },
+  jogo: { icone: '📱', rotulo: 'No jogo' },
+  lab: { icone: '💻', rotulo: 'No computador' },
+};
+
+export const DIAS_FASE = { ter: 'Terça · na sala', seg: 'Segunda · no laboratório' };
+export const diaDe = (e) => (e.dia === 'seg' ? 'seg' : 'ter');
+
+// A parte de segunda abre quando o professor libera; etapas travadas, quando ele libera cada uma.
+export function etapaLiberada(turma, faseId, e) {
+  if (diaDe(e) === 'seg' && turma?.liberacoes?.[faseId]?.seg !== true) return false;
+  return liberado(turma, faseId, e, 'travada');
+}

@@ -7,12 +7,12 @@ import { app, tela, esc, hoje, guardar, ler } from './ui.js';
 import { imgAvatar } from './avatar.js';
 import {
   MUNDO, ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno,
-  etapasDe, normMateriais, liberado,
+  etapasDe, normMateriais, liberado, COMO,
 } from './fases.js';
 import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } from './registros.js';
 import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
-import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, ANO } from './calendario.js';
+import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, ANO } from './calendario.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -248,18 +248,30 @@ export function iniciarProfessor(user, opcoes = {}) {
     const est = estadoDe(f.id);
     const r = resumoFase(f);
     const pct = r.presentes ? Math.round((100 * r.concluidas) / r.presentes) : 0;
-    const roteiro = st.profFase?.professor?.paraVoce ?? [];
     const turmaDoc = turmaAtual();
 
+    // o que você libera durante a aula: a parte de segunda inteira, etapas travadas e materiais
+    const temSeg = etapasDe(f).some((e) => e.dia === 'seg');
     const travaveis = [
-      ...etapasDe(f).map((it, i) => ({ item: it, rotulo: `Etapa ${i + 1}: ${it.texto.slice(0, 60)}${it.texto.length > 60 ? '…' : ''}`, chave: 'travada' })),
-      ...normMateriais(f).map((m) => ({ item: m, rotulo: `Material: ${m.titulo || m.url}`, chave: 'travado' })),
-    ].filter((x) => x.item[x.chave] === true);
+      ...(temSeg ? [{ id: 'seg', rotulo: 'Parte de segunda (laboratório)', lib: turmaDoc?.liberacoes?.[f.id]?.seg === true }] : []),
+      ...etapasDe(f).map((it, i) => ({ item: it, rotulo: `Etapa ${i + 1}: ${it.texto.slice(0, 60)}${it.texto.length > 60 ? '…' : ''}`, chave: 'travada' }))
+        .filter((x) => x.item.travada === true).map((x) => ({ id: x.item.id, rotulo: x.rotulo, lib: liberado(turmaDoc, f.id, x.item, 'travada') })),
+      ...normMateriais(f).filter((m) => m.travado === true).map((m) => ({ id: m.id, rotulo: `Material: ${m.titulo || m.url}`, lib: liberado(turmaDoc, f.id, m, 'travado') })),
+    ];
     const htmlLiberar = travaveis.length ? `<h2>Liberar durante a aula</h2>
-      <ul class="lista">${travaveis.map((x) => {
-        const lib = liberado(turmaDoc, f.id, x.item, x.chave);
-        return `<li class="aluno"><span class="nome">${esc(x.rotulo)}</span><button class="mini ${lib ? 'ok' : ''}" data-acao="liberar" data-item="${esc(x.item.id)}">${lib ? 'Liberada ✓ (tocar para travar)' : 'Liberar para a turma'}</button></li>`;
-      }).join('')}</ul>` : '';
+      <ul class="lista">${travaveis.map((x) => `<li class="aluno"><span class="nome">${esc(x.rotulo)}</span><button class="mini ${x.lib ? 'ok' : ''}" data-acao="liberar" data-item="${esc(x.id)}">${x.lib ? 'Liberada ✓ (tocar para travar)' : 'Liberar para a turma'}</button></li>`).join('')}</ul>` : '';
+
+    // um roteiro só: o mesmo da Agenda
+    const roteiroDia = (tipo, titulo) => `<details class="roteiro"><summary>${titulo}</summary>
+      ${htmlBlocos(roteiroDaFase(st, f, tipo), turmaDoc)}
+      <button class="mini" data-acao="cal-roteiro" data-id="${esc(f.id)}" data-k="${tipo}">Editar este roteiro</button></details>`;
+    const prof = st.profFase?.professor ?? {};
+    const material = Object.entries(prof).filter(([k]) => !['cronograma'].includes(k)).map(([k, v]) => {
+      const nome = { paraVoce: 'Notas', cartas: 'Cartas de acontecimento', dossies: 'Dossiês', cartasFuncoes: 'Cartas de funções', cartasCrise: 'Cartas de crise', baus: 'Baús e enigmas' }[k] ?? k;
+      const item = (x) => (typeof x === 'string' ? esc(x) : Object.entries(x).map(([kk, vv]) => `<strong>${esc(kk)}:</strong> ${esc(vv)}`).join(' · '));
+      const lista = Array.isArray(v) ? v.map((x) => `<li>${item(x)}</li>`).join('') : typeof v === 'object' ? Object.entries(v).map(([kk, vv]) => `<li><strong>${esc(kk)}:</strong> ${esc(vv)}</li>`).join('') : `<li>${esc(v)}</li>`;
+      return `<h4>${esc(nome)}</h4><ul>${lista}</ul>`;
+    }).join('');
 
     const campos = temCampos(f);
     const linhas = ativosDaTurma().map((a) => {
@@ -296,9 +308,8 @@ export function iniciarProfessor(user, opcoes = {}) {
         <button class="mini" data-acao="editar-fase" data-id="${esc(f.id)}">Editar fase</button>
         ${campos ? `<button class="mini" data-acao="respostas-turma" data-id="${esc(f.id)}">Respostas da turma</button>` : ''}
       </div>
-      <details class="roteiro"><summary>Roteiro da aula (só você vê)</summary>
-        ${roteiro.length ? `<ul>${roteiro.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : '<p class="nota">Sem roteiro. Escreva um em "Editar fase".</p>'}
-      </details>
+      ${f.tipo === 'chefao' ? roteiroDia('din', 'Roteiro do dia do castelo') : `${roteiroDia('din', 'Roteiro da terça (dinâmica, na sala)')}${roteiroDia('cons', 'Roteiro da segunda (laboratório)')}`}
+      ${material ? `<details class="roteiro"><summary>Material do professor (só você vê)</summary>${material}</details>` : ''}
       ${htmlLiberar}
       <p class="resumo"><strong>${r.concluidas}</strong> de <strong>${r.presentes}</strong> presentes concluíram (${pct}%)${pct >= 80 ? ' · meta de 80% atingida' : ''}<br>
         <span class="nota">${r.validadas} validada(s) · ${r.faltas} faltou · ${r.total} aluno(s) ativo(s)</span></p>
@@ -390,8 +401,8 @@ export function iniciarProfessor(user, opcoes = {}) {
     await setDoc(refAval(uid), { ...baseAval(uid), faltou: !atual }, { merge: true });
   }
 
-  async function alternarLiberacaoItem(itemId) {
-    const f = st.fases.find((x) => x.id === st.faseSel);
+  async function alternarLiberacaoItem(itemId, faseId) {
+    const f = st.fases.find((x) => x.id === (faseId ?? st.faseSel));
     const atual = turmaAtual()?.liberacoes?.[f.id]?.[itemId] === true;
     await updateDoc(doc(db, 'turmas', st.turma), { [`liberacoes.${f.id}.${itemId}`]: !atual });
   }
@@ -410,7 +421,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     const acao = b.dataset.acao;
     try {
       if (acao.startsWith('cal-')) {
-        await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, irParaFase: (id) => { st.aba = 'fases'; st.faseSel = id; guardar('aba', 'fases'); ligarProf(); desenhar(); } });
+        await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, alternarSegunda: (id) => alternarLiberacaoItem('seg', id), irParaFase: (id) => { st.aba = 'fases'; st.faseSel = id; guardar('aba', 'fases'); ligarProf(); desenhar(); } });
         return;
       }
       if (acao === 'exportar-painel') { abrirExportacao(st, dlg); return; }
@@ -693,6 +704,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       missao: f.missao ?? '',
       etapas: etapasDe(f).map((e) => ({
         id: e.id, texto: e.texto ?? '', saibaMais: e.saibaMais ?? '', links: deLinks(e.links), travada: e.travada === true, semMarcar: e.semMarcar === true,
+        dia: e.dia === 'seg' ? 'seg' : 'ter', como: e.como ?? '', opcional: e.opcional === true, excel: e.excel === true,
         campos: e.campos ?? [], camposTxt: (e.campos ?? []).map((c) => (c.dica ? `${c.rotulo} | ${c.dica}` : c.rotulo)).join('\n'),
       })),
       materiais: normMateriais(f).map((m) => ({ id: m.id, titulo: m.titulo ?? '', url: m.url ?? '', descricao: m.descricao ?? '', travado: m.travado === true })),
@@ -717,7 +729,12 @@ export function iniciarProfessor(user, opcoes = {}) {
           <h3>Passo a passo</h3>
           <p class="nota">Cada etapa é uma coisa que o aluno faz e marca como "feito". Pode ter "saiba mais", links, campos para escrever e ficar travada até você liberar.</p>
           ${ed.etapas.map((e, i) => `<fieldset class="card-ed"><legend>Etapa ${i + 1}</legend>
-            <textarea data-sec="etapas" data-i="${i}" data-f="texto" rows="3" placeholder="O que o aluno deve fazer">${esc(e.texto)}</textarea>
+            <div class="linha-btn">
+              <select data-sec="etapas" data-i="${i}" data-f="dia" aria-label="Dia"><option value="ter" ${e.dia === 'ter' ? 'selected' : ''}>Terça · na sala</option><option value="seg" ${e.dia === 'seg' ? 'selected' : ''}>Segunda · no laboratório</option></select>
+              <select data-sec="etapas" data-i="${i}" data-f="como" aria-label="Como"><option value="">Sem ícone</option>${Object.entries(COMO).map(([k, c]) => `<option value="${k}" ${e.como === k ? 'selected' : ''}>${c.icone} ${c.rotulo}</option>`).join('')}</select>
+            </div>
+            <textarea data-sec="etapas" data-i="${i}" data-f="texto" rows="2" placeholder="Comece com um verbo, até 15 palavras">${esc(e.texto)}</textarea>
+            <label class="check"><input type="checkbox" data-sec="etapas" data-i="${i}" data-f="opcional" ${e.opcional ? 'checked' : ''}> Bônus (opcional, não impede concluir)</label>
             <label>Saiba mais (opcional)</label>
             <textarea data-sec="etapas" data-i="${i}" data-f="saibaMais" rows="3">${esc(e.saibaMais)}</textarea>
             <label>Campos para o aluno escrever (um por linha: Rótulo | dica)</label>
@@ -738,8 +755,9 @@ export function iniciarProfessor(user, opcoes = {}) {
             ${botoes('materiais', i, ed.materiais.length)}</fieldset>`).join('')}
           <button type="button" class="mini" data-ed="add" data-sec="materiais">+ Material</button>
 
-          <h3>Roteiro da aula (só você vê)</h3>
-          <textarea id="f-roteiro" rows="6">${esc(ed.roteiro)}</textarea>
+          <h3>Notas do professor (só você vê)</h3>
+          <p class="nota">Lembretes soltos. O roteiro da aula, com os tempos, fica no painel da fase e na Agenda ("Editar este roteiro").</p>
+          <textarea id="f-roteiro" rows="5">${esc(ed.roteiro)}</textarea>
           <p class="nota">Habilidades e critérios mudam pelo arquivo de conteúdo.</p>
           <p class="erro" id="f-msg"></p>
           <div class="linha-btn">
@@ -765,7 +783,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       lerCampos();
       const sec = b.dataset.sec; const i = Number(b.dataset.i); const lista = ed[sec];
       if (b.dataset.ed === 'add') {
-        if (sec === 'etapas') lista.push({ id: proximoId(lista, 'e'), texto: '', saibaMais: '', links: '', travada: false, semMarcar: false, campos: [], camposTxt: '' });
+        if (sec === 'etapas') lista.push({ id: proximoId(lista, 'e'), texto: '', saibaMais: '', links: '', travada: false, semMarcar: false, dia: 'ter', como: '', opcional: false, excel: false, campos: [], camposTxt: '' });
         if (sec === 'materiais') lista.push({ id: proximoId(lista, 'm'), titulo: '', url: '', descricao: '', travado: false });
       } else if (b.dataset.ed === 'remove') {
         if (!confirm('Remover este item?')) return;
@@ -792,6 +810,10 @@ export function iniciarProfessor(user, opcoes = {}) {
         const l = paraLinks(e.links); if (l.length) o.links = l;
         if (e.travada) o.travada = true;
         if (e.semMarcar) o.semMarcar = true;
+        o.dia = e.dia === 'seg' ? 'seg' : 'ter';
+        if (e.como) o.como = e.como;
+        if (e.opcional) o.opcional = true;
+        if (e.excel) o.excel = true;
         return o;
       });
       const materiais = ed.materiais.filter((m) => /^https?:\/\//i.test(m.url.trim())).map((m) => {
