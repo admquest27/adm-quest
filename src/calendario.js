@@ -7,6 +7,7 @@ import { ESTADO_ROTULO, MUNDO, etapasDe } from './fases.js';
 import {
   addDias, diaSemana, segundaDa, diasEntre, formatar, bloqueadosDe, limiteDoBimestre, gerarAgenda, diferencas, bimestreDe, dataDe, montarDias,
 } from './agenda.js';
+import { horarioDoDia, encaixar, resumoEncaixe, hhmm, lerHorario, escreverHorario, tempoUtil } from './horarios.js';
 
 export const ANO = 2027;
 const TIPOS = { senac: 'Evento do Senac', pessoal: 'Pessoal', outro: 'Outro', oficial: 'Calendário oficial' };
@@ -16,52 +17,54 @@ const MESES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'se
 
 // ---------- roteiros padrão (quando a fase ainda não tem o seu) ----------
 const B = (min, titulo, detalhe, extra = {}) => ({ min, titulo, detalhe, ...extra });
+// A chamada (10 min) e o encerramento (5 min) entram sozinhos em todo encontro; os roteiros guardam só o miolo.
+// "quebra": se a aula do dia for dividida (1A na terça), o bloco começa no segundo encontro.
+// "corta": sai primeiro quando o tempo da turma não dá.
 export const PADRAO = {
   din: [
-    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome e dizer o que fazer primeiro.'),
     B(10, 'Abertura da missão', 'Ler a missão em voz alta e combinar o que será feito hoje. Liberar as etapas no jogo conforme avançar.'),
-    B(55, 'Dinâmica', 'Conduzir a dinâmica da fase. Escreva o passo a passo em "Editar roteiro".'),
-    B(15, 'Conversa', 'Perguntas preparadas sobre o que aconteceu na experiência.'),
+    B(22, 'Dinâmica, primeira parte', 'Até um ponto em que a dinâmica pode parar sem perder o fio. Escreva o passo a passo em "Editar o roteiro".'),
+    B(20, 'Dinâmica, segunda parte', 'Retomar de onde parou e chegar ao resultado.', { quebra: true }),
+    B(13, 'Conversa', 'Perguntas preparadas sobre o que aconteceu na experiência. Se não couber, abre a aula de segunda.', { corta: true }),
     B(10, 'Registro no Diário de fases', 'Cada aluno escreve a data, o nome da fase e as três respostas.'),
-    B(5, 'Fechamento', 'Marcar no jogo quem faltou e o que ficou para a segunda.'),
   ],
   cons: [
-    B(5, 'Receber a turma e retomar', 'Retomar em cinco minutos a dinâmica de terça.'),
-    B(10, 'Conferência do caderno', 'Circular conferindo o caderno e conversar com alguns alunos.'),
-    B(30, 'Conceito formal e a empresa de verdade', 'O conceito da fase e como ele aparece numa empresa. Escreva o roteiro em "Editar roteiro".'),
+    B(5, 'Retomar a terça', 'Lembrar em poucas palavras o que aconteceu na dinâmica.'),
+    B(20, 'Conceito formal e a empresa de verdade', 'O conceito da fase e como ele aparece numa empresa. Escreva o roteiro em "Editar o roteiro".'),
     B(10, 'Registro no caderno', 'Glossário e Diário de fases.'),
-    B(30, 'Excel do dia', 'Aquecimento, demonstração e desafio em dois níveis.', { excel: true }),
-    B(10, 'Atualizar o jogo', 'Marcar concluídas, validar, anotar faltas e atitudes.'),
-    B(5, 'Fechamento', 'Combinar a próxima dinâmica.'),
+    B(30, 'Excel do dia', 'Aquecimento, demonstração e desafio. Enquanto a turma faz o desafio, circule conferindo o caderno e atualize o jogo.', { excel: true }),
+    B(20, 'Bônus e caderno em dia', 'Quem terminou faz o bônus; quem está atrasado põe o caderno em dia. No 1A, que tem mais tempo na segunda, dá para fazer aqui a conversa que não coube na terça.', { corta: true }),
   ],
   antes: [
-    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
-    B(85, 'Preparação', 'Dia livre antes da dinâmica: use para preparar a turma. Escreva o roteiro em "Editar roteiro".'),
-    B(10, 'Fechamento', 'Combinar a dinâmica do dia seguinte.'),
+    B(10, 'Retomada', 'Onde a turma está e o que vem na dinâmica de amanhã.'),
+    B(55, 'Preparação', 'Dia livre antes da dinâmica: use para preparar a turma. Escreva o roteiro em "Editar o roteiro".'),
+    B(20, 'Ensaio e ajustes', 'Tempo extra para quem precisa.', { corta: true }),
   ],
   folga: [
-    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
-    B(85, 'Semana coringa', 'Tempo de folga do planejamento: revisão, ensaio, fase bônus ou uma atividade que precisou de mais tempo.'),
-    B(10, 'Fechamento', 'Combinar o que vem a seguir.'),
+    B(10, 'Retomada', 'O que ficou pendente e o que vamos fazer hoje.'),
+    B(22, 'Semana coringa, primeira parte', 'Revisão, ensaio, fase bônus ou uma atividade que precisou de mais tempo.'),
+    B(30, 'Semana coringa, segunda parte', 'Continuação.', { quebra: true }),
+    B(13, 'Dúvidas e ajustes', 'Tempo extra para quem precisa.', { corta: true }),
   ],
   recup_seg: [
-    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
-    B(15, 'Enquete do mundo', 'Três perguntas no jogo sobre como foi o mundo. Antes da semana, converse rapidamente com cada aluno em recuperação.'),
-    B(70, 'Missões Pessoais', 'Todos recebem uma Missão Pessoal igual por fora: quem tem pendência faz a recuperação, os demais fazem uma missão bônus. Ninguém vê a missão do colega.'),
-    B(10, 'Fechamento', 'Registrar o resultado das recuperações.'),
+    B(10, 'Enquete do mundo', 'Três perguntas no jogo sobre como foi o mundo. Antes da semana, converse rapidamente com cada aluno em recuperação.'),
+    B(50, 'Missões Pessoais', 'Todos recebem uma Missão Pessoal igual por fora: quem tem pendência faz a recuperação, os demais fazem uma missão bônus. Ninguém vê a missão do colega.'),
+    B(5, 'Registrar os resultados', 'Marcar no jogo o resultado das recuperações.'),
+    B(20, 'Tempo extra das missões', 'Para quem precisa de mais tempo.', { corta: true }),
   ],
   recup_ter: [
-    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
-    B(20, 'Missões Pessoais', 'Últimas entregas.'),
-    B(30, 'Roleta do Destino', 'Revelação da recompensa do mundo.'),
-    B(25, 'Nome do reino', 'Votação e proclamação do nome da turma, se ainda não foi feito.'),
-    B(15, 'Fechamento do mundo', 'Fechar o mundo e convidar para o próximo. A Carta do Bimestre chega no começo do mundo seguinte.'),
-    B(5, 'Despedida', 'Agradecer e liberar.'),
+    B(32, 'Missões Pessoais, últimas entregas', 'Quem ainda tem missão termina; os demais ajudam a preparar a Roleta.'),
+    B(20, 'Roleta do Destino', 'Revelação da recompensa do mundo.', { quebra: true }),
+    B(10, 'Fechamento do mundo', 'Fechar o mundo e convidar para o próximo. A Carta do Bimestre chega no começo do mundo seguinte.'),
+    B(13, 'Nome do reino', 'Votação e proclamação do nome da turma, se ainda não foi feito.', { corta: true }),
   ],
   livre: [
-    B(100, 'Dia sem fase planejada', 'Use como quiser: revisão, atividade que precisou de mais tempo ou um evento.'),
+    B(75, 'Dia sem fase planejada', 'Use como quiser: revisão, atividade que precisou de mais tempo ou um evento.'),
   ],
 };
+const NOME_ROTEIRO = { din: 'dinâmica', cons: 'segunda no laboratório', antes: 'preparação', folga: 'semana coringa', recup_seg: 'recuperação (segunda)', recup_ter: 'fechamento do mundo (terça)' };
+// Os roteiros da semana de recuperação e fechamento são do mundo, não de uma fase.
+export const idFimDoMundo = (mundo) => `${mundo}fim`;
 
 const soma = (blocos) => blocos.reduce((s, b) => s + (Number(b.min) || 0), 0);
 
@@ -97,10 +100,23 @@ function roteiroDoItem(p, st, it) {
   else if (it.tipo === 'excel') { return null; } // o Excel entra dentro do roteiro da consolidação
   else if (it.tipo === 'antes') { const f = faseDe(p, it.faseId); titulo = `Preparação para a ${f.codigo} ${f.nome}`; blocos = prof(f.id).antes ?? PADRAO.antes; editavel = 'antes'; }
   else if (it.tipo === 'folga') { const f = faseDe(p, it.faseId); titulo = `Semana coringa antes da ${f.codigo} ${f.nome}`; blocos = prof(f.id).folga ?? PADRAO.folga; editavel = 'folga'; }
-  else { titulo = it.parte === 'seg' ? 'Semana de recuperação · segunda' : 'Fechamento do mundo · terça'; blocos = it.parte === 'seg' ? PADRAO.recup_seg : PADRAO.recup_ter; }
+  else {
+    const k = it.parte === 'seg' ? 'recup_seg' : 'recup_ter';
+    titulo = it.parte === 'seg' ? 'Semana de recuperação · segunda' : 'Fechamento do mundo · terça';
+    blocos = prof(idFimDoMundo(MUNDO))[k] ?? PADRAO[k];
+    return { titulo, blocos, editavel: k, faseId: idFimDoMundo(MUNDO), doMundo: true };
+  }
   if (it.tipo === 'cons') blocos = comExcel(faseDe(p, it.faseId), blocos);
   return { titulo, blocos, editavel, faseId: it.faseId };
 }
+
+// Horário real da turma no dia da semana de um tipo de roteiro.
+export function diaDoTipo(plano, tipo) {
+  const din = plano?.diaDin ?? 2;
+  const cons = plano?.diaCons ?? 1;
+  return ['din', 'folga', 'recup_ter'].includes(tipo) ? din : cons;
+}
+export const horarioDoTipo = (plano, tipo) => horarioDoDia(plano, diaDoTipo(plano, tipo));
 
 // O bloco de Excel do roteiro de segunda recebe o desafio que está nas etapas de segunda da fase.
 export function comExcel(f, blocos) {
@@ -115,17 +131,62 @@ export function roteiroDaFase(st, f, tipo) {
   return tipo === 'cons' ? comExcel(f, blocos) : blocos;
 }
 
-// Lista de blocos com horário acumulado.
-export function htmlBlocos(blocos, turma) {
-  let relogio = 0;
-  const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-  return `<ol class="blocos">${blocos.map((b) => {
-    const ini = relogio; relogio += Number(b.min) || 0;
+// Linha do tempo da aula no horário real da turma: chamada, blocos, intervalos, pausas e encerramento.
+export function htmlBlocos(blocos, turma, horario = horarioDoDia(null, 1)) {
+  const r = encaixar(blocos, horario.encontros);
+  const fixo = (ini, fim, titulo, detalhe) => `<li class="bloco fixo"><span class="bloco-t">${hhmm(ini)}</span><div><strong>${titulo}</strong> <span class="chip">${fim - ini} min</span><p>${detalhe}</p></div></li>`;
+  const pausa = (txt) => `<li class="bloco pausa"><span class="bloco-t"></span><div><span class="nota">${txt}</span></div></li>`;
+  const livre = (a, b) => `<li class="bloco pausa"><span class="bloco-t">${hhmm(a)}</span><div><span class="nota">Tempo livre: ${b - a} min</span></div></li>`;
+  const lacuna = (e, a, b) => {
+    const out = [];
+    let x = a;
+    for (let i = 0; i < e.trechos.length - 1; i++) {
+      const t = e.trechos[i]; const u = e.trechos[i + 1];
+      if (t.fim >= x && t.fim <= b) {
+        if (t.fim > x) out.push(livre(x, t.fim));
+        out.push(pausa(`Intervalo: libera às ${hhmm(t.fim)}, recomeça às ${hhmm(u.ini)}.`));
+        x = u.ini;
+      }
+    }
+    if (b > x) out.push(livre(x, b));
+    return out.join('');
+  };
+  const peca = (p) => {
+    const b = r.blocos[p.bi];
     const aberta = b.segDe && turma?.liberacoes?.[b.segDe]?.seg === true;
-    return `<li class="bloco ${b.excel ? 'excel' : ''}"><span class="bloco-t">${hhmm(ini)}</span><div><strong>${esc(b.titulo)}</strong> <span class="chip">${b.min} min</span>
-      <p>${esc(b.detalhe ?? '').replace(/\n/g, '<br>')}</p>
-      ${b.segDe ? `<button class="mini ${aberta ? 'ok' : ''}" data-acao="cal-seg" data-id="${esc(b.segDe)}">${aberta ? 'Parte de segunda liberada ✓' : 'Liberar a parte de segunda para a turma'}</button>` : ''}</div></li>`;
-  }).join('')}</ol>`;
+    const primeira = p.parte === 0;
+    const tags = `${p.cansado ? ' <span class="chip cansado">turma cansada: algo leve</span>' : ''}${primeira && b.corta ? ' <span class="chip">pode cortar</span>' : ''}`;
+    return `<li class="bloco ${b.excel ? 'excel' : ''} ${p.cansado ? 'cansado' : ''}"><span class="bloco-t">${hhmm(p.ini)}</span><div><strong>${esc(b.titulo)}${primeira ? '' : ' (continua)'}</strong> <span class="chip">${p.fim - p.ini} min</span>${tags}
+      ${primeira ? `<p>${esc(b.detalhe ?? '').replace(/\n/g, '<br>')}</p>` : ''}
+      ${primeira && b.segDe ? `<button class="mini ${aberta ? 'ok' : ''}" data-acao="cal-seg" data-id="${esc(b.segDe)}">${aberta ? 'Parte de segunda liberada ✓' : 'Liberar a parte de segunda para a turma'}</button>` : ''}</div></li>`;
+  };
+  const linhas = [];
+  r.enc.forEach((e, n) => {
+    if (n > 0) linhas.push(pausa(`Pausa: a turma vai para outras aulas e volta às ${hhmm(e.trechos[0].ini)}.`));
+    linhas.push(fixo(e.chamada.ini, e.chamada.fim, 'Chamada e boas-vindas', 'Receber a turma, fazer a chamada e dizer o que fazer primeiro.'));
+    let fim = e.chamada.fim;
+    for (const p of r.pecas.filter((x) => x.k === e.k)) {
+      if (p.ini > fim) linhas.push(lacuna(e, fim, p.ini));
+      linhas.push(peca(p));
+      fim = p.fim;
+    }
+    if (e.encerra.ini > fim) linhas.push(lacuna(e, fim, e.encerra.ini));
+    linhas.push(fixo(e.encerra.ini, e.encerra.fim, 'Encerramento', 'Marcar no jogo quem faltou e combinar a próxima aula.'));
+  });
+  for (const f of r.fora) linhas.push(`<li class="bloco fora"><span class="bloco-t">!</span><div><strong>Não coube: ${esc(f.bloco.titulo)}</strong> <span class="chip m-NA">${f.min} min</span><p>Encurte os blocos ou marque algum como "pode cortar".</p></div></li>`);
+  const cortados = r.cortados.length ? `<p class="nota">Fica de fora nesta turma, por falta de tempo: ${r.cortados.map((b) => esc(b.titulo)).join(', ')}.</p>` : '';
+  return `<ol class="blocos">${linhas.join('')}</ol>${cortados}`;
+}
+
+// Resumo do roteiro para todas as turmas (o roteiro é um só; o tempo de cada turma é diferente).
+export function resumoTurmas(st, blocos, tipo) {
+  const turmas = (st.turmas ?? []).filter((t) => !t.teste || t.id === st.turma);
+  return turmas.map((t) => {
+    const plano = t.id === st.turma ? (st.plano ?? st.planos?.[t.id]) : st.planos?.[t.id];
+    const h = horarioDoTipo(plano, tipo);
+    const { texto, ruim } = resumoEncaixe(blocos, h.encontros);
+    return `<li><strong>${esc(t.nome ?? t.id)}</strong>${h.relativo ? ' <span class="nota">(sem horário definido)</span>' : ''}: <span class="${ruim ? 'erro' : ''}">${esc(texto)}</span></li>`;
+  }).join('');
 }
 
 function chipsDoDia(p, st, d, max = 3) {
@@ -172,6 +233,7 @@ function cartaoHoje(p, st) {
 
 function alertas(p) {
   const partes = [];
+  if (!p.plano.horarios) partes.push('<div class="alerta"><strong>Horário real da turma ainda não definido</strong><p>Defina em "Dias e horários desta turma", no fim da página, para o roteiro mostrar a hora certa de cada bloco, o intervalo e o que cabe.</p></div>');
   const est = p.ag.itens.filter((i) => i.estouro);
   const cEst = p.ag.itens.filter((i) => i.consEstouro && !i.estouro);
   if (est.length) partes.push(`<div class="alerta ruim"><strong>Não cabe no bimestre</strong><p>${est.map((i) => `${esc(faseDe(p, i.faseId).codigo)} ficaria em ${formatar(i.din)}`).join('; ')}. O limite é ${formatar(p.ag.limite)}. Corte uma fase, use uma sobra ou fixe datas.</p></div>`);
@@ -291,11 +353,19 @@ function listaEventos(p) {
 
 function configurar(p) {
   const opcoes = (sel) => [1, 2, 3, 4, 5].map((k) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${DIAS_LONGO[k]}</option>`).join('');
-  return `<details class="mais"><summary>Dias e duração das aulas desta turma</summary>
+  const campo = (dow) => {
+    const h = p.plano.horarios?.[String(dow)];
+    const util = h?.length ? tempoUtil(h) : [];
+    return `<label for="cal-h${dow}">Horário real de ${DIAS_LONGO[dow].toLowerCase()}</label>
+      <textarea id="cal-h${dow}" rows="2" placeholder="Exemplo: 9:40-10:27, 10:55-11:30">${esc(escreverHorario(h))}</textarea>
+      <p class="nota" id="cal-h${dow}-util">${util.length ? `Tempo útil: ${util.join(' + ')} min, já sem a chamada e o encerramento.` : 'Sem horário: o roteiro aparece com o relógio a partir de 00:00.'}</p>`;
+  };
+  return `<details class="mais" ${p.plano.horarios ? '' : 'open'}><summary>Dias e horários desta turma</summary>
     <label for="cal-din">Dia da dinâmica (sala)</label><select id="cal-din">${opcoes(p.diaDin)}</select>
     <label for="cal-cons">Dia da consolidação (laboratório)</label><select id="cal-cons">${opcoes(p.diaCons)}</select>
-    <label for="cal-min">Minutos de aula por dia</label><input id="cal-min" type="number" min="30" max="300" step="5" value="${p.minutosDia}">
-    <button class="mini" data-acao="cal-config">Salvar</button></details>`;
+    <p class="nota">Escreva o horário em que a aula acontece de fato, não o da grade. Uma linha por vez que a turma vem à sala. Se houver intervalo no meio, separe por vírgula: 9:40-10:27, 10:55-11:30. Se a turma cansa antes do fim, acrescente "atenção até 12:55". A chamada (10 min) e o encerramento (5 min) entram sozinhos.</p>
+    ${campo(p.diaCons)}${p.diaDin !== p.diaCons ? campo(p.diaDin) : ''}
+    <button class="mini ok" data-acao="cal-config">Salvar</button></details>`;
 }
 
 export function htmlAgenda(st) {
@@ -342,17 +412,18 @@ function abrirDia(st, dlg, d, ctx) {
   const estados = st.turmas.find((t) => t.id === st.turma)?.estadoFases ?? {};
   const roteiros = itens.map((it) => ({ it, r: roteiroDoItem(p, st, it) })).filter((x) => x.r);
   const turmaDoc = st.turmas.find((t) => t.id === st.turma);
+  const horario = horarioDoDia(p.plano, diaSemana(d));
   const corpo = roteiros.length ? roteiros.map(({ it, r }) => {
     const total = soma(r.blocos);
-    const f = r.faseId ? faseDe(p, r.faseId) : null;
-    const lista = htmlBlocos(r.blocos, turmaDoc);
+    const f = r.faseId && !r.doMundo ? faseDe(p, r.faseId) : null;
+    const lista = htmlBlocos(r.blocos, turmaDoc, horario);
     const aberta = f && (estados[f.id] ?? 'trancada') === 'aberta';
     return `<section class="dia-sec"><h3>${esc(r.titulo)}</h3>
-      <p class="nota">${total} min no roteiro${total !== p.minutosDia ? ` · a sua aula tem ${p.minutosDia} min (${total > p.minutosDia ? 'passa' : 'sobra'} ${Math.abs(total - p.minutosDia)} min)` : ' · cabe na sua aula'}</p>
+      <p class="nota">${total} min no roteiro · ${esc(resumoEncaixe(r.blocos, horario.encontros).texto)}${horario.relativo ? ' · defina o horário real desta turma em "Dias e horários"' : ''}</p>
       <div class="linha-btn">
         ${it.tipo === 'din' && f ? `<button class="mini ${aberta ? 'ok' : ''}" data-acao="cal-abrir" data-id="${esc(f.id)}">${aberta ? 'Fase aberta ✓' : 'Abrir a fase'}</button>` : ''}
         ${f && ['din', 'cons'].includes(it.tipo) ? `<button class="mini" data-acao="cal-fase" data-id="${esc(f.id)}">Mover ou fixar a data</button>` : ''}
-        ${f ? `<button class="mini" data-acao="cal-roteiro" data-id="${esc(f.id)}" data-k="${r.editavel}">Editar o roteiro</button>` : ''}
+        ${r.editavel ? `<button class="mini" data-acao="cal-roteiro" data-id="${esc(r.faseId)}" data-k="${r.editavel}">Editar o roteiro</button>` : ''}
         ${f && it.tipo !== 'antes' && it.tipo !== 'folga' ? `<button class="mini" data-acao="cal-ver-fase" data-id="${esc(f.id)}">Ver a fase</button>` : ''}</div>
       ${lista}</section>`;
   }).join('') : `<section class="dia-sec"><h3>${dia?.semAula ? 'Sem aula' : 'Dia livre'}</h3><p>${dia?.semAula ? esc(dia.semAula) : 'Nenhuma fase planejada para este dia. Use como quiser: revisão, atividade que precisou de mais tempo ou um evento.'}</p></section>`;
@@ -469,24 +540,27 @@ function dialogoFase(st, dlg, faseId) {
 
 // editor do roteiro de um dia de uma fase
 function dialogoRoteiro(st, dlg, faseId, tipo) {
-  const p = { minutosDia: st.plano?.minutosDia ?? 100 };
-  const f = st.fases.find((x) => x.id === faseId);
+  const doMundo = faseId === idFimDoMundo(MUNDO);
+  const f = doMundo ? { codigo: 'Fim do mundo' } : st.fases.find((x) => x.id === faseId);
   if (!f) return;
   const atual = st.profTodas?.[faseId]?.cronograma?.[tipo] ?? PADRAO[tipo] ?? PADRAO.din;
   const blocos = atual.map((b) => ({ ...b }));
-  const nome = { din: 'dinâmica', cons: 'consolidação', antes: 'preparação', folga: 'semana coringa' }[tipo] ?? tipo;
+  const nome = NOME_ROTEIRO[tipo] ?? tipo;
 
   function pintar() {
     dlg.innerHTML = `
       <form class="form editor" id="form-roteiro">
         <h2>Roteiro · ${esc(f.codigo)} (${nome})</h2>
-        <p class="nota">Cada bloco tem um tempo. A soma aparece embaixo, comparada com a duração da sua aula (${p.minutosDia} min).</p>
+        <p class="nota">Escreva só o miolo da aula: a chamada (10 min) e o encerramento (5 min) entram sozinhos. O roteiro é o mesmo para todas as turmas; embaixo aparece como ele cabe no horário real de cada uma.</p>
         ${blocos.map((b, i) => `<fieldset class="card-ed"><legend>Bloco ${i + 1}${b.excel ? ' · Excel do dia' : ''}</legend>
           <div class="linha-btn"><input class="min-campo" type="number" min="1" max="200" data-i="${i}" data-f="min" value="${b.min}" aria-label="Minutos"><input data-i="${i}" data-f="titulo" value="${esc(b.titulo)}" placeholder="Título do bloco" aria-label="Título"></div>
           <textarea data-i="${i}" data-f="detalhe" rows="3" placeholder="O que fazer, o que dizer, perguntas">${esc(b.detalhe ?? '')}</textarea>
+          <label class="check"><input type="checkbox" data-i="${i}" data-f="corta" ${b.corta ? 'checked' : ''}> Pode cortar se faltar tempo</label>
+          ${i > 0 ? `<label class="check"><input type="checkbox" data-i="${i}" data-f="quebra" ${b.quebra ? 'checked' : ''}> Se a aula do dia for dividida, começa no segundo encontro</label>` : ''}
           <div class="linha-btn"><button type="button" class="mini" data-r="sobe" data-i="${i}" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" class="mini" data-r="desce" data-i="${i}" ${i === blocos.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="mini ruim" data-r="remove" data-i="${i}">Remover</button></div></fieldset>`).join('')}
         <button type="button" class="mini" data-r="add">+ Bloco</button>
         <p class="nota" id="r-total"></p>
+        <ul class="nota" id="r-turmas"></ul>
         <p class="erro" id="r-msg"></p>
         <div class="linha-btn"><button class="botao" type="submit">Salvar roteiro</button><button class="botao secundario" type="button" id="r-cancelar">Cancelar</button>
         ${st.profTodas?.[faseId]?.cronograma?.[tipo] ? '<button class="mini" type="button" id="r-padrao">Voltar ao padrão</button>' : ''}</div>
@@ -494,16 +568,20 @@ function dialogoRoteiro(st, dlg, faseId, tipo) {
     totalizar();
   }
   function ler() {
-    dlg.querySelectorAll('[data-f]').forEach((el) => { blocos[Number(el.dataset.i)][el.dataset.f] = el.dataset.f === 'min' ? Number(el.value) || 0 : el.value; });
+    dlg.querySelectorAll('[data-f]').forEach((el) => {
+      const k = el.dataset.f;
+      blocos[Number(el.dataset.i)][k] = el.type === 'checkbox' ? el.checked : k === 'min' ? Number(el.value) || 0 : el.value;
+    });
   }
   function totalizar() {
     ler();
-    const t = soma(blocos);
     const el = document.getElementById('r-total');
-    if (el) el.textContent = `Total: ${t} min · ${t === p.minutosDia ? 'cabe certinho na sua aula' : t > p.minutosDia ? `passa ${t - p.minutosDia} min da sua aula` : `sobram ${p.minutosDia - t} min`}`;
+    if (el) el.textContent = `Total: ${soma(blocos)} min de miolo.`;
+    const ul = document.getElementById('r-turmas');
+    if (ul) ul.innerHTML = resumoTurmas(st, blocos, tipo);
   }
   pintar();
-  dlg.oninput = (e) => { if (e.target.dataset?.f === 'min') totalizar(); };
+  dlg.oninput = (e) => { if (e.target.dataset?.f) totalizar(); };
   dlg.onclick = async (ev) => {
     if (ev.target.id === 'r-cancelar') { dlg.close(); return; }
     if (ev.target.id === 'r-padrao' && confirm('Voltar ao roteiro padrão?')) {
@@ -524,7 +602,10 @@ function dialogoRoteiro(st, dlg, faseId, tipo) {
     if (ev.target.id !== 'form-roteiro') return;
     ev.preventDefault();
     ler();
-    const limpos = blocos.filter((b) => String(b.titulo).trim()).map((b) => ({ min: b.min, titulo: String(b.titulo).trim(), detalhe: String(b.detalhe ?? '').trim(), ...(b.excel ? { excel: true } : {}) }));
+    const limpos = blocos.filter((b) => String(b.titulo).trim()).map((b) => ({
+      min: b.min, titulo: String(b.titulo).trim(), detalhe: String(b.detalhe ?? '').trim(),
+      ...(b.excel ? { excel: true } : {}), ...(b.corta ? { corta: true } : {}), ...(b.quebra ? { quebra: true } : {}),
+    }));
     if (!limpos.length) { document.getElementById('r-msg').textContent = 'Coloque ao menos um bloco com título.'; return; }
     try {
       await setDoc(doc(db, 'fasesProfessor', faseId), { mundo: MUNDO, professor: { cronograma: { [tipo]: limpos } }, atualizadoEm: serverTimestamp() }, { merge: true });
@@ -572,10 +653,18 @@ export async function tratarAgenda(acao, b, ctx) {
       return true;
     }
     case 'cal-config': {
+      const horarios = { ...(st.plano?.horarios ?? {}) };
+      for (const dow of [1, 2, 3, 4, 5]) {
+        const el = document.getElementById(`cal-h${dow}`);
+        if (!el) continue;
+        const h = lerHorario(el.value);
+        if (h.length) horarios[String(dow)] = h; else delete horarios[String(dow)];
+      }
+      // setDoc com merge mescla mapas: para apagar um dia, o mapa inteiro é regravado com updateDoc
       await setDoc(refPlano(st.turma), {
-        turma: st.turma, diaDin: Number(document.getElementById('cal-din').value), diaCons: Number(document.getElementById('cal-cons').value),
-        minutosDia: Number(document.getElementById('cal-min').value) || 100, atualizadoEm: serverTimestamp(),
+        turma: st.turma, diaDin: Number(document.getElementById('cal-din').value), diaCons: Number(document.getElementById('cal-cons').value), atualizadoEm: serverTimestamp(),
       }, { merge: true });
+      await updateDoc(refPlano(st.turma), { horarios });
       return true;
     }
     default: return false;

@@ -469,6 +469,15 @@ dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
 .bloco.excel::before { background: #7a42c8; }
 .bloco-t { min-width: 46px; font-size: 0.82rem; font-weight: 700; color: var(--suave); padding-top: 2px; font-variant-numeric: tabular-nums; }
 .bloco p { margin: 4px 0; font-size: 0.93rem; }
+.bloco.fixo { opacity: 0.75; }
+.bloco.fixo::before { background: var(--suave); }
+.bloco.pausa { margin-bottom: 6px; }
+.bloco.pausa::before { background: var(--cartao); border-color: var(--borda); }
+.bloco.pausa .nota { font-style: italic; }
+.bloco.cansado::before { background: #d08a1c; }
+.chip.cansado { background: #fbecd2; color: #7a4a00; }
+.bloco.fora::before { background: #c0392b; }
+.bloco.fora strong { color: #c0392b; }
 .min-campo { max-width: 90px; }
 .editor .linha-btn input { flex: 1; }
 

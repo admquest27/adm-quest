@@ -52,7 +52,7 @@ export function htmlCartao(ctx) {
   // etapas por dia, numeradas em sequência
   const todas = etapasDe(f);
   let n = 0;
-  const partes = ['ter', 'seg'].map((dia) => {
+  const partes = ['pre', 'ter', 'seg'].map((dia) => {
     const lista = todas.filter((e) => diaDe(e) === dia);
     if (!lista.length) return '';
     const segFechada = dia === 'seg' && turma?.liberacoes?.[f.id]?.seg !== true;

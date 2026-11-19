@@ -118,8 +118,9 @@ export const COMO = {
   lab: { icone: '💻', rotulo: 'No computador' },
 };
 
-export const DIAS_FASE = { ter: 'Terça · na sala', seg: 'Segunda · no laboratório' };
-export const diaDe = (e) => (e.dia === 'seg' ? 'seg' : 'ter');
+// "pre": o que se faz antes da terça da fase (entrada no jogo, entrevista do Raio-X).
+export const DIAS_FASE = { pre: 'Antes da terça · preparação', ter: 'Terça · na sala', seg: 'Segunda · no laboratório' };
+export const diaDe = (e) => (e.dia === 'seg' || e.dia === 'pre' ? e.dia : 'ter');
 
 // A parte de segunda abre quando o professor libera; etapas travadas, quando ele libera cada uma.
 export function etapaLiberada(turma, faseId, e) {

@@ -7,12 +7,12 @@ import { app, tela, esc, hoje, guardar, ler } from './ui.js';
 import { imgAvatar } from './avatar.js';
 import {
   MUNDO, ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno,
-  etapasDe, normMateriais, liberado, COMO,
+  etapasDe, normMateriais, liberado, COMO, DIAS_FASE, diaDe,
 } from './fases.js';
 import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } from './registros.js';
 import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
-import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, ANO } from './calendario.js';
+import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO } from './calendario.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -107,6 +107,12 @@ export function iniciarProfessor(user, opcoes = {}) {
   paradas.push(onSnapshot(collection(db, 'fasesProfessor'), (s) => {
     st.profTodas = {};
     s.docs.forEach((d) => { st.profTodas[d.id] = d.data().professor ?? {}; });
+    desenhar();
+  }, () => {}));
+  // planos de todas as turmas: o roteiro é um só e mostra como cabe no horário de cada turma
+  st.planos = {};
+  paradas.push(onSnapshot(collection(db, 'planos'), (s) => {
+    st.planos = Object.fromEntries(s.docs.map((d) => [d.id, d.data()]));
     desenhar();
   }, () => {}));
   ligarDicas(app);
@@ -263,7 +269,8 @@ export function iniciarProfessor(user, opcoes = {}) {
 
     // um roteiro só: o mesmo da Agenda
     const roteiroDia = (tipo, titulo) => `<details class="roteiro"><summary>${titulo}</summary>
-      ${htmlBlocos(roteiroDaFase(st, f, tipo), turmaDoc)}
+      <ul class="nota">${resumoTurmas(st, roteiroDaFase(st, f, tipo), tipo)}</ul>
+      ${htmlBlocos(roteiroDaFase(st, f, tipo), turmaDoc, horarioDoTipo(st.plano, tipo))}
       <button class="mini" data-acao="cal-roteiro" data-id="${esc(f.id)}" data-k="${tipo}">Editar este roteiro</button></details>`;
     const prof = st.profFase?.professor ?? {};
     const material = Object.entries(prof).filter(([k]) => !['cronograma'].includes(k)).map(([k, v]) => {
@@ -704,7 +711,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       missao: f.missao ?? '',
       etapas: etapasDe(f).map((e) => ({
         id: e.id, texto: e.texto ?? '', saibaMais: e.saibaMais ?? '', links: deLinks(e.links), travada: e.travada === true, semMarcar: e.semMarcar === true,
-        dia: e.dia === 'seg' ? 'seg' : 'ter', como: e.como ?? '', opcional: e.opcional === true, excel: e.excel === true,
+        dia: diaDe(e), como: e.como ?? '', opcional: e.opcional === true, excel: e.excel === true,
         campos: e.campos ?? [], camposTxt: (e.campos ?? []).map((c) => (c.dica ? `${c.rotulo} | ${c.dica}` : c.rotulo)).join('\n'),
       })),
       materiais: normMateriais(f).map((m) => ({ id: m.id, titulo: m.titulo ?? '', url: m.url ?? '', descricao: m.descricao ?? '', travado: m.travado === true })),
@@ -730,7 +737,7 @@ export function iniciarProfessor(user, opcoes = {}) {
           <p class="nota">Cada etapa é uma coisa que o aluno faz e marca como "feito". Pode ter "saiba mais", links, campos para escrever e ficar travada até você liberar.</p>
           ${ed.etapas.map((e, i) => `<fieldset class="card-ed"><legend>Etapa ${i + 1}</legend>
             <div class="linha-btn">
-              <select data-sec="etapas" data-i="${i}" data-f="dia" aria-label="Dia"><option value="ter" ${e.dia === 'ter' ? 'selected' : ''}>Terça · na sala</option><option value="seg" ${e.dia === 'seg' ? 'selected' : ''}>Segunda · no laboratório</option></select>
+              <select data-sec="etapas" data-i="${i}" data-f="dia" aria-label="Dia">${Object.entries(DIAS_FASE).map(([k, r]) => `<option value="${k}" ${e.dia === k ? 'selected' : ''}>${r}</option>`).join('')}</select>
               <select data-sec="etapas" data-i="${i}" data-f="como" aria-label="Como"><option value="">Sem ícone</option>${Object.entries(COMO).map(([k, c]) => `<option value="${k}" ${e.como === k ? 'selected' : ''}>${c.icone} ${c.rotulo}</option>`).join('')}</select>
             </div>
             <textarea data-sec="etapas" data-i="${i}" data-f="texto" rows="2" placeholder="Comece com um verbo, até 15 palavras">${esc(e.texto)}</textarea>
@@ -810,7 +817,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         const l = paraLinks(e.links); if (l.length) o.links = l;
         if (e.travada) o.travada = true;
         if (e.semMarcar) o.semMarcar = true;
-        o.dia = e.dia === 'seg' ? 'seg' : 'ter';
+        o.dia = diaDe(e);
         if (e.como) o.como = e.como;
         if (e.opcional) o.opcional = true;
         if (e.excel) o.excel = true;
@@ -836,7 +843,8 @@ export function iniciarProfessor(user, opcoes = {}) {
     };
   }
 
-  dlg.addEventListener('close', () => { dlg.onclick = null; dlg.onsubmit = null; dlg.onchange = null; });
+  // O evento "close" chega depois; se outra janela já abriu no lugar (Agenda → Editar o roteiro), não apaga os botões dela.
+  dlg.addEventListener('close', () => { if (dlg.open) return; dlg.onclick = null; dlg.onsubmit = null; dlg.onchange = null; dlg.oninput = null; });
 
   return () => {
     paradas.forEach((p) => p());
