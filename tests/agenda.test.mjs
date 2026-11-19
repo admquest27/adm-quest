@@ -1,7 +1,7 @@
 // Testes da lógica do calendário, com as datas oficiais de 2027 (não precisam do emulador).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addDias, segundaDa, diaSemana, bloqueadosDe, limiteDoBimestre, gerarAgenda, diferencas, bimestreDe, formatar } from '../src/agenda.js';
+import { addDias, segundaDa, diaSemana, bloqueadosDe, limiteDoBimestre, gerarAgenda, diferencas, bimestreDe, formatar, montarDias } from '../src/agenda.js';
 
 const cal = {
   bimestres: [
@@ -111,4 +111,28 @@ test('bimestre de uma data, inclusive nas férias', () => {
   assert.equal(bimestreDe(cal, '2027-03-10').id, 1);
   assert.equal(bimestreDe(cal, '2027-04-17').id, 2); // entre bimestres: o próximo
   assert.equal(bimestreDe(cal, '2026-11-18').id, 1); // antes do ano: o primeiro
+});
+
+test('montarDias: consolidação com Excel, preparação, coringa, recuperação e dias sem aula', () => {
+  const bloq = bloqueadosDe(cal, '1A');
+  const fasesX = [...fases, { id: 'x1', tipo: 'excel', anexaA: 'f1' }];
+  const ag = gerarAgenda({ fases, bimestre: cal.bimestres[0], bloqueados: bloq });
+  const dias = montarDias({ ag, fases: fasesX, bimestre: cal.bimestres[0], bloqueados: bloq, eventos: cal.eventos });
+  const tipos = (d) => (dias.get(d)?.itens ?? []).map((i) => `${i.tipo}:${i.faseId ?? i.parte}`);
+  assert.deepEqual(tipos('2027-02-15'), ['cons:f1', 'excel:x1']);
+  assert.deepEqual(tipos('2027-02-01'), ['antes:f1']);
+  assert.deepEqual(tipos('2027-03-29'), ['antes:f7']);
+  assert.deepEqual(tipos('2027-03-23'), ['folga:f7']);
+  assert.deepEqual(tipos('2027-04-12'), ['recup:seg']);
+  assert.deepEqual(tipos('2027-04-13'), ['recup:ter']);
+  assert.equal(dias.get('2027-02-09').semAula, 'Carnaval');
+  assert.equal(dias.get('2027-01-26').eventos[0].titulo, 'Integração');
+});
+
+test('lembretes oficiais que não bloqueiam não aparecem nos dias', () => {
+  const bloq = bloqueadosDe(cal, '1A');
+  const ag = gerarAgenda({ fases, bimestre: cal.bimestres[0], bloqueados: bloq });
+  const eventos = { ...cal.eventos, reuniao: { data: '2027-02-16', titulo: 'Reunião', tipo: 'oficial', bloqueia: 'nao' }, meu: { data: '2027-02-16', titulo: 'Meu evento', tipo: 'senac', bloqueia: 'nao' } };
+  const dias = montarDias({ ag, fases, bimestre: cal.bimestres[0], bloqueados: bloq, eventos });
+  assert.deepEqual(dias.get('2027-02-16').eventos.map((e) => e.titulo), ['Meu evento']);
 });

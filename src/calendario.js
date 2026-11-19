@@ -1,14 +1,69 @@
-// Aba Agenda do professor: calendário oficial, eventos, plano das fases e reencaixe com autorização.
+// Aba Agenda do professor: calendário do mês (segundas e terças), painel do dia com o roteiro da aula,
+// eventos, plano das fases e reencaixe com autorização.
 import { doc, setDoc, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc, hoje } from './ui.js';
-import { ESTADO_ROTULO } from './fases.js';
+import { ESTADO_ROTULO, MUNDO } from './fases.js';
 import {
-  addDias, diaSemana, segundaDa, diasEntre, formatar, bloqueadosDe, limiteDoBimestre, gerarAgenda, diferencas, bimestreDe, NOMES_DIA, dataDe,
+  addDias, diaSemana, segundaDa, diasEntre, formatar, bloqueadosDe, limiteDoBimestre, gerarAgenda, diferencas, bimestreDe, dataDe, montarDias,
 } from './agenda.js';
 
 export const ANO = 2027;
 const TIPOS = { senac: 'Evento do Senac', pessoal: 'Pessoal', outro: 'Outro', oficial: 'Calendário oficial' };
+const DIAS_LONGO = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const MESES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+// ---------- roteiros padrão (quando a fase ainda não tem o seu) ----------
+const B = (min, titulo, detalhe, extra = {}) => ({ min, titulo, detalhe, ...extra });
+export const PADRAO = {
+  din: [
+    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome e dizer o que fazer primeiro.'),
+    B(10, 'Abertura da missão', 'Ler a missão em voz alta e combinar o que será feito hoje. Liberar as etapas no jogo conforme avançar.'),
+    B(55, 'Dinâmica', 'Conduzir a dinâmica da fase. Escreva o passo a passo em "Editar roteiro".'),
+    B(15, 'Conversa', 'Perguntas preparadas sobre o que aconteceu na experiência.'),
+    B(10, 'Registro no Diário de fases', 'Cada aluno escreve a data, o nome da fase e as três respostas.'),
+    B(5, 'Fechamento', 'Marcar no jogo quem faltou e o que ficou para a segunda.'),
+  ],
+  cons: [
+    B(5, 'Receber a turma e retomar', 'Retomar em cinco minutos a dinâmica de terça.'),
+    B(10, 'Conferência do caderno', 'Circular conferindo o caderno e conversar com alguns alunos.'),
+    B(30, 'Conceito formal e a empresa de verdade', 'O conceito da fase e como ele aparece numa empresa. Escreva o roteiro em "Editar roteiro".'),
+    B(10, 'Registro no caderno', 'Glossário e Diário de fases.'),
+    B(30, 'Excel do dia', 'Aquecimento, demonstração e desafio em dois níveis.', { excel: true }),
+    B(10, 'Atualizar o jogo', 'Marcar concluídas, validar, anotar faltas e atitudes.'),
+    B(5, 'Fechamento', 'Combinar a próxima dinâmica.'),
+  ],
+  antes: [
+    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
+    B(85, 'Preparação', 'Dia livre antes da dinâmica: use para preparar a turma. Escreva o roteiro em "Editar roteiro".'),
+    B(10, 'Fechamento', 'Combinar a dinâmica do dia seguinte.'),
+  ],
+  folga: [
+    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
+    B(85, 'Semana coringa', 'Tempo de folga do planejamento: revisão, ensaio, fase bônus ou uma atividade que precisou de mais tempo.'),
+    B(10, 'Fechamento', 'Combinar o que vem a seguir.'),
+  ],
+  recup_seg: [
+    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
+    B(15, 'Enquete do mundo', 'Três perguntas no jogo sobre como foi o mundo. Antes da semana, converse rapidamente com cada aluno em recuperação.'),
+    B(70, 'Missões Pessoais', 'Todos recebem uma Missão Pessoal igual por fora: quem tem pendência faz a recuperação, os demais fazem uma missão bônus. Ninguém vê a missão do colega.'),
+    B(10, 'Fechamento', 'Registrar o resultado das recuperações.'),
+  ],
+  recup_ter: [
+    B(5, 'Receber a turma na porta', 'Cumprimentar cada aluno pelo nome.'),
+    B(20, 'Missões Pessoais', 'Últimas entregas.'),
+    B(30, 'Roleta do Destino', 'Revelação da recompensa do mundo.'),
+    B(25, 'Nome do reino', 'Votação e proclamação do nome da turma, se ainda não foi feito.'),
+    B(15, 'Fechamento do mundo', 'Fechar o mundo e convidar para o próximo. A Carta do Bimestre chega no começo do mundo seguinte.'),
+    B(5, 'Despedida', 'Agradecer e liberar.'),
+  ],
+  livre: [
+    B(100, 'Dia sem fase planejada', 'Use como quiser: revisão, atividade que precisou de mais tempo ou um evento.'),
+  ],
+};
+
+const soma = (blocos) => blocos.reduce((s, b) => s + (Number(b.min) || 0), 0);
 
 // ---------- planejamento ----------
 export function planejar(st) {
@@ -18,71 +73,137 @@ export function planejar(st) {
   const b = cal.bimestres.find((x) => x.id === alvo) ?? cal.bimestres[0];
   const bloq = bloqueadosDe(cal, st.turma);
   const plano = st.plano ?? {};
-  const fases = st.mundo?.ordem === b.id ? st.fases : [];
+  const todas = st.mundo?.ordem === b.id ? st.fases : [];
+  const fases = todas.filter((f) => f.tipo !== 'excel');
+  const excel = todas.filter((f) => f.tipo === 'excel');
   const diaDin = plano.diaDin ?? 2;
   const diaCons = plano.diaCons ?? 1;
   const ag = fases.length
     ? gerarAgenda({ fases, bimestre: b, bloqueados: bloq, fixas: plano.fixas ?? {}, diaDin, diaCons })
     : { itens: [], limite: limiteDoBimestre(b), livres: [], folgas: [] };
-  return { cal, b, bloq, plano, fases, ag, diaDin, diaCons, dif: diferencas(plano.confirmado, ag.itens) };
+  const dias = montarDias({ ag, fases: todas, bimestre: b, bloqueados: bloq, eventos: cal.eventos, diaDin, diaCons });
+  return { cal, b, bloq, plano, fases, excel, todas, ag, dias, diaDin, diaCons, minutosDia: plano.minutosDia ?? 100, dif: diferencas(plano.confirmado, ag.itens) };
 }
 
-const faseDe = (p, id) => p.fases.find((f) => f.id === id);
+const faseDe = (p, id) => p.todas.find((f) => f.id === id);
 const item = (p, id) => p.ag.itens.find((i) => i.faseId === id);
+
+// ---------- roteiro de um item do dia ----------
+function roteiroDoItem(p, st, it) {
+  const prof = (id) => st.profTodas?.[id]?.cronograma ?? {};
+  let blocos; let titulo; let editavel = null;
+  if (it.tipo === 'din') { const f = faseDe(p, it.faseId); titulo = `Dinâmica · ${f.codigo} ${f.nome}`; blocos = prof(f.id).din ?? PADRAO.din; editavel = 'din'; }
+  else if (it.tipo === 'cons') { const f = faseDe(p, it.faseId); titulo = `Consolidação · ${f.codigo} ${f.nome}`; blocos = prof(f.id).cons ?? PADRAO.cons; editavel = 'cons'; }
+  else if (it.tipo === 'excel') { return null; } // o Excel entra dentro do roteiro da consolidação
+  else if (it.tipo === 'antes') { const f = faseDe(p, it.faseId); titulo = `Preparação para a ${f.codigo} ${f.nome}`; blocos = prof(f.id).antes ?? PADRAO.antes; editavel = 'antes'; }
+  else if (it.tipo === 'folga') { const f = faseDe(p, it.faseId); titulo = `Semana coringa antes da ${f.codigo} ${f.nome}`; blocos = prof(f.id).folga ?? PADRAO.folga; editavel = 'folga'; }
+  else { titulo = it.parte === 'seg' ? 'Semana de recuperação · segunda' : 'Fechamento do mundo · terça'; blocos = it.parte === 'seg' ? PADRAO.recup_seg : PADRAO.recup_ter; }
+  // o bloco do Excel recebe o desafio do dia
+  if (it.tipo === 'cons') {
+    const x = p.excel.find((e) => e.anexaA === it.faseId);
+    if (x) {
+      const ess = x.etapas?.find((e) => e.id === 'e1')?.texto ?? '';
+      const bon = x.etapas?.find((e) => e.id === 'e2')?.texto ?? '';
+      blocos = blocos.map((b) => (b.excel ? { ...b, titulo: `${x.codigo}: ${x.nome}`, detalhe: `${b.detalhe}\n${ess}\n${bon}`, excelFase: x.id } : b));
+    }
+  }
+  return { titulo, blocos, editavel, faseId: it.faseId };
+}
+
+function chipsDoDia(p, st, d, max = 3) {
+  const dia = p.dias.get(d);
+  if (!dia) return { html: '', n: 0, linhas: [] };
+  const chips = [];
+  const linhas = [];
+  for (const it of dia.itens) {
+    const f = it.faseId ? faseDe(p, it.faseId) : null;
+    if (it.tipo === 'din') { chips.push(`<span class="cc din ${it.estouro ? 'estouro' : ''}">${it.fixa ? '📌 ' : ''}${esc(f.codigo)} ${esc(f.nome)}</span>`); linhas.push(`Dinâmica: ${f.codigo} ${f.nome}`); }
+    else if (it.tipo === 'cons') { chips.push(`<span class="cc cons ${it.estouro ? 'estouro' : ''}">${it.fixa ? '📌 ' : ''}Consolida ${esc(f.codigo)}</span>`); linhas.push(`Consolidação: ${f.codigo}`); }
+    else if (it.tipo === 'excel') { chips.push(`<span class="cc excel">${esc(f.codigo)}</span>`); linhas.push(`Excel: ${f.nome}`); }
+    else if (it.tipo === 'antes') { chips.push('<span class="cc prep">Preparação</span>'); linhas.push('Preparação'); }
+    else if (it.tipo === 'folga') { chips.push('<span class="cc folga">Coringa</span>'); linhas.push('Semana coringa'); }
+    else { chips.push(`<span class="cc recup">${it.parte === 'seg' ? 'Recuperação' : 'Fecha o mundo'}</span>`); linhas.push(it.parte === 'seg' ? 'Recuperação' : 'Fechamento do mundo'); }
+  }
+  for (const e of dia.eventos) { chips.push(`<span class="cc ev ${e.bloqueia === 'dia' ? 'bloq' : ''}">${esc(e.titulo)}</span>`); linhas.push(`Evento: ${e.titulo}`); }
+  const html = chips.slice(0, max).join('') + (chips.length > max ? `<span class="cc mais">+${chips.length - max}</span>` : '');
+  return { html, n: chips.length, linhas };
+}
 
 // ---------- peças da tela ----------
 function seletorBimestre(p) {
   return `<div class="marcas">${p.cal.bimestres.map((b) => `<button class="mini ${b.id === p.b.id ? 'ok cheio' : ''}" data-acao="cal-bim" data-id="${b.id}">${esc(b.nome)}</button>`).join('')}</div>
-    <p class="nota">${formatar(p.b.inicio)} a ${formatar(p.b.fim)} · reunião de fechamento ${formatar(p.b.fechamento)} · as tarefas terminam até ${formatar(p.ag.limite)} (semana anterior ao fechamento)</p>`;
+    <p class="nota">${formatar(p.b.inicio)} a ${formatar(p.b.fim)} · fechamento ${formatar(p.b.fechamento)} · as tarefas terminam até ${formatar(p.ag.limite)}</p>`;
 }
 
 function cartaoHoje(p, st) {
   const h = hoje();
-  const motivo = p.bloq.get(h);
-  const doDia = p.ag.itens.filter((i) => i.din === h || i.cons === h);
-  const futuras = p.ag.itens.flatMap((i) => [i.din && i.din > h ? { d: i.din, tipo: 'Dinâmica', id: i.faseId } : null, i.cons && i.cons > h ? { d: i.cons, tipo: 'Consolidação', id: i.faseId } : null]).filter(Boolean).sort((a, b) => a.d.localeCompare(b.d));
-  const prox = futuras[0];
+  const dia = p.dias.get(h);
   const estados = st.turmas.find((t) => t.id === st.turma)?.estadoFases ?? {};
-  const linhas = doDia.map((i) => {
-    const f = faseDe(p, i.faseId);
-    const din = i.din === h;
-    const aberta = (estados[i.faseId] ?? 'trancada') === 'aberta';
-    return `<li class="aluno"><span class="nome">${din ? 'Dinâmica' : 'Consolidação'}: <strong>${esc(f.codigo)} ${esc(f.nome)}</strong></span>
-      ${din && !aberta ? `<button class="mini ok" data-acao="cal-abrir" data-id="${esc(f.id)}">Abrir a fase</button>` : din ? '<span class="chip ativo">Aberta</span>' : ''}</li>`;
-  }).join('');
-  return `<section class="cal-hoje"><h3>Hoje, ${formatar(h)}</h3>
-    ${motivo ? `<p>Sem aula: ${esc(motivo)}.</p>` : linhas ? `<ul class="lista">${linhas}</ul>` : '<p class="nota">Nenhuma fase planejada para hoje.</p>'}
-    ${prox ? `<p class="nota">Próximo: ${formatar(prox.d)} · ${prox.tipo} da ${esc(faseDe(p, prox.id).codigo)} ${esc(faseDe(p, prox.id).nome)}</p>` : ''}</section>`;
+  const prox = [...p.dias.entries()].filter(([d, v]) => d > h && v.itens.length).sort((a, b) => a[0].localeCompare(b[0]))[0];
+  const aberta = (id) => (estados[id] ?? 'trancada') === 'aberta';
+  const din = dia?.itens.find((i) => i.tipo === 'din');
+  return `<section class="cal-hoje"><div><strong>Hoje, ${formatar(h)}</strong>
+    ${dia?.semAula ? `<p class="nota">Sem aula: ${esc(dia.semAula)}.</p>` : dia?.itens.length ? `<p class="nota">${chipsDoDia(p, st, h, 9).linhas.map(esc).join(' · ')}</p>` : '<p class="nota">Nenhuma fase planejada para hoje.</p>'}
+    ${prox ? `<p class="nota">Próximo dia com aula planejada: ${formatar(prox[0])}</p>` : ''}</div>
+    <div class="linha-btn">${dia?.itens.length ? `<button class="mini ok" data-acao="cal-dia" data-d="${h}">Ver o roteiro de hoje</button>` : ''}
+    ${din && !aberta(din.faseId) ? `<button class="mini" data-acao="cal-abrir" data-id="${esc(din.faseId)}">Abrir a fase</button>` : ''}</div></section>`;
 }
 
 function alertas(p) {
   const partes = [];
   const est = p.ag.itens.filter((i) => i.estouro);
   const cEst = p.ag.itens.filter((i) => i.consEstouro && !i.estouro);
-  if (est.length) {
-    partes.push(`<div class="alerta ruim"><strong>Não cabe no bimestre</strong><p>${est.map((i) => `${esc(faseDe(p, i.faseId).codigo)} ${esc(faseDe(p, i.faseId).nome)} ficaria em ${formatar(i.din)}`).join('; ')}. O limite é ${formatar(p.ag.limite)}. Você pode cortar uma fase, usar uma sobra ou fixar datas.</p></div>`);
-  }
-  if (cEst.length) {
-    partes.push(`<div class="alerta"><strong>Consolidação depois do limite</strong><p>${cEst.map((i) => `${esc(faseDe(p, i.faseId).codigo)} em ${formatar(i.cons)}`).join('; ')}.</p></div>`);
-  }
+  if (est.length) partes.push(`<div class="alerta ruim"><strong>Não cabe no bimestre</strong><p>${est.map((i) => `${esc(faseDe(p, i.faseId).codigo)} ficaria em ${formatar(i.din)}`).join('; ')}. O limite é ${formatar(p.ag.limite)}. Corte uma fase, use uma sobra ou fixe datas.</p></div>`);
+  if (cEst.length) partes.push(`<div class="alerta"><strong>Consolidação depois do limite</strong><p>${cEst.map((i) => `${esc(faseDe(p, i.faseId).codigo)} em ${formatar(i.cons)}`).join('; ')}.</p></div>`);
   if (!p.fases.length) {
-    partes.push('<div class="alerta"><strong>Sem fases neste bimestre</strong><p>Ainda não há conteúdo de fases para este bimestre. O calendário mostra só as datas oficiais e os seus eventos.</p></div>');
+    partes.push('<div class="alerta"><strong>Sem fases neste bimestre</strong><p>Este bimestre ainda não tem conteúdo de fases. O calendário mostra só os dias sem aula e os seus eventos.</p></div>');
   } else if (!Object.keys(p.plano.confirmado ?? {}).length) {
-    partes.push('<div class="alerta"><strong>Plano ainda não confirmado</strong><p>Este é o plano sugerido pelo calendário. Confirme para o sistema avisar quando algo mudar.</p><button class="mini ok" data-acao="cal-confirmar">Confirmar este plano</button></div>');
+    partes.push('<div class="alerta"><strong>Plano ainda não confirmado</strong><p>Este é o plano sugerido. Confirme para o sistema avisar quando algo mudar.</p><button class="mini ok" data-acao="cal-confirmar">Confirmar este plano</button></div>');
   } else if (p.dif.length) {
-    partes.push(`<div class="alerta mudou"><strong>O plano sugerido mudou</strong><p>Por causa de eventos, bloqueios ou datas fixadas, ${p.dif.length} fase(s) mudariam de data:</p>
+    partes.push(`<div class="alerta mudou"><strong>O plano sugerido mudou</strong><p>${p.dif.length} fase(s) mudariam de data:</p>
       <ul>${p.dif.map((d) => `<li>${esc(faseDe(p, d.faseId).codigo)}: dinâmica ${d.de.din ? formatar(d.de.din) : '—'} → <strong>${d.para.din ? formatar(d.para.din) : '—'}</strong>${(d.de.cons ?? null) !== (d.para.cons ?? null) ? `; consolidação ${d.de.cons ? formatar(d.de.cons) : '—'} → <strong>${d.para.cons ? formatar(d.para.cons) : '—'}</strong>` : ''}</li>`).join('')}</ul>
       <button class="mini ok" data-acao="cal-confirmar">Aceitar o novo plano</button></div>`);
   } else {
     partes.push('<div class="alerta ok"><strong>Plano confirmado em dia</strong><p>Nada mudou desde que você confirmou.</p></div>');
   }
-  if (p.fases.length && p.ag.livres.length) {
-    partes.push(`<div class="alerta"><strong>Sobram ${p.ag.livres.length} dia(s) de dinâmica livres até o limite</strong><p>${p.ag.livres.map((d) => formatar(d)).join(', ')}. Use como semana coringa, revisão ou fase bônus.</p></div>`);
-  }
+  if (p.fases.length && p.ag.livres.length) partes.push(`<div class="alerta"><strong>Sobram ${p.ag.livres.length} dia(s) de dinâmica livres</strong><p>${p.ag.livres.map((d) => formatar(d)).join(', ')}. Use como coringa, revisão ou fase bônus.</p></div>`);
   return partes.join('');
 }
 
-// linha do tempo do bimestre: fases (dinâmica e consolidação), dias sem aula, eventos, fechamento e o realizado
+function grade(p, st) {
+  const mes = st.calMes;
+  const [ano, m] = mes.split('-').map(Number);
+  const primeiro = `${mes}-01`;
+  const ultimo = addDias(`${m === 12 ? ano + 1 : ano}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01`, -1);
+  const cols = [...new Set([p.diaCons, p.diaDin])].sort((a, b) => a - b);
+  const h = hoje();
+  const semanas = [];
+  for (let seg = segundaDa(primeiro); seg <= ultimo; seg = addDias(seg, 7)) {
+    const cels = cols.map((c) => {
+      const d = addDias(seg, c - 1);
+      const dia = p.dias.get(d);
+      const fora = d.slice(0, 7) !== mes;
+      const { html, n, linhas } = chipsDoDia(p, st, d);
+      const dataTxt = `${DIAS_LONGO[diaSemana(d)]}, ${formatar(d, false)}`;
+      const tip = [dataTxt, dia?.semAula ? `Sem aula: ${dia.semAula}` : '', ...linhas].filter(Boolean).join('\n');
+      const num = `${Number(d.slice(8))}${d.slice(8) === '01' || d === seg ? ` ${MESES_CURTO[Number(d.slice(5, 7)) - 1]}` : ''}`;
+      return `<button class="cal-cel ${fora ? 'fora' : ''} ${d === h ? 'hoje' : ''} ${dia?.semAula ? 'sem-aula' : ''} ${d < h ? 'passado' : ''} ${n ? 'tem' : ''}" data-acao="cal-dia" data-d="${d}" data-tip="${esc(tip)}" aria-label="${esc(tip.replace(/\n/g, '. '))}">
+        <span class="cal-num">${num}</span>${dia?.semAula ? `<span class="cal-sem">${esc(dia.semAula)}</span>` : ''}${html}${!n && !dia?.semAula ? '<span class="cal-livre">livre</span>' : ''}</button>`;
+    }).join('');
+    semanas.push(`<div class="cal-linha" style="--cols:${cols.length}"><span class="cal-sem-rot">${formatar(seg, false)}</span>${cels}</div>`);
+  }
+  const ant = mes > st.calMin;
+  const prox = mes < st.calMax;
+  return `<div class="cal-nav"><button class="mini" data-acao="cal-mes" data-d="-1" ${ant ? '' : 'disabled'} aria-label="Mês anterior">‹</button>
+      <h3>${MESES[m - 1]} ${ano}</h3>
+      <button class="mini" data-acao="cal-mes" data-d="1" ${prox ? '' : 'disabled'} aria-label="Próximo mês">›</button>
+      <button class="mini" data-acao="cal-mes" data-d="0">Hoje</button></div>
+    <div class="cal" style="--cols:${cols.length}"><div class="cal-cab"><span></span>${cols.map((c) => `<span>${DIAS_LONGO[c]}</span>`).join('')}</div>${semanas.join('')}</div>
+    <p class="cal-legenda"><span class="cc din">dinâmica</span><span class="cc cons">consolidação</span><span class="cc excel">Excel</span><span class="cc prep">preparação</span><span class="cc folga">coringa</span><span class="cc recup">recuperação</span><span class="cc ev">seu evento</span></p>
+    <p class="nota">Passe o mouse num dia para ver o resumo. Toque ou clique para ver o roteiro da aula.</p>`;
+}
+
+// linha do tempo do bimestre (visão geral, opcional)
 function linhaDoTempo(p, st) {
   if (!p.fases.length) return '';
   const { b } = p;
@@ -100,15 +221,9 @@ function linhaDoTempo(p, st) {
     if (dow === 0 || dow === 6) continue;
     faixas += `<rect class="g-semaula" x="${x(d)}" y="${topo}" width="${larg}" height="${p.fases.length * h}"><title>${esc(formatar(d))}: ${esc(motivo)}</title></rect>`;
   }
-  for (const e of Object.values(p.cal.eventos ?? {})) {
-    if (e.tipo === 'oficial' || e.data < b.inicio || e.data > b.fim) continue;
-    faixas += `<rect class="g-evento" x="${x(e.data)}" y="${topo}" width="${larg}" height="${p.fases.length * h}"><title>${esc(formatar(e.data))}: ${esc(e.titulo)}</title></rect>`;
-  }
   let meses = '';
   for (let d = b.inicio; d <= b.fim; d = addDias(d, 1)) {
-    if (d === b.inicio || d.endsWith('-01')) {
-      meses += `<line class="g-eixo" x1="${x(d)}" x2="${x(d)}" y1="${topo - 6}" y2="${H - 22}"/><text class="g-mes" x="${x(d) + 3}" y="${topo - 10}">${['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][dataDe(d).getUTCMonth()]}</text>`;
-    }
+    if (d === b.inicio || d.endsWith('-01')) meses += `<line class="g-eixo" x1="${x(d)}" x2="${x(d)}" y1="${topo - 6}" y2="${H - 22}"/><text class="g-mes" x="${x(d) + 3}" y="${topo - 10}">${MESES_CURTO[dataDe(d).getUTCMonth()]}</text>`;
   }
   const linhas = p.fases.map((f, r) => {
     const i = item(p, f.id);
@@ -123,16 +238,13 @@ function linhaDoTempo(p, st) {
     if (datas.aberta) s += `<path class="g-real" d="M${x(datas.aberta)} ${y + 20} l-4 6 h8 z"><title>Aberta em ${formatar(datas.aberta)}</title></path>`;
     return s;
   }).join('');
-  const lim = x(p.ag.limite);
-  const fech = x(p.b.fechamento);
-  return `<h3>Linha do tempo</h3>
+  return `<details class="mais"><summary>Ver a linha do tempo do bimestre</summary>
     <div class="rolagem-x"><svg class="gantt" viewBox="0 0 ${W} ${H}" role="img" aria-label="Linha do tempo das fases do bimestre">
       ${faixas}${meses}${linhas}
-      <line class="g-limite" x1="${lim}" x2="${lim}" y1="${topo - 6}" y2="${H - 20}"/>
-      <line class="g-fecha" x1="${fech}" x2="${fech}" y1="${topo - 6}" y2="${H - 20}"/>
-      <text class="g-mes" x="${Math.min(lim, W - 70)}" y="${H - 6}">limite das tarefas</text>
+      <line class="g-limite" x1="${x(p.ag.limite)}" x2="${x(p.ag.limite)}" y1="${topo - 6}" y2="${H - 20}"/>
+      <line class="g-fecha" x1="${x(p.b.fechamento)}" x2="${x(p.b.fechamento)}" y1="${topo - 6}" y2="${H - 20}"/>
     </svg></div>
-    <p class="legenda-gantt"><span class="lg g-din"></span> dinâmica <span class="lg g-cons"></span> consolidação <span class="lg g-semaula"></span> sem aula <span class="lg g-evento"></span> seu evento <span class="lg g-estouro"></span> não cabe <span class="lg g-real"></span> aberta de fato</p>`;
+    <p class="legenda-gantt"><span class="lg g-din"></span> dinâmica <span class="lg g-cons"></span> consolidação <span class="lg g-semaula"></span> sem aula <span class="lg g-estouro"></span> não cabe <span class="lg g-real"></span> aberta de fato</p></details>`;
 }
 
 function previstoRealizado(p, st) {
@@ -146,49 +258,22 @@ function previstoRealizado(p, st) {
     const txt = dif === 0 ? 'no dia previsto' : dif > 0 ? `${dif} dia(s) depois` : `${-dif} dia(s) antes`;
     return `<li class="aluno"><span class="cod">${esc(f.codigo)}</span><span class="nome">${esc(f.nome)}</span><span class="nota">previsto ${formatar(i.din)} · aberta ${formatar(ab)}</span><span class="chip ${classe}">${txt}</span></li>`;
   }).join('');
-  if (!linhas) return '';
-  return `<h3>Previsto e realizado</h3><ul class="lista">${linhas}</ul>`;
-}
-
-function semanas(p, st) {
-  if (!p.fases.length && !Object.keys(p.cal.eventos ?? {}).length) return '';
-  const h = hoje();
-  const cartoes = [];
-  const eventos = Object.entries(p.cal.eventos ?? {}).map(([id, e]) => ({ id, ...e }));
-  for (let seg = segundaDa(p.b.inicio); seg <= p.b.fim; seg = addDias(seg, 7)) {
-    const dias = [0, 1, 2, 3, 4].map((k) => addDias(seg, k));
-    const linhas = dias.map((d) => {
-      const dow = diaSemana(d);
-      const motivo = p.bloq.get(d);
-      const itensDia = [];
-      for (const i of p.ag.itens) {
-        const f = faseDe(p, i.faseId);
-        if (i.din === d) itensDia.push(`<button class="cal-item din ${i.estouro ? 'estouro' : ''}" data-acao="cal-fase" data-id="${esc(f.id)}">${i.fixaDin ? '📌 ' : ''}${esc(f.codigo)} ${esc(f.nome)} <small>dinâmica</small></button>`);
-        if (i.cons === d) itensDia.push(`<button class="cal-item cons ${i.consEstouro ? 'estouro' : ''}" data-acao="cal-fase" data-id="${esc(f.id)}">${i.fixaCons ? '📌 ' : ''}Consolida ${esc(f.codigo)}</button>`);
-      }
-      const evs = eventos.filter((e) => d >= e.data && d <= (e.fim ?? e.data));
-      const chips = evs.map((e) => `<button class="cal-ev ${e.tipo === 'oficial' ? 'oficial' : ''} ${e.bloqueia === 'dia' ? 'bloq' : ''}" data-acao="cal-evento" data-id="${esc(e.id)}">${esc(e.titulo)}</button>`).join('');
-      const ehAula = dow === p.diaDin || dow === p.diaCons;
-      if (!ehAula && !motivo && !chips) return '';
-      return `<div class="cal-dia ${d === h ? 'hoje' : ''} ${motivo ? 'sem-aula' : ''}"><span class="cal-d">${formatar(d)}</span><div class="cal-itens">${motivo ? `<span class="cal-motivo">Sem aula: ${esc(motivo)}</span>` : ''}${itensDia.join('')}${chips}${!motivo && ehAula && !itensDia.length ? '<span class="nota">livre</span>' : ''}</div></div>`;
-    }).join('');
-    cartoes.push(`<div class="cal-semana"><h4>Semana de ${formatar(seg, false)}</h4>${linhas || '<p class="nota">Sem aulas nem eventos.</p>'}</div>`);
-  }
-  return `<h3>Semana a semana</h3><p class="nota">Toque numa fase para ver ou fixar a data (📌 = fixada por você), ou num evento para editar.</p>${cartoes.join('')}`;
+  return linhas ? `<h3>Previsto e realizado</h3><ul class="lista">${linhas}</ul>` : '';
 }
 
 function listaEventos(p) {
   const evs = Object.entries(p.cal.eventos ?? {}).map(([id, e]) => ({ id, ...e }))
-    .filter((e) => e.data >= p.b.inicio && e.data <= p.b.fim).sort((a, b) => a.data.localeCompare(b.data));
-  return `<h3>Eventos</h3><button class="mini ok" data-acao="cal-evento" data-id="">+ Evento</button>
+    .filter((e) => (e.tipo !== 'oficial' || e.bloqueia === 'dia') && e.data >= p.b.inicio && e.data <= p.b.fim).sort((a, b) => a.data.localeCompare(b.data));
+  return `<h3>Eventos e bloqueios</h3><button class="mini ok" data-acao="cal-evento" data-id="">+ Evento</button>
     <ul class="lista">${evs.map((e) => `<li class="aluno" data-acao="cal-evento" data-id="${esc(e.id)}"><span class="nome">${formatar(e.data)}${e.fim ? ` a ${formatar(e.fim)}` : ''} · ${esc(e.titulo)}</span><span class="chip ${e.bloqueia === 'dia' ? 'm-NA' : ''}">${e.bloqueia === 'dia' ? 'sem aula' : TIPOS[e.tipo] ?? 'lembrete'}</span></li>`).join('') || '<li class="vazio">Nenhum evento neste bimestre.</li>'}</ul>`;
 }
 
 function configurar(p) {
-  const opcoes = (sel) => NOMES_DIA.slice(1, 6).map((n, k) => `<option value="${k + 1}" ${k + 1 === sel ? 'selected' : ''}>${n}</option>`).join('');
-  return `<details class="mais"><summary>Dias de aula desta turma</summary>
+  const opcoes = (sel) => [1, 2, 3, 4, 5].map((k) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${DIAS_LONGO[k]}</option>`).join('');
+  return `<details class="mais"><summary>Dias e duração das aulas desta turma</summary>
     <label for="cal-din">Dia da dinâmica (sala)</label><select id="cal-din">${opcoes(p.diaDin)}</select>
     <label for="cal-cons">Dia da consolidação (laboratório)</label><select id="cal-cons">${opcoes(p.diaCons)}</select>
+    <label for="cal-min">Minutos de aula por dia</label><input id="cal-min" type="number" min="30" max="300" step="5" value="${p.minutosDia}">
     <button class="mini" data-acao="cal-config">Salvar</button></details>`;
 }
 
@@ -199,14 +284,86 @@ export function htmlAgenda(st) {
       <p>Escolha o arquivo do calendário (por exemplo, calendario-2027.json).</p><input type="file" id="arq-cal" accept=".json,application/json"></div>`;
   }
   const p = planejar(st);
-  return `<h2>Agenda</h2>${seletorBimestre(p)}${cartaoHoje(p, st)}${alertas(p)}${linhaDoTempo(p, st)}${previstoRealizado(p, st)}${semanas(p, st)}${listaEventos(p)}${configurar(p)}`;
+  // limites de navegação e mês atual
+  st.calMin = p.cal.bimestres[0].inicio.slice(0, 7);
+  st.calMax = p.cal.bimestres[p.cal.bimestres.length - 1].fim.slice(0, 7);
+  if (!st.calMes) st.calMes = (hoje().slice(0, 7) >= st.calMin && hoje().slice(0, 7) <= st.calMax) ? hoje().slice(0, 7) : p.b.inicio.slice(0, 7);
+  return `<h2>Agenda</h2>${seletorBimestre(p)}${cartaoHoje(p, st)}${alertas(p)}${grade(p, st)}${linhaDoTempo(p, st)}${previstoRealizado(p, st)}${listaEventos(p)}${configurar(p)}`;
+}
+
+// ---------- dica ao passar o mouse ----------
+export function ligarDicas(raiz) {
+  let dica = document.getElementById('dica-cal');
+  if (!dica) { dica = document.createElement('div'); dica.id = 'dica-cal'; dica.className = 'dica-cal'; dica.hidden = true; document.body.appendChild(dica); }
+  raiz.addEventListener('mouseover', (e) => {
+    const el = e.target.closest?.('[data-tip]');
+    if (!el || !el.dataset.tip) { dica.hidden = true; return; }
+    dica.textContent = el.dataset.tip;
+    dica.hidden = false;
+  });
+  raiz.addEventListener('mousemove', (e) => {
+    if (dica.hidden) return;
+    const w = dica.offsetWidth;
+    dica.style.left = `${Math.min(e.clientX + 14, window.innerWidth - w - 8)}px`;
+    dica.style.top = `${e.clientY + 18}px`;
+  });
+  raiz.addEventListener('mouseout', (e) => { if (!e.relatedTarget?.closest?.('[data-tip]')) dica.hidden = true; });
 }
 
 // ---------- janelas ----------
 const refCal = () => doc(db, 'calendario', String(ANO));
 const refPlano = (turma) => doc(db, 'planos', turma);
 
-function dialogoEvento(st, dlg, id) {
+function abrirDia(st, dlg, d, ctx) {
+  const p = planejar(st);
+  const dia = p.dias.get(d);
+  const itens = dia?.itens ?? [];
+  const estados = st.turmas.find((t) => t.id === st.turma)?.estadoFases ?? {};
+  const roteiros = itens.map((it) => ({ it, r: roteiroDoItem(p, st, it) })).filter((x) => x.r);
+  const resumos = itens.filter((it) => it.tipo === 'excel').map((it) => faseDe(p, it.faseId));
+  let relogio = 0;
+  const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  const corpo = roteiros.length ? roteiros.map(({ it, r }) => {
+    relogio = 0;
+    const total = soma(r.blocos);
+    const f = r.faseId ? faseDe(p, r.faseId) : null;
+    const lista = r.blocos.map((b) => {
+      const ini = relogio; relogio += Number(b.min) || 0;
+      const x = b.excelFase ? faseDe(p, b.excelFase) : null;
+      return `<li class="bloco ${b.excel ? 'excel' : ''}"><span class="bloco-t">${hhmm(ini)}</span><div><strong>${esc(b.titulo)}</strong> <span class="chip">${b.min} min</span>
+        <p>${esc(b.detalhe ?? '').replace(/\n/g, '<br>')}</p>
+        ${x ? `<button class="mini ${(estados[x.id] ?? 'trancada') === 'aberta' ? 'ok' : ''}" data-acao="cal-excel" data-id="${esc(x.id)}">${(estados[x.id] ?? 'trancada') === 'aberta' ? 'Excel aberto ✓' : 'Abrir o Excel para a turma'}</button>` : ''}</div></li>`;
+    }).join('');
+    const aberta = f && (estados[f.id] ?? 'trancada') === 'aberta';
+    return `<section class="dia-sec"><h3>${esc(r.titulo)}</h3>
+      <p class="nota">${total} min no roteiro${total !== p.minutosDia ? ` · a sua aula tem ${p.minutosDia} min (${total > p.minutosDia ? 'passa' : 'sobra'} ${Math.abs(total - p.minutosDia)} min)` : ' · cabe na sua aula'}</p>
+      <div class="linha-btn">
+        ${it.tipo === 'din' && f ? `<button class="mini ${aberta ? 'ok' : ''}" data-acao="cal-abrir" data-id="${esc(f.id)}">${aberta ? 'Fase aberta ✓' : 'Abrir a fase'}</button>` : ''}
+        ${f && ['din', 'cons'].includes(it.tipo) ? `<button class="mini" data-acao="cal-fase" data-id="${esc(f.id)}">Mover ou fixar a data</button>` : ''}
+        ${f ? `<button class="mini" data-acao="cal-roteiro" data-id="${esc(f.id)}" data-k="${r.editavel}">Editar o roteiro</button>` : ''}
+        ${f && it.tipo !== 'antes' && it.tipo !== 'folga' ? `<button class="mini" data-acao="cal-ver-fase" data-id="${esc(f.id)}">Ver a fase</button>` : ''}</div>
+      <ol class="blocos">${lista}</ol></section>`;
+  }).join('') : `<section class="dia-sec"><h3>${dia?.semAula ? 'Sem aula' : 'Dia livre'}</h3><p>${dia?.semAula ? esc(dia.semAula) : 'Nenhuma fase planejada para este dia. Use como quiser: revisão, atividade que precisou de mais tempo ou um evento.'}</p></section>`;
+  const eventos = (dia?.eventos ?? []).map((e) => `<li class="aluno" data-acao="cal-evento" data-id="${esc(e.id)}"><span class="nome">${esc(e.titulo)}</span><span class="chip ${e.bloqueia === 'dia' ? 'm-NA' : ''}">${e.bloqueia === 'dia' ? 'sem aula' : TIPOS[e.tipo] ?? 'lembrete'}</span></li>`).join('');
+  dlg.className = 'folha';
+  dlg.innerHTML = `<div class="form">
+    <div class="folha-cab"><div><h2>${DIAS_LONGO[diaSemana(d)]}, ${formatar(d, false)}</h2><p class="nota">${d === hoje() ? 'Hoje' : d < hoje() ? 'Já passou' : `Faltam ${diasEntre(hoje(), d)} dia(s)`}${resumos.length ? ` · Excel: ${esc(resumos.map((x) => x.nome).join(', '))}` : ''}</p></div>
+      <button class="mini" data-acao="cal-fechar" aria-label="Fechar">✕</button></div>
+    ${corpo}
+    ${eventos ? `<h3>Eventos do dia</h3><ul class="lista">${eventos}</ul>` : ''}
+    <div class="linha-btn"><button class="mini" data-acao="cal-evento" data-id="" data-d="${d}">+ Evento neste dia</button></div></div>`;
+  dlg.onclick = (ev) => {
+    const b = ev.target.closest('[data-acao]');
+    if (!b) return;
+    if (b.dataset.acao === 'cal-fechar') { dlg.close(); return; }
+    dlg.close();
+    ctx.tratar(b.dataset.acao, b);
+  };
+  dlg.addEventListener('close', () => { dlg.className = ''; }, { once: true });
+  dlg.showModal();
+}
+
+function dialogoEvento(st, dlg, id, dataInicial) {
   const e = id ? st.cal.eventos?.[id] : null;
   if (e?.tipo === 'oficial') {
     dlg.innerHTML = `<div class="form"><h2>${esc(e.titulo)}</h2><p>${formatar(e.data)}${e.fim ? ` a ${formatar(e.fim)}` : ''}</p><p class="nota">Evento do calendário oficial do Senac. ${e.bloqueia === 'dia' ? 'Não há aula neste dia.' : 'Não bloqueia a aula.'}</p><button class="botao" type="button" id="ev-fechar">Fechar</button></div>`;
@@ -220,7 +377,7 @@ function dialogoEvento(st, dlg, id) {
       <label for="ev-titulo">O que é</label>
       <input id="ev-titulo" maxlength="80" value="${esc(e?.titulo ?? '')}" required>
       <label for="ev-data">Dia</label>
-      <input id="ev-data" type="date" value="${esc(e?.data ?? hoje())}" required>
+      <input id="ev-data" type="date" value="${esc(e?.data ?? dataInicial ?? hoje())}" required>
       <label for="ev-fim">Até (se durar mais de um dia)</label>
       <input id="ev-fim" type="date" value="${esc(e?.fim ?? '')}">
       <label for="ev-tipo">Tipo</label>
@@ -245,14 +402,10 @@ function dialogoEvento(st, dlg, id) {
     const data = document.getElementById('ev-data').value;
     const fim = document.getElementById('ev-fim').value;
     if (fim && fim < data) { document.getElementById('ev-msg').textContent = 'O fim não pode ser antes do início.'; return; }
-    const novo = {
-      data, titulo: document.getElementById('ev-titulo').value.trim(), tipo: document.getElementById('ev-tipo').value,
-      bloqueia: document.getElementById('ev-bloq').value,
-    };
+    const novo = { data, titulo: document.getElementById('ev-titulo').value.trim(), tipo: document.getElementById('ev-tipo').value, bloqueia: document.getElementById('ev-bloq').value };
     if (fim) novo.fim = fim;
     if (document.getElementById('ev-turmas').value === 'esta') novo.turmas = [st.turma];
-    const eid = id || `e${Date.now().toString(36)}`;
-    try { await updateDoc(refCal(), { [`eventos.${eid}`]: novo }); dlg.close(); }
+    try { await updateDoc(refCal(), { [`eventos.${id || `e${Date.now().toString(36)}`}`]: novo }); dlg.close(); }
     catch { document.getElementById('ev-msg').textContent = 'Não consegui salvar agora.'; }
   };
   dlg.showModal();
@@ -302,16 +455,105 @@ function dialogoFase(st, dlg, faseId) {
   dlg.showModal();
 }
 
+// editor do roteiro de um dia de uma fase
+function dialogoRoteiro(st, dlg, faseId, tipo) {
+  const p = planejar(st);
+  const f = faseDe(p, faseId);
+  if (!f) return;
+  const atual = st.profTodas?.[faseId]?.cronograma?.[tipo] ?? PADRAO[tipo] ?? PADRAO.din;
+  const blocos = atual.map((b) => ({ ...b }));
+  const nome = { din: 'dinâmica', cons: 'consolidação', antes: 'preparação', folga: 'semana coringa' }[tipo] ?? tipo;
+
+  function pintar() {
+    dlg.innerHTML = `
+      <form class="form editor" id="form-roteiro">
+        <h2>Roteiro · ${esc(f.codigo)} (${nome})</h2>
+        <p class="nota">Cada bloco tem um tempo. A soma aparece embaixo, comparada com a duração da sua aula (${p.minutosDia} min).</p>
+        ${blocos.map((b, i) => `<fieldset class="card-ed"><legend>Bloco ${i + 1}${b.excel ? ' · Excel do dia' : ''}</legend>
+          <div class="linha-btn"><input class="min-campo" type="number" min="1" max="200" data-i="${i}" data-f="min" value="${b.min}" aria-label="Minutos"><input data-i="${i}" data-f="titulo" value="${esc(b.titulo)}" placeholder="Título do bloco" aria-label="Título"></div>
+          <textarea data-i="${i}" data-f="detalhe" rows="3" placeholder="O que fazer, o que dizer, perguntas">${esc(b.detalhe ?? '')}</textarea>
+          <div class="linha-btn"><button type="button" class="mini" data-r="sobe" data-i="${i}" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" class="mini" data-r="desce" data-i="${i}" ${i === blocos.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="mini ruim" data-r="remove" data-i="${i}">Remover</button></div></fieldset>`).join('')}
+        <button type="button" class="mini" data-r="add">+ Bloco</button>
+        <p class="nota" id="r-total"></p>
+        <p class="erro" id="r-msg"></p>
+        <div class="linha-btn"><button class="botao" type="submit">Salvar roteiro</button><button class="botao secundario" type="button" id="r-cancelar">Cancelar</button>
+        ${st.profTodas?.[faseId]?.cronograma?.[tipo] ? '<button class="mini" type="button" id="r-padrao">Voltar ao padrão</button>' : ''}</div>
+      </form>`;
+    totalizar();
+  }
+  function ler() {
+    dlg.querySelectorAll('[data-f]').forEach((el) => { blocos[Number(el.dataset.i)][el.dataset.f] = el.dataset.f === 'min' ? Number(el.value) || 0 : el.value; });
+  }
+  function totalizar() {
+    ler();
+    const t = soma(blocos);
+    const el = document.getElementById('r-total');
+    if (el) el.textContent = `Total: ${t} min · ${t === p.minutosDia ? 'cabe certinho na sua aula' : t > p.minutosDia ? `passa ${t - p.minutosDia} min da sua aula` : `sobram ${p.minutosDia - t} min`}`;
+  }
+  pintar();
+  dlg.oninput = (e) => { if (e.target.dataset?.f === 'min') totalizar(); };
+  dlg.onclick = async (ev) => {
+    if (ev.target.id === 'r-cancelar') { dlg.close(); return; }
+    if (ev.target.id === 'r-padrao' && confirm('Voltar ao roteiro padrão?')) {
+      try { await updateDoc(doc(db, 'fasesProfessor', faseId), { [`professor.cronograma.${tipo}`]: deleteField() }); dlg.close(); } catch { document.getElementById('r-msg').textContent = 'Não consegui agora.'; }
+      return;
+    }
+    const b = ev.target.closest('[data-r]');
+    if (!b) return;
+    ler();
+    const i = Number(b.dataset.i);
+    if (b.dataset.r === 'add') blocos.push({ min: 10, titulo: '', detalhe: '' });
+    else if (b.dataset.r === 'remove') { if (!confirm('Remover este bloco?')) return; blocos.splice(i, 1); }
+    else if (b.dataset.r === 'sobe' && i > 0) [blocos[i - 1], blocos[i]] = [blocos[i], blocos[i - 1]];
+    else if (b.dataset.r === 'desce' && i < blocos.length - 1) [blocos[i + 1], blocos[i]] = [blocos[i], blocos[i + 1]];
+    pintar();
+  };
+  dlg.onsubmit = async (ev) => {
+    if (ev.target.id !== 'form-roteiro') return;
+    ev.preventDefault();
+    ler();
+    const limpos = blocos.filter((b) => String(b.titulo).trim()).map((b) => ({ min: b.min, titulo: String(b.titulo).trim(), detalhe: String(b.detalhe ?? '').trim(), ...(b.excel ? { excel: true } : {}) }));
+    if (!limpos.length) { document.getElementById('r-msg').textContent = 'Coloque ao menos um bloco com título.'; return; }
+    try {
+      await setDoc(doc(db, 'fasesProfessor', faseId), { mundo: MUNDO, professor: { cronograma: { [tipo]: limpos } }, atualizadoEm: serverTimestamp() }, { merge: true });
+      dlg.close();
+    } catch { document.getElementById('r-msg').textContent = 'Não consegui salvar agora.'; }
+  };
+  dlg.showModal();
+}
+
 // ---------- ações da aba ----------
 // Devolve true quando tratou a ação.
 export async function tratarAgenda(acao, b, ctx) {
-  const { st, dlg, desenhar, mudarEstado } = ctx;
+  const { st, dlg, desenhar, mudarEstado, irParaFase } = ctx;
+  const self = { tratar: (a, el) => tratarAgenda(a, el, ctx) };
   switch (acao) {
-    case 'cal-bim': st.calBim = Number(b.dataset.id); desenhar(); return true;
-    case 'cal-evento': dialogoEvento(st, dlg, b.dataset.id || ''); return true;
+    case 'cal-bim': {
+      st.calBim = Number(b.dataset.id);
+      const bim = st.cal.bimestres.find((x) => x.id === st.calBim);
+      st.calMes = bim ? bim.inicio.slice(0, 7) : st.calMes;
+      desenhar();
+      return true;
+    }
+    case 'cal-mes': {
+      const delta = Number(b.dataset.d);
+      let [a, m] = (st.calMes ?? hoje().slice(0, 7)).split('-').map(Number);
+      if (delta === 0) { st.calMes = hoje().slice(0, 7); } else { m += delta; if (m < 1) { m = 12; a -= 1; } if (m > 12) { m = 1; a += 1; } st.calMes = `${a}-${String(m).padStart(2, '0')}`; }
+      const bim = bimestreDe(st.cal, `${st.calMes}-15`);
+      if (bim) st.calBim = bim.id;
+      desenhar();
+      return true;
+    }
+    case 'cal-dia': abrirDia(st, dlg, b.dataset.d, self); return true;
+    case 'cal-evento': dialogoEvento(st, dlg, b.dataset.id || '', b.dataset.d); return true;
     case 'cal-fase': dialogoFase(st, dlg, b.dataset.id); return true;
+    case 'cal-roteiro': dialogoRoteiro(st, dlg, b.dataset.id, b.dataset.k); return true;
+    case 'cal-ver-fase': irParaFase(b.dataset.id); return true;
     case 'cal-abrir':
       if (confirm('Abrir esta fase para a turma agora?')) await mudarEstado(b.dataset.id, 'aberta');
+      return true;
+    case 'cal-excel':
+      if (confirm('Abrir o Excel para a turma agora?')) await mudarEstado(b.dataset.id, 'aberta');
       return true;
     case 'cal-confirmar': {
       const p = planejar(st);
@@ -321,7 +563,8 @@ export async function tratarAgenda(acao, b, ctx) {
     }
     case 'cal-config': {
       await setDoc(refPlano(st.turma), {
-        turma: st.turma, diaDin: Number(document.getElementById('cal-din').value), diaCons: Number(document.getElementById('cal-cons').value), atualizadoEm: serverTimestamp(),
+        turma: st.turma, diaDin: Number(document.getElementById('cal-din').value), diaCons: Number(document.getElementById('cal-cons').value),
+        minutosDia: Number(document.getElementById('cal-min').value) || 100, atualizadoEm: serverTimestamp(),
       }, { merge: true });
       return true;
     }

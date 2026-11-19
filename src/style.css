@@ -417,3 +417,69 @@ dialog { max-height: 90vh; overflow-y: auto; }
   .abas { max-width: 1000px; margin: 0 auto; border-radius: 12px 12px 0 0; border: 1px solid var(--borda); }
   .cal-semana { display: block; }
 }
+/* ---------- Agenda em formato de calendário ---------- */
+.cal-nav { display: flex; align-items: center; gap: 8px; margin: 14px 0 8px; }
+.cal-nav h3 { flex: 1; margin: 0; text-align: center; font-size: 1.15rem; }
+.cal-nav .mini { min-width: 44px; min-height: 44px; font-size: 1.2rem; }
+.cal { background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; overflow: hidden; }
+.cal-cab, .cal-linha { display: grid; grid-template-columns: 52px repeat(var(--cols), 1fr); }
+.cal-cab { background: var(--campo); border-bottom: 1px solid var(--borda); }
+.cal-cab span { padding: 10px 8px; font-size: 0.85rem; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: 0.04em; }
+.cal-linha { border-bottom: 1px solid var(--borda); }
+.cal-linha:last-child { border-bottom: 0; }
+.cal-sem-rot { padding: 8px 4px; font-size: 0.72rem; color: var(--suave); text-align: center; border-right: 1px solid var(--borda); background: var(--campo); }
+.cal-cel {
+  display: flex; flex-direction: column; align-items: stretch; gap: 3px; min-height: 104px; padding: 8px; text-align: left;
+  border: 0; border-right: 1px solid var(--borda); background: var(--cartao); color: var(--texto); font: inherit; cursor: pointer;
+}
+.cal-cel:last-child { border-right: 0; }
+.cal-cel:hover, .cal-cel:focus-visible { background: color-mix(in srgb, var(--destaque) 7%, var(--cartao)); outline: none; }
+.cal-cel.fora { opacity: 0.5; }
+.cal-cel.hoje { box-shadow: inset 0 0 0 3px var(--destaque); }
+.cal-cel.hoje .cal-num { background: var(--destaque); color: var(--destaque-texto); }
+.cal-cel.passado:not(.tem) { opacity: 0.55; }
+.cal-cel.sem-aula { background: repeating-linear-gradient(135deg, var(--campo), var(--campo) 8px, var(--borda) 8px, var(--borda) 10px); }
+.cal-num { align-self: flex-start; min-width: 26px; padding: 1px 7px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; }
+.cal-sem { font-size: 0.78rem; font-style: italic; color: var(--suave); }
+.cal-livre { font-size: 0.78rem; color: var(--suave); opacity: 0.7; }
+.cc { display: block; padding: 3px 8px; border-radius: 7px; font-size: 0.78rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid transparent; }
+.cc.din { background: color-mix(in srgb, #3b5bdb 16%, var(--cartao)); border-color: #3b5bdb; }
+.cc.cons { background: color-mix(in srgb, #1a7f4b 16%, var(--cartao)); border-color: #1a7f4b; }
+.cc.excel { background: color-mix(in srgb, #7a42c8 16%, var(--cartao)); border-color: #7a42c8; }
+.cc.prep, .cc.folga { background: var(--campo); border-color: var(--suave); border-style: dashed; }
+.cc.recup { background: color-mix(in srgb, #b7791f 18%, var(--cartao)); border-color: #b7791f; }
+.cc.ev { background: color-mix(in srgb, #e0a800 20%, var(--cartao)); border-color: #e0a800; }
+.cc.ev.bloq { background: color-mix(in srgb, #b42318 14%, var(--cartao)); border-color: #b42318; }
+.cc.estouro { background: color-mix(in srgb, #b42318 16%, var(--cartao)); border-color: #b42318; }
+.cc.mais { background: transparent; color: var(--suave); border: 0; padding: 0 4px; }
+.cal-legenda { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.cal-legenda .cc { display: inline-block; }
+.dica-cal { position: fixed; z-index: 100; max-width: 280px; padding: 8px 12px; background: var(--texto); color: var(--fundo); border-radius: 10px; font-size: 0.85rem; line-height: 1.4; white-space: pre-line; pointer-events: none; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
+.dica-cal[hidden] { display: none; }
+.cal-hoje { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+
+dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
+.folha-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.folha-cab h2 { margin: 0; }
+.dia-sec { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 14px; background: var(--cartao); }
+.dia-sec h3 { margin: 0 0 4px; }
+.blocos { list-style: none; margin: 10px 0 0; padding: 0; border-left: 3px solid var(--borda); }
+.bloco { display: flex; gap: 10px; margin: 0 0 10px; padding-left: 10px; position: relative; }
+.bloco::before { content: ''; position: absolute; left: -8px; top: 6px; width: 11px; height: 11px; border-radius: 50%; background: var(--destaque); border: 2px solid var(--cartao); }
+.bloco.excel::before { background: #7a42c8; }
+.bloco-t { min-width: 46px; font-size: 0.82rem; font-weight: 700; color: var(--suave); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.bloco p { margin: 4px 0; font-size: 0.93rem; }
+.min-campo { max-width: 90px; }
+.editor .linha-btn input { flex: 1; }
+
+@media (max-width: 640px) {
+  .cal-cel { min-height: 92px; padding: 6px; }
+  .cal-cab, .cal-linha { grid-template-columns: 40px repeat(var(--cols), 1fr); }
+  .cc { font-size: 0.72rem; padding: 2px 6px; }
+  dialog.folha { width: 100vw; max-width: 100vw; max-height: 94vh; margin: auto 0 0; border-radius: 18px 18px 0 0; }
+}
+@media (min-width: 900px) {
+  .cal-cel { min-height: 130px; }
+  .cc { font-size: 0.82rem; }
+}
+.chip { white-space: nowrap; }

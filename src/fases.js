@@ -29,7 +29,9 @@ export function etapasDe(f) {
   return (f.instrucoes ?? []).map((x, i) => (typeof x === 'string' ? { id: `i${i + 1}`, texto: x } : { ...x, id: x.id ?? `i${i + 1}` }));
 }
 
-export const marcaveis = (f) => etapasDe(f).filter((e) => e.semMarcar !== true);
+// Etapas que o aluno precisa marcar para concluir (as só de informação e os bônus não contam).
+export const marcaveis = (f) => etapasDe(f).filter((e) => e.semMarcar !== true && e.opcional !== true);
+export const ehExcel = (f) => f.tipo === 'excel';
 
 export function normMateriais(f) {
   return (f.materiais ?? []).map((x, i) => ({ ...x, id: x.id ?? `m${i + 1}` }));
@@ -103,5 +105,6 @@ export function parteAluno(f, mundo) {
     cartaoResumo: f.cartaoResumo ?? '',
     tarefaTrilha: f.tarefaTrilha ?? '',
     folgaAntes: f.folgaAntes ?? 0,
+    anexaA: f.anexaA ?? '',
   };
 }

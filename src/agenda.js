@@ -64,7 +64,7 @@ export function gerarAgenda({ fases, bimestre, bloqueados, fixas = {}, diaDin = 
       for (let k = 0; k <= pular; k++) {
         const d = proximoDia(desde, diaDin, bloqueados, teto);
         if (!d) { din = null; break; }
-        if (k < pular) folgas.push(d); else din = d;
+        if (k < pular) folgas.push({ data: d, faseId: f.id }); else din = d;
         desde = addDias(d, 1);
       }
     }
@@ -104,4 +104,48 @@ export function diferencas(confirmado, itens) {
 export function bimestreDe(cal, data) {
   const lista = cal?.bimestres ?? [];
   return lista.find((b) => data >= b.inicio && data <= b.fim) ?? lista.find((b) => b.inicio > data) ?? lista[lista.length - 1] ?? null;
+}
+
+// Tudo o que acontece em cada dia de aula: dinâmica, consolidação, Excel, preparação, coringa, recuperação,
+// dias sem aula e eventos do professor. Os lembretes oficiais que não bloqueiam a aula ficam de fora.
+export function montarDias({ ag, fases, bimestre, bloqueados, eventos, diaDin = 2, diaCons = 1 }) {
+  const dias = new Map();
+  const dia = (d) => {
+    if (!dias.has(d)) dias.set(d, { data: d, itens: [], semAula: bloqueados.get(d) ?? null, eventos: [] });
+    return dias.get(d);
+  };
+  const excelDe = (faseId) => fases.find((f) => f.tipo === 'excel' && f.anexaA === faseId);
+  for (const d of bloqueados.keys()) if (d >= bimestre.inicio && d <= bimestre.fim) dia(d);
+
+  for (const i of ag.itens) {
+    if (i.din) dia(i.din).itens.push({ tipo: 'din', faseId: i.faseId, fixa: i.fixaDin, estouro: i.estouro });
+    if (i.cons) {
+      dia(i.cons).itens.push({ tipo: 'cons', faseId: i.faseId, fixa: i.fixaCons, estouro: i.consEstouro });
+      const x = excelDe(i.faseId);
+      if (x) dia(i.cons).itens.push({ tipo: 'excel', faseId: x.id, deFase: i.faseId });
+    }
+  }
+  for (const f of ag.folgas) dia(f.data).itens.push({ tipo: 'folga', faseId: f.faseId });
+
+  // dia de consolidação livre logo antes de uma dinâmica: preparação
+  for (const i of ag.itens) {
+    if (!i.din) continue;
+    const d = addDias(i.din, -1);
+    if (diaSemana(d) === diaCons && !bloqueados.has(d) && !(dias.get(d)?.itens.length)) dia(d).itens.push({ tipo: 'antes', faseId: i.faseId });
+  }
+
+  // semana da reunião de fechamento: recuperação (consolidação) e fechamento do mundo (dinâmica)
+  const seg = addDias(ag.limite, 1);
+  for (let k = 0; k < 7; k++) {
+    const d = addDias(seg, k);
+    if (d > bimestre.fechamento || bloqueados.has(d)) continue;
+    if (diaSemana(d) === diaCons) dia(d).itens.push({ tipo: 'recup', parte: 'seg' });
+    else if (diaSemana(d) === diaDin) dia(d).itens.push({ tipo: 'recup', parte: 'ter' });
+  }
+
+  for (const [id, e] of Object.entries(eventos ?? {})) {
+    if (e.tipo === 'oficial' && e.bloqueia !== 'dia') continue;
+    for (const d of intervalo(e.data, e.fim ?? e.data)) if (d >= bimestre.inicio && d <= bimestre.fim) dia(d).eventos.push({ id, ...e });
+  }
+  return dias;
 }

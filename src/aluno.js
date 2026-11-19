@@ -131,7 +131,7 @@ export function iniciarAluno(user, opcoes = {}) {
   function telaLista() {
     const estados = st.turma?.estadoFases ?? {};
     const textos = st.mundo?.textos ?? {};
-    const itens = st.fases.map((f) => {
+    const linha = (f) => {
       const est = estados[f.id] ?? 'trancada';
       const cod = `<span class="cod">${esc(f.codigo)}</span><span class="nm">${esc(f.nome)}</span>`;
       if (est === 'aberta' || est === 'encerrada') {
@@ -143,7 +143,9 @@ export function iniciarAluno(user, opcoes = {}) {
       }
       const placa = est === 'adiada' ? textos.adiada : est === 'cancelada' ? textos.cancelada : textoPlaca(textos, f);
       return `<li><div class="fase obra e-${est}">${cod}<span class="placa">${esc(placa ?? 'Em obra.')}</span></div></li>`;
-    }).join('');
+    };
+    const itens = st.fases.filter((f) => f.tipo !== 'excel').map(linha).join('');
+    const excelAbertos = st.fases.filter((f) => f.tipo === 'excel' && ['aberta', 'encerrada'].includes(estados[f.id] ?? 'trancada')).map(linha).join('');
     const gerais = st.recados.filter((r) => !r.fase);
     const recados = gerais.length ? `<h2>Recados do professor</h2><ul class="lista">${gerais.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
     mostrar(
@@ -155,6 +157,7 @@ export function iniciarAluno(user, opcoes = {}) {
         </div>
         <h2>${esc(st.mundo?.nome ?? 'Vila dos Planos')}</h2>
         <ul class="lista">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
+        ${excelAbertos ? `<h2>Trilha de Excel</h2><ul class="lista">${excelAbertos}</ul>` : ''}
         ${recados}
         ${ver ? '' : '<button id="sair" class="botao secundario">Sair</button>'}
       </section>`,

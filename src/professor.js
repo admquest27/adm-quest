@@ -12,7 +12,7 @@ import {
 import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } from './registros.js';
 import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
-import { htmlAgenda, tratarAgenda, importarCalendario, ANO } from './calendario.js';
+import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, ANO } from './calendario.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -101,6 +101,15 @@ export function iniciarProfessor(user, opcoes = {}) {
     st.cal = s.exists() ? s.data() : null;
     desenhar();
   }, () => {}));
+
+  // roteiros e notas do professor de todas as fases (alimentam a Agenda)
+  st.profTodas = {};
+  paradas.push(onSnapshot(collection(db, 'fasesProfessor'), (s) => {
+    st.profTodas = {};
+    s.docs.forEach((d) => { st.profTodas[d.id] = d.data().professor ?? {}; });
+    desenhar();
+  }, () => {}));
+  ligarDicas(app);
 
   // progresso, avaliações, atitudes e anotações só da turma escolhida
   function ligarTurma() {
@@ -212,7 +221,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (!st.fases.length) return '<p class="vazio">Ainda não há fases. Importe o conteúdo do Mundo 1 na aba Mais.</p>';
     ligarProf();
     if (st.faseSel) return htmlPainelFase();
-    const itens = st.fases.map((f) => {
+    const linha = (f) => {
       const est = estadoDe(f.id);
       const r = resumoFase(f);
       return `<li class="fase-prof">
@@ -224,10 +233,13 @@ export function iniciarProfessor(user, opcoes = {}) {
           ${ESTADOS.map((e) => `<option value="${e}" ${e === est ? 'selected' : ''}>${ESTADO_ROTULO[e]}</option>`).join('')}
         </select>
       </li>`;
-    }).join('');
+    };
+    const normais = st.fases.filter((f) => f.tipo !== 'excel');
+    const excel = st.fases.filter((f) => f.tipo === 'excel');
     return `<h2>${esc(st.mundo?.nome ?? 'Mundo 1')}</h2>
       <p class="nota">Só você libera as fases. O aluno vê "em obra" até você abrir. Aberta: os alunos trabalham. Encerrada: ninguém edita, só quem faltou ou quem você liberar.</p>
-      <ul class="lista">${itens}</ul>`;
+      <ul class="lista">${normais.map(linha).join('')}</ul>
+      ${excel.length ? `<h3>Trilha de Excel</h3><p class="nota">Uma por segunda. Abra no dia, pelo roteiro da Agenda ou aqui.</p><ul class="lista">${excel.map(linha).join('')}</ul>` : ''}`;
   }
 
   function htmlPainelFase() {
@@ -397,7 +409,10 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (!b) return;
     const acao = b.dataset.acao;
     try {
-      if (acao.startsWith('cal-')) { await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado }); return; }
+      if (acao.startsWith('cal-')) {
+        await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, irParaFase: (id) => { st.aba = 'fases'; st.faseSel = id; guardar('aba', 'fases'); ligarProf(); desenhar(); } });
+        return;
+      }
       if (acao === 'exportar-painel') { abrirExportacao(st, dlg); return; }
       if (acao === 'exportar-aluno') { exportarAluno(st, b.dataset.uid); return; }
       if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; st.painelVista = null; guardar('aba', st.aba); ligarProf(); desenhar(); }

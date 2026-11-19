@@ -19,3 +19,4 @@ dados/
 backups/
 ferramentas/saida/
 *.log
+harness-local/
