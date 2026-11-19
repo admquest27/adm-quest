@@ -179,5 +179,60 @@ service cloud.firestore {
       allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
       allow write: if ehProfessor();
     }
+
+    // AdmBux: loja, conquistas e valores. O aluno ativo lê; só o professor altera.
+    match /economia/{id} {
+      allow read: if ehProfessor() || ativo();
+      allow write: if ehProfessor();
+    }
+
+    // Carteira: prêmios e rendimentos que só o professor dá. O aluno lê só a própria.
+    match /carteiras/{uid} {
+      allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
+      allow write: if ehProfessor();
+    }
+
+    // Compras do aluno: a lista só cresce, um item por vez, com o preço da loja. Nada se apaga.
+    function itemValido(item) {
+      return item is map
+        && item.keys().hasOnly(['id', 'preco', 'em'])
+        && item.id is string
+        && item.preco is int
+        && item.em is int
+        && get(/databases/$(database)/documents/economia/geral).data.loja.get(item.id, {}).get('preco', -1) == item.preco;
+    }
+
+    function usandoValido(u) {
+      return u is map && u.keys().hasOnly(['moldura', 'fundo', 'titulo']);
+    }
+
+    match /compras/{uid} {
+      allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
+
+      allow create: if ativo()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['uid', 'turma', 'itens', 'usando', 'atualizadoEm'])
+        && request.resource.data.uid == uid
+        && request.resource.data.turma == meuAluno().turma
+        && request.resource.data.itens is list
+        && request.resource.data.itens.size() <= 1
+        && (request.resource.data.itens.size() == 0 || itemValido(request.resource.data.itens[0]))
+        && usandoValido(request.resource.data.get('usando', {}))
+        && request.resource.data.atualizadoEm == request.time;
+
+      allow update: if ativo()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['itens', 'usando', 'atualizadoEm'])
+        && request.resource.data.itens is list
+        && request.resource.data.itens.hasAll(resource.data.itens)
+        && request.resource.data.itens.size() <= 200
+        && (request.resource.data.itens.size() == resource.data.itens.size()
+            || (request.resource.data.itens.size() == resource.data.itens.size() + 1
+                && itemValido(request.resource.data.itens[request.resource.data.itens.size() - 1])))
+        && usandoValido(request.resource.data.get('usando', {}))
+        && request.resource.data.atualizadoEm == request.time;
+
+      allow delete: if ehProfessor() && turmaDeTeste(resource.data.get('turma', ''));
+    }
   }
 }

@@ -12,6 +12,7 @@ import {
 import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } from './registros.js';
 import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
+import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
 import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO } from './calendario.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
 
@@ -109,6 +110,12 @@ export function iniciarProfessor(user, opcoes = {}) {
     s.docs.forEach((d) => { st.profTodas[d.id] = d.data().professor ?? {}; });
     desenhar();
   }, () => {}));
+  // AdmBux: loja, carteiras (prêmios e rendimentos) e compras de todos os alunos
+  st.eco = null; st.carteiras = {}; st.compras = {};
+  paradas.push(onSnapshot(doc(db, 'economia', 'geral'), (s) => { st.eco = s.exists() ? s.data() : null; desenhar(); }, () => {}));
+  paradas.push(onSnapshot(collection(db, 'carteiras'), (s) => { st.carteiras = Object.fromEntries(s.docs.map((d) => [d.id, d.data()])); desenhar(); }, () => {}));
+  paradas.push(onSnapshot(collection(db, 'compras'), (s) => { st.compras = Object.fromEntries(s.docs.map((d) => [d.id, d.data()])); desenhar(); }, () => {}));
+
   // planos de todas as turmas: o roteiro é um só e mostra como cabe no horário de cada turma
   st.planos = {};
   paradas.push(onSnapshot(collection(db, 'planos'), (s) => {
@@ -159,7 +166,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (st.aba === 'mais' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
     const pend = pendentesTotal();
     const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlTurmas()}<hr>${htmlConteudo()}`;
+    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlConteudo()}`;
     const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['mais', 'Mais']];
     tela(
       `<header class="topo">
@@ -196,7 +203,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         <span class="nome">${esc(a.apelido)}</span>
         <span class="chip ${esc(a.status)}">${esc(ROTULO[a.status] ?? a.status)}</span>
         ${a.status === 'pendente' ? `<button class="mini ok" data-acao="aprovar" data-uid="${esc(a.uid)}">Aprovar</button><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Recusar</button>` : ''}
-        ${a.status === 'ativo' ? `<span class="acoes-aluno"><button class="mini" data-acao="registros" data-uid="${esc(a.uid)}">Registros</button><button class="mini" data-acao="ver-aluno" data-uid="${esc(a.uid)}">Ver como aluno</button></span>` : ''}
+        ${a.status === 'ativo' ? `<span class="acoes-aluno"><button class="mini" data-acao="admbux" data-uid="${esc(a.uid)}" aria-label="AdmBux">🪙 ${carteiraDoAluno(st, a.uid).saldo}</button><button class="mini" data-acao="registros" data-uid="${esc(a.uid)}">Registros</button><button class="mini" data-acao="ver-aluno" data-uid="${esc(a.uid)}">Ver como aluno</button></span>` : ''}
       </li>`).join('');
     const orfaos = st.alunos.filter((a) => !a.turma);
     const htmlOrfaos = orfaos.length ? `<h2>Cadastros sem turma (testes antigos)</h2>
@@ -382,7 +389,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     const atual = st.aval[progId(uid, st.faseSel)]?.validada === true;
     const a = st.alunos.find((x) => x.uid === uid);
     if (atual && !confirm(`Remover a validação de ${a?.apelido ?? 'este aluno'}?`)) return;
-    await setDoc(refAval(uid), { ...baseAval(uid), validada: !atual }, { merge: true });
+    await setDoc(refAval(uid), { ...baseAval(uid), validada: !atual, validadaEm: !atual ? serverTimestamp() : null }, { merge: true });
   }
 
   async function validarTodos() {
@@ -394,7 +401,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (!alvo.length) { falha('Ninguém para validar: ou ninguém concluiu, ou todos já estão validados.'); return; }
     if (!confirm(`Validar ${alvo.length} aluno(s) que concluíram?`)) return;
     const lote = writeBatch(db);
-    alvo.forEach((a) => lote.set(refAval(a.uid), { ...baseAval(a.uid), validada: true }, { merge: true }));
+    alvo.forEach((a) => lote.set(refAval(a.uid), { ...baseAval(a.uid), validada: true, validadaEm: serverTimestamp() }, { merge: true }));
     await lote.commit();
   }
 
@@ -440,6 +447,8 @@ export function iniciarProfessor(user, opcoes = {}) {
         if (confirm('Recusar este cadastro? O aluno poderá se cadastrar de novo.')) await deleteDoc(doc(db, 'alunos', b.dataset.uid));
       }
       else if (acao === 'editar') { abrirEdicao(b.dataset.uid); }
+      else if (acao === 'admbux') { e.stopPropagation(); abrirAdmBux(st, dlg, b.dataset.uid); }
+      else if (acao === 'admbux-rendimento') { const m = await pagarRendimento(st, ativosDaTurma()); if (m) falha(m); }
       else if (acao === 'registros') { e.stopPropagation(); abrirRegistros(st, dlg, b.dataset.uid, null); }
       else if (acao === 'registros-fase') { abrirRegistros(st, dlg, b.dataset.uid, st.faseSel); }
       else if (acao === 'ver-aluno') { e.stopPropagation(); opcoes.verComoAluno?.(b.dataset.uid); }

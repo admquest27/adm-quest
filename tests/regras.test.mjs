@@ -340,3 +340,45 @@ test('calendário e plano de datas: só o professor', async () => {
   await assertFails(setDoc(doc(aluno('ativo1'), 'planos/1A'), { fixas: {} }));
   await assertFails(getDoc(doc(anonimo(), 'calendario/2027')));
 });
+// ---------- AdmBux ----------
+const semearLoja = () => env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'economia/geral'), { loja: { t1: { nome: 'CEO de Nada', tipo: 'titulo', preco: 30 }, m1: { nome: 'Moldura de ouro', tipo: 'moldura', preco: 60 } } });
+  await setDoc(doc(db, 'carteiras/ativo1'), { uid: 'ativo1', turma: '1A', premios: [{ valor: 10, motivo: 'x', em: 1 }] });
+});
+const compra = (id, preco, em = 1) => ({ id, preco, em });
+const baseCompras = (itens) => ({ uid: 'ativo1', turma: '1A', itens, usando: {}, atualizadoEm: serverTimestamp() });
+
+test('AdmBux: aluno ativo lê a loja e a própria carteira; não lê a de outro nem escreve', async () => {
+  await semearLoja();
+  await assertSucceeds(getDoc(doc(aluno('ativo1'), 'economia/geral')));
+  await assertFails(getDoc(doc(aluno('pend1'), 'economia/geral')));
+  await assertSucceeds(getDoc(doc(aluno('ativo1'), 'carteiras/ativo1')));
+  await assertFails(getDoc(doc(aluno('outro1'), 'carteiras/ativo1')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'carteiras/ativo1'), { premios: [{ valor: 999, motivo: 'eu mesmo', em: 2 }] }));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'economia/geral'), { loja: {} }));
+  await assertSucceeds(setDoc(doc(prof(), 'carteiras/ativo1'), { premios: [] }, { merge: true }));
+});
+
+test('AdmBux: compra com o preço da loja, um item por vez, sem apagar compras', async () => {
+  await semearLoja();
+  const db = aluno('ativo1');
+  await assertSucceeds(setDoc(doc(db, 'compras/ativo1'), baseCompras([compra('t1', 30)])));
+  await assertFails(updateDoc(doc(db, 'compras/ativo1'), { itens: [compra('t1', 30), compra('m1', 1, 2)], atualizadoEm: serverTimestamp() }));
+  await assertFails(updateDoc(doc(db, 'compras/ativo1'), { itens: [compra('t1', 30), compra('m1', 60, 2), compra('m1', 60, 3)], atualizadoEm: serverTimestamp() }));
+  await assertFails(updateDoc(doc(db, 'compras/ativo1'), { itens: [], atualizadoEm: serverTimestamp() }));
+  await assertFails(updateDoc(doc(db, 'compras/ativo1'), { itens: [compra('t1', 30), compra('naoexiste', 0, 2)], atualizadoEm: serverTimestamp() }));
+  await assertSucceeds(updateDoc(doc(db, 'compras/ativo1'), { itens: [compra('t1', 30), compra('m1', 60, 2)], atualizadoEm: serverTimestamp() }));
+  await assertSucceeds(updateDoc(doc(db, 'compras/ativo1'), { usando: { titulo: 't1' }, atualizadoEm: serverTimestamp() }));
+  await assertFails(updateDoc(doc(db, 'compras/ativo1'), { usando: { coroa: 'x' }, atualizadoEm: serverTimestamp() }));
+  await assertFails(deleteDoc(doc(db, 'compras/ativo1')));
+});
+
+test('AdmBux: ninguém compra em nome de outro; o professor lê as compras', async () => {
+  await semearLoja();
+  await assertFails(setDoc(doc(aluno('outro1'), 'compras/ativo1'), baseCompras([compra('t1', 30)])));
+  await assertFails(setDoc(doc(aluno('pend1'), 'compras/pend1'), { ...baseCompras([]), uid: 'pend1' }));
+  await assertSucceeds(setDoc(doc(aluno('ativo1'), 'compras/ativo1'), baseCompras([])));
+  await assertSucceeds(getDoc(doc(prof(), 'compras/ativo1')));
+  await assertFails(getDoc(doc(aluno('outro1'), 'compras/ativo1')));
+});

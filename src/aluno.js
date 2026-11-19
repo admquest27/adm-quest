@@ -1,9 +1,11 @@
 import { signOut } from 'firebase/auth';
-import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { app, tela, esc, carregando } from './ui.js';
 import { FANTASIAS, TONS, imgAvatar } from './avatar.js';
 import { htmlCartao } from './cartao.js';
+import { calcularCarteira, CONQUISTAS, podeComprar } from './economia.js';
+import { htmlCarteira, visual, avatarComMoldura, conquistasNovas } from './carteira.js';
 import {
   MUNDO, SITUACAO_ROTULO, progId, contarTarefas, situacao, podeEditar, textoPlaca, etapasDe, etapaLiberada,
 } from './fases.js';
@@ -16,6 +18,7 @@ export function iniciarAluno(user, opcoes = {}) {
   const st = {
     dados: null, editandoAvatar: false, acesso: false, escolha: { fantasia: 'heroi', tom: 2 },
     turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
+    eco: null, carteira: null, compras: null, naCarteira: false,
   };
   let paradasAtivo = [];
 
@@ -60,6 +63,9 @@ export function iniciarAluno(user, opcoes = {}) {
         st.recados = s.docs.map((d) => d.data()).sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
         redesenha();
       }, () => {}),
+      onSnapshot(doc(db, 'economia', 'geral'), (s) => { st.eco = s.exists() ? s.data() : null; redesenha(); }, () => {}),
+      onSnapshot(doc(db, 'carteiras', alvo), (s) => { st.carteira = s.exists() ? s.data() : null; redesenha(); }, () => {}),
+      onSnapshot(doc(db, 'compras', alvo), (s) => { st.compras = s.exists() ? s.data() : null; redesenha(); }, () => {}),
     ];
   }
 
@@ -123,6 +129,7 @@ export function iniciarAluno(user, opcoes = {}) {
     }
     ligarDados();
     if ((!st.dados.avatar || st.editandoAvatar) && !ver) return telaAvatar();
+    if (st.naCarteira) return telaCarteira();
     if (st.faseAberta) return telaCartao();
     return telaLista();
   }
@@ -148,13 +155,20 @@ export function iniciarAluno(user, opcoes = {}) {
     const itens = st.fases.filter((f) => f.tipo !== 'excel').map(linha).join('');
     const excelAbertos = st.fases.filter((f) => f.tipo === 'excel' && ['aberta', 'encerrada'].includes(estados[f.id] ?? 'trancada')).map(linha).join('');
     const gerais = st.recados.filter((r) => !r.fase);
+    const c = carteira();
+    const vis = visual(st.eco, st.compras);
+    const conq = { ...CONQUISTAS, ...(st.eco?.conquistas ?? {}) };
+    const novas = ver ? [] : conquistasNovas(alvo, c.conquistas).novas;
+    const avisoConq = novas.length ? `<div class="conquista-nova" role="status"><span class="trofeu" aria-hidden="true">🏆</span><div><strong>Conquista desbloqueada!</strong>${novas.map((id) => `<p>${esc(conq[id]?.nome ?? id)}: ${esc(conq[id]?.texto ?? '')} (+${c.V.conquista} AdmBux)</p>`).join('')}</div><button id="ok-conquista" class="mini">Legal!</button></div>` : '';
     const recados = gerais.length ? `<h2>Recados do professor</h2><ul class="lista">${gerais.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
     mostrar(
       `<section class="cartao largo">
-        <div class="cab-aluno">
-          ${imgAvatar(st.dados.avatar, 'avatar p')}
-          <div><strong>${esc(st.dados.apelido)}</strong><br><span class="nota">${esc(st.turma?.nome ?? '')}</span></div>
-          ${ver ? '' : '<button id="trocar" class="mini">Avatar</button>'}
+        ${avisoConq}
+        <div class="cab-aluno ${vis.fundo ? `tem-fundo fundo-${esc(vis.fundo)}` : ''}">
+          ${avatarComMoldura(st.dados.avatar, vis.moldura)}
+          <div><strong>${esc(st.dados.apelido)}</strong>${vis.titulo ? `<br><span class="titulo-aluno">${esc(vis.titulo)}</span>` : ''}<br><span class="nota">${esc(st.turma?.nome ?? '')}</span></div>
+          <div class="cab-botoes"><button id="abrir-carteira" class="mini moeda-btn" aria-label="Minhas AdmBux: ${c.saldo}">🪙 ${c.saldo}</button>
+          ${ver ? '' : '<button id="trocar" class="mini">Avatar</button>'}</div>
         </div>
         <h2>${esc(st.mundo?.nome ?? 'Vila dos Planos')}</h2>
         <ul class="lista">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
@@ -175,6 +189,32 @@ export function iniciarAluno(user, opcoes = {}) {
       f, p: st.progresso[f.id], a, est, turma: st.turma, mundo: st.mundo, recados: st.recados, ver,
       editavel: !ver && podeEditar(est, a), aviso: st.aviso,
     }), 'centro alto');
+  }
+
+  function carteira() {
+    return calcularCarteira({ fases: st.fases, progresso: st.progresso, aval: st.aval, recados: st.recados, carteira: st.carteira, compras: st.compras, eco: st.eco });
+  }
+
+  function telaCarteira() {
+    mostrar(htmlCarteira({ c: carteira(), eco: st.eco, compras: st.compras, avatar: st.dados.avatar, mundoAtual: MUNDO, ver, aviso: st.aviso }), 'centro alto');
+  }
+
+  async function comprar(id) {
+    const item = { id, ...(st.eco?.loja?.[id] ?? {}) };
+    const c = carteira();
+    const pode = podeComprar(item, c.saldo, st.compras);
+    if (!item.nome || !pode.ok) { aviso(pode.motivo ?? 'Item indisponível.'); return; }
+    if (!confirm(`Comprar ${item.nome} por ${item.preco} AdmBux? O seu saldo fica em ${c.saldo - item.preco}.`)) return;
+    const novo = { id, preco: item.preco, em: Date.now() };
+    const ref2 = doc(db, 'compras', alvo);
+    if (!st.compras) await setDoc(ref2, { uid: alvo, turma: st.dados.turma, itens: [novo], usando: { [item.tipo]: id }, atualizadoEm: serverTimestamp() });
+    else await updateDoc(ref2, { itens: arrayUnion(novo), [`usando.${item.tipo}`]: id, atualizadoEm: serverTimestamp() });
+    aviso('');
+  }
+
+  async function usar(id, tipo) {
+    const emUso = st.compras?.usando?.[tipo] === id;
+    await updateDoc(doc(db, 'compras', alvo), { [`usando.${tipo}`]: emUso ? '' : id, atualizadoEm: serverTimestamp() });
   }
 
   function telaAvatar() {
@@ -255,8 +295,13 @@ export function iniciarAluno(user, opcoes = {}) {
       if (b.id === 'sair-ver') { opcoes.aoSair?.(); return; }
       if (b.dataset.fase) { st.faseAberta = b.dataset.fase; st.aviso = ''; desenhar(); return; }
       if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; desenhar(); return; }
+      if (b.id === 'abrir-carteira') { st.naCarteira = true; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
+      if (b.id === 'voltar-carteira') { st.naCarteira = false; st.aviso = ''; desenhar(); return; }
       if (ver) return;
       if (b.id === 'concluir') { await alternarConcluida(st.faseAberta); return; }
+      if (b.id === 'ok-conquista') { conquistasNovas(alvo, carteira().conquistas).marcar(); desenhar(); return; }
+      if (b.dataset.comprar) { await comprar(b.dataset.comprar); return; }
+      if (b.dataset.usar) { await usar(b.dataset.usar, b.dataset.tipo); return; }
       if (b.id === 'trocar') { st.escolha = { ...st.dados.avatar }; st.editandoAvatar = true; desenhar(); return; }
       if (b.dataset.f) { st.escolha.fantasia = b.dataset.f; telaAvatar(); return; }
       if (b.dataset.t) { st.escolha.tom = Number(b.dataset.t); telaAvatar(); return; }

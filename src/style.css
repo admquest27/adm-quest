@@ -512,3 +512,58 @@ dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
 .etapa.feita .txt { color: var(--suave); }
 .etapa.feita .check.feito { border-color: var(--ok); color: var(--ok); }
 .roteiro h4 { margin: 12px 0 4px; }
+/* ---------- AdmBux ---------- */
+.cab-aluno > .cab-botoes { flex: 0 0 auto; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.moeda-btn { font-weight: 700; font-variant-numeric: tabular-nums; }
+.titulo-aluno { display: inline-block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; color: #7a4a00; background: #fbecd2; border-radius: 999px; padding: 1px 8px; }
+.cab-aluno.tem-fundo { padding: 10px; border-radius: 12px; color: #fff; }
+.cab-aluno.tem-fundo .nota { color: rgba(255, 255, 255, 0.85); }
+.fundo-deserto { background: linear-gradient(160deg, #f2c06b, #c97b2c 70%, #8c4a1a); }
+.fundo-floresta { background: linear-gradient(160deg, #4f9a4a, #23602e 70%, #12361b); }
+.fundo-oceano { background: linear-gradient(160deg, #4fb3d9, #1f6fa3 70%, #123c66); }
+.fundo-noite { background: radial-gradient(circle at 20% 30%, #fff 0 1px, transparent 2px), radial-gradient(circle at 70% 20%, #fff 0 1px, transparent 2px), radial-gradient(circle at 85% 70%, #fff 0 1px, transparent 2px), linear-gradient(160deg, #2a2f6b, #11143a); }
+.fundo-lava { background: linear-gradient(160deg, #ffb347, #e2401c 55%, #5a0d0d); }
+
+.moldura { display: inline-flex; border-radius: 10px; padding: 3px; line-height: 0; flex: 0 0 auto; }
+.moldura .avatar { border-radius: 7px; background: var(--campo); }
+.mold-madeira { background: repeating-linear-gradient(90deg, #8b5a2b 0 4px, #a8743f 4px 8px); }
+.mold-pedra { background: repeating-linear-gradient(45deg, #8a8f98 0 4px, #6b7079 4px 8px); }
+.mold-ouro { background: linear-gradient(135deg, #fff3a8, #e0a800 45%, #a86b00); box-shadow: 0 0 6px rgba(224, 168, 0, 0.6); }
+.mold-neon { background: #0b0f24; box-shadow: 0 0 0 2px #29f0ff, 0 0 10px #29f0ff, 0 0 4px #ff3df0 inset; }
+.mold-arco { background: linear-gradient(135deg, #ff5f5f, #ffb347, #ffe74c, #6bdc6b, #4fb3ff, #a46bff); }
+.mold-barao { background: repeating-linear-gradient(135deg, #3b1f4a 0 5px, #7a2a2a 5px 10px); box-shadow: 0 0 0 1px #d4a72c; }
+
+.saldo { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin: 6px 0 0; font-size: 1.1rem; }
+.saldo strong { font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.saldo.negativo strong { color: var(--erro); }
+.saldo .moeda { font-size: 2rem; }
+.dica-adm { background: var(--campo); border-left: 4px solid #e0a800; border-radius: 8px; padding: 10px 12px; font-size: 0.93rem; }
+
+.loja { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 8px; }
+.item-loja { display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 10px; border: 1px solid var(--borda); border-radius: 10px; padding: 8px 10px; background: var(--cartao); }
+.item-loja.meu { border-color: var(--ok); }
+.item-previa { display: flex; justify-content: center; align-items: center; min-height: 48px; }
+.item-previa .titulo-aluno { font-size: 0.68rem; text-align: center; }
+.item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.item-info .preco { font-size: 0.85rem; color: var(--suave); font-weight: 700; }
+.item-acao { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; max-width: 120px; }
+.amostra-fundo { width: 48px; height: 32px; border-radius: 6px; display: block; }
+.chip.limitado { background: #3b1f4a; color: #f5d97a; align-self: flex-start; }
+
+.conquistas .conquista, .conquista-nova { display: flex; gap: 10px; align-items: flex-start; }
+.conquista .trofeu, .conquista-nova .trofeu { font-size: 1.6rem; line-height: 1; }
+.conquista p { margin: 2px 0 0; }
+.conquista-nova { background: #fff6d6; color: #4a3500; border: 2px solid #e0a800; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; align-items: center; }
+.conquista-nova > div { flex: 1; }
+.conquista-nova p { margin: 2px 0 0; font-size: 0.92rem; }
+
+.extrato { list-style: none; padding: 0; margin: 0; }
+.linha-extrato { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--borda); font-size: 0.92rem; align-items: baseline; }
+.linha-extrato .valor { font-weight: 700; font-variant-numeric: tabular-nums; }
+.linha-extrato .entrada { color: var(--ok); }
+.linha-extrato .saida { color: var(--erro); }
+.saldo-mini { font-size: 1.05rem; }.conquista-nova, .cab-aluno { text-align: left; }
+.cab-aluno.tem-fundo .mini { background: rgba(255, 255, 255, 0.92); color: #1f2a44; border-color: transparent; }
+.cab-aluno.tem-fundo .titulo-aluno { background: rgba(255, 255, 255, 0.92); }
+.item-loja { grid-template-columns: 64px 1fr auto; }
+.chip.limitado { white-space: normal; font-size: 0.72rem; }
