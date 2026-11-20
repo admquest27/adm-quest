@@ -12,14 +12,21 @@ export function definirVolume(qual, v) {
 // O áudio só nasce no primeiro toque, clique ou tecla do jogador (exigência dos navegadores, principalmente
 // dentro de outras páginas e no celular). Antes disso, os efeitos são ignorados e a música fica esperando.
 let liberado = false; let musicaPendente = false;
+// Os ouvintes ficam ligados o tempo todo: se o navegador suspender o áudio (aba escondida, fone trocado,
+// política de reprodução do computador), o próximo toque ou tecla retoma o som.
+const GESTOS = ['pointerdown', 'pointerup', 'mousedown', 'keydown', 'touchend', 'click'];
 function liberar() {
-  if (liberado) return;
-  liberado = true;
-  try { contexto(); } catch { /* aparelho sem som */ }
+  if (!liberado) { liberado = true; try { contexto(); } catch { /* aparelho sem som */ } }
+  else if (ac && ac.state !== 'running') { try { ac.resume(); } catch { /* segue */ } }
   if (musicaPendente) { musicaPendente = false; tocarMusica(); }
-  for (const ev of ['pointerdown', 'keydown', 'touchend', 'click']) window.removeEventListener(ev, liberar, true);
 }
-if (typeof window !== 'undefined') for (const ev of ['pointerdown', 'keydown', 'touchend', 'click']) window.addEventListener(ev, liberar, true);
+if (typeof window !== 'undefined') for (const ev of GESTOS) window.addEventListener(ev, liberar, true);
+// Botão de som: chamado dentro de um clique, força o áudio a nascer ou voltar e começa a música.
+export function garantirSom() {
+  liberado = true; musicaPendente = false;
+  try { const a = contexto(); if (a.state !== 'running') a.resume(); } catch { return; }
+  if (somLigado()) tocarMusica();
+}
 export const somLiberado = () => liberado;
 
 const CHAVE = 'admq-som';
@@ -152,6 +159,7 @@ export const ganido = () => seSom((a) => { const o = a.createOscillator(); const
 
 export const efeitoSegredo = () => seSom((a) => ['G5', 'C6', 'E6', 'G6', 'C7'].forEach((n, i) => tom(freq(n), a.currentTime + i * 0.06, 0.2, { vol: 0.05 })));
 export const efeitoPoof = () => seSom((a) => chiado(a.currentTime, 0.25, 0.08, { tipo: 'bandpass', corte: 900 }));
+export const efeitoPulo = () => seSom((a) => { const t = a.currentTime; const o = a.createOscillator(); const g = a.createGain(); o.type = 'square'; o.frequency.setValueAtTime(300, t); o.frequency.exponentialRampToValueAtTime(780, t + 0.12); g.gain.setValueAtTime(0.035, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16); o.connect(g).connect(gEfeitos); o.start(t); o.stop(t + 0.17); });
 export const croac = () => seSom((a) => { tom(freq('C3'), a.currentTime, 0.09, { tipo: 'square', vol: 0.05, corte: 900, comEco: false }); tom(freq('G2'), a.currentTime + 0.1, 0.12, { tipo: 'square', vol: 0.05, corte: 800, comEco: false }); });
 export const cocorico = () => seSom((a) => ['E6', 'G6', 'E6', 'C7'].forEach((n, i) => tom(freq(n), a.currentTime + i * 0.07, 0.07, { tipo: 'square', vol: 0.025, corte: 2600, comEco: false })));
 // Para diagnóstico: estado do áudio (suspenso, rodando) e se a música está tocando.

@@ -341,7 +341,76 @@ function disquete() {
   return fim(r);
 }
 function brilho() { const r = tela(7, 7); ret(r, 3, 0, 1, 7, 'w'); ret(r, 0, 3, 7, 1, 'w'); pon(r, 3, 3, 'Y'); return r; }
-function setaQuica() { const r = tela(11, 10); poli(r, [[0, 1], [10, 1], [5, 9]], 'g'); ret(r, 3, 1, 4, 3, 'y'); return fim(r); }
+function setaQuica() { const r = tela(13, 12); poli(r, [[4, 1], [8, 1], [8, 5], [11, 5], [6, 10], [1, 5], [4, 5]], 'g'); ret(r, 5, 2, 1, 4, 'Y'); pon(r, 3, 6, 'Y'); return fim(r); }
+
+// ---------- rodada de controles: plaquinhas, balão do botão, seta da borda e ícones da barra ----------
+// 1-7 Missão Raio-X: plaquinha de rua com a lupa, ao lado da porta
+function placaLupa() {
+  const r = tela(17, 23);
+  ret(r, 7, 12, 2, 10, 'o'); ret(r, 1, 1, 15, 12, 'O'); ret(r, 2, 2, 13, 10, 'q');
+  el(r, 7, 6, 3.2, 3.2, 'G'); el(r, 7, 6, 2.1, 2.1, 'Y'); pon(r, 6, 5, 'w');
+  traco(r, 9, 8, 12, 11, 'o', 1); traco(r, 10, 8, 13, 11, 'D', 1);
+  return fim(r);
+}
+// Sala dos Professores: plaquinha com a xícara de café (a fumaça sai pela cena)
+function placaCafe() {
+  const r = tela(19, 23);
+  ret(r, 8, 12, 2, 10, 'o'); ret(r, 1, 1, 17, 12, 'O'); ret(r, 2, 2, 15, 10, 'U');
+  ret(r, 5, 4, 7, 6, 'w'); ret(r, 6, 4, 5, 1, 'D'); ret(r, 5, 9, 7, 1, 'S'); ret(r, 6, 10, 5, 1, 'S');
+  ret(r, 12, 5, 2, 1, 'w'); ret(r, 13, 5, 1, 3, 'w'); ret(r, 12, 7, 2, 1, 'w');
+  ret(r, 3, 11, 13, 1, 'a'); pon(r, 8, 6, 'r'); pon(r, 9, 6, 'r'); pon(r, 8, 7, 'r'); pon(r, 9, 7, 'r');
+  return fim(r);
+}
+const LETRAS = {
+  A: ['.###.', '#...#', '#####', '#...#', '#...#'],
+  E: ['#####', '#....', '####.', '#....', '#####'],
+};
+// balão que aparece em cima do que dá para usar, com a tecla certa (A no celular, E no computador)
+function balao(letra) {
+  const r = tela(13, 14);
+  ret(r, 1, 1, 11, 10, 'w'); for (const [x, y] of [[1, 1], [11, 1], [1, 10], [11, 10]]) pon(r, x, y, null);
+  ret(r, 5, 11, 3, 1, 'w'); pon(r, 6, 12, 'w');
+  ret(r, 2, 9, 9, 1, 's');
+  LETRAS[letra].forEach((l, y) => { for (let x = 0; x < 5; x++) if (l[x] === '#') pon(r, 4 + x, 3 + y, letra === 'A' ? 'r' : 'k'); });
+  return fim(r);
+}
+// seta da borda da tela apontando a fase da semana (desenhada apontando para a direita; a cena gira)
+function setaBorda() {
+  const r = tela(15, 13);
+  poli(r, [[1, 4], [7, 4], [7, 1], [13, 6], [7, 11], [7, 8], [1, 8]], 'g');
+  ret(r, 2, 5, 5, 1, 'Y'); pon(r, 8, 3, 'Y'); ret(r, 2, 7, 6, 1, 'G');
+  return fim(r);
+}
+// ícones da barra no alto, no mesmo estilo do jogo (iguais no celular e no computador)
+function iconeMapa() {
+  const r = tela(16, 15);
+  poli(r, [[1, 3], [5, 1], [5, 12], [1, 14]], 'q'); poli(r, [[5, 1], [10, 3], [10, 14], [5, 12]], 'C'); poli(r, [[10, 3], [14, 1], [14, 12], [10, 14]], 'q');
+  for (const [x, y] of [[3, 11], [4, 9], [6, 8], [8, 8]]) pon(r, x, y, 'r');
+  traco(r, 10, 5, 12, 7, 'r', 1); traco(r, 12, 5, 10, 7, 'r', 1);
+  return fim(r);
+}
+function iconeEngrenagem() {
+  const r = tela(15, 15);
+  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; ret(r, Math.round(7 + Math.cos(a) * 5) - 1, Math.round(7 + Math.sin(a) * 5) - 1, 3, 3, 'a'); }
+  el(r, 7, 7, 4.4, 4.4, 'a'); el(r, 6.5, 6.5, 3, 3, 'S'); el(r, 7, 7, 1.6, 1.6, null);
+  return fim(r);
+}
+function iconeTelaCheia() {
+  const r = tela(15, 15);
+  for (const [x, y, w, h] of [[1, 1, 5, 2], [1, 1, 2, 5], [9, 1, 5, 2], [12, 1, 2, 5], [1, 12, 5, 2], [1, 9, 2, 5], [9, 12, 5, 2], [12, 9, 2, 5]]) ret(r, x, y, w, h, 'K');
+  ret(r, 5, 5, 5, 5, 'u');
+  return r;
+}
+function iconeSom(ligado) {
+  const r = tela(16, 15);
+  ret(r, 1, 5, 3, 5, 'K'); poli(r, [[4, 5], [8, 1], [8, 13], [4, 9]], 'K');
+  if (ligado) { ret(r, 10, 5, 1, 5, 'u'); pon(r, 10, 4, 'u'); ret(r, 12, 3, 1, 9, 'u'); pon(r, 11, 2, 'u'); pon(r, 11, 12, 'u'); ret(r, 14, 2, 1, 11, 'U'); }
+  else { traco(r, 10, 4, 14, 10, 'r', 1); traco(r, 14, 4, 10, 10, 'r', 1); }
+  return r;
+}
+export function iconesBarra() {
+  return { mapa: iconeMapa(), cfg: iconeEngrenagem(), cheia: iconeTelaCheia(), som: iconeSom(true), mudo: iconeSom(false) };
+}
 
 export const DESENHOS = {
   casa, aviao, oficina, terraNova, acampamento, arvore, torre, castelo,
@@ -369,5 +438,6 @@ export function todasAsTexturas() {
   lista.push(['casinha', casinha2()], ['ilha', ilha2()], ['ilha-brilho', ilha2({ brilho: true })]);
   lista.push(['no-aberto', noFase('y', 'G')], ['no-feito', noFase('u', 'U', 'estrela')], ['no-trancado', noFase('S', 'A')], ['no-segredo', noFase('r', 'R', 'caveira')]);
   for (const f of [0, 1, 2]) lista.push([`bandeiraGrande-${f}`, bandeiraGrande(f)]);
+  lista.push(['placaLupa', placaLupa()], ['placaCafe', placaCafe()], ['balaoA', balao('A')], ['balaoE', balao('E')], ['setaBorda', setaBorda()]);
   return lista;
 }

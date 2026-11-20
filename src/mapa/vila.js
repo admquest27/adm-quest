@@ -73,7 +73,7 @@ export const OBJETOS = [
   { id: 'cacto', arte: 'cacto', x: 6, y: 5, bloqueia: true, segredo: 'cacto', toques: 5 },
   { id: 'aviao', arte: 'aviao', x: 11, y: 6, w: 2, h: 2, bloqueia: true, conversa: 'aviao' },
   { id: 'escola', arte: 'casaTorre', x: 17, y: 19, w: 4, h: 4, bloqueia: true, segredo: 'antena' },
-  { id: 'porta', arte: 'porta', x: 21, y: 22, bloqueia: true, segredo: 'professores' },
+  { id: 'porta', arte: 'placaCafe', x: 21, y: 22, bloqueia: true, segredo: 'professores' },
   { id: 'lapide', arte: 'lapide', x: 46, y: 5, bloqueia: true, segredo: 'lapide' },
   { id: 'placa404', arte: 'placa404', x: 11, y: 23, bloqueia: true, segredo: '404' },
   { id: 'ilha', arte: 'ilha', x: 28, y: 21, bloqueia: true, segredo: 'bau', alcance: 2.5 },

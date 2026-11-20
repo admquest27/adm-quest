@@ -1,15 +1,15 @@
-// Mapa do mundo (Phaser): a Vila em 16 bits com o pacote Ninja Adventure. O avatar anda tocando no cenário,
-// pelo controle na tela ou pelo teclado; os pontos de fase ficam no caminho, como nos mapas de mundo clássicos.
+// Mapa do mundo (Phaser): a Vila em 16 bits com o pacote Ninja Adventure. O avatar anda pelo teclado ou pelo
+// controle na tela (A usa, B pula); os pontos de fase ficam no caminho, como nos mapas de mundo clássicos.
 import Phaser from 'phaser';
 import * as planta from './vila.js';
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
-import { todasAsTexturas } from './texturas.js';
+import { todasAsTexturas, iconesBarra } from './texturas.js';
 import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS } from './arte.js';
 import { tela, el, emCanvas } from '../pixel/formas.js';
 import { desenhaPose } from '../pixel/rosalina.js';
 import {
   tocarMusica, pararMusica, alternarSom, efeitoToque, piado, efeitoLetra, efeitoSegredo, efeitoPoof, latido, ganido, croac, cocorico,
-  volumes, definirVolume,
+  volumes, definirVolume, efeitoPulo, garantirSom, somLigado, estadoSom,
 } from '../pixel/som.js';
 
 const P = 16;
@@ -20,7 +20,10 @@ const EMOTES = { susto: 1, feliz: 6, pontos: 20, ex: 21, exVermelho: 22, pergunt
 
 // ---------- configurações do jogador (guardadas no aparelho) ----------
 const CHAVE_CFG = 'admq-config';
-export function config() { try { return { texto: 'normal', controles: 'auto', menosMovimento: false, ...JSON.parse(localStorage.getItem(CHAVE_CFG) || '{}') }; } catch { return { texto: 'normal', controles: 'auto', menosMovimento: false }; } }
+const CFG_PADRAO = { texto: 'normal', controles: 'auto', menosMovimento: false, dicas: true, botoes: 'normal' };
+export function config() { try { return { ...CFG_PADRAO, ...JSON.parse(localStorage.getItem(CHAVE_CFG) || '{}') }; } catch { return { ...CFG_PADRAO }; } }
+// celular ou tablet sem mouse: mostra "A" nos balões; no computador, "E"
+const ehToque = () => { try { return navigator.maxTouchPoints > 0 && !window.matchMedia('(any-pointer: fine)').matches; } catch { return false; } };
 const salvarConfig = (c) => { try { localStorage.setItem(CHAVE_CFG, JSON.stringify(c)); } catch { /* segue */ } };
 const lerNum = (k, padrao = 0) => { try { return Number(localStorage.getItem(k) ?? padrao) || padrao; } catch { return padrao; } };
 const guardarNum = (k, v) => { try { localStorage.setItem(k, String(v)); } catch { /* segue */ } };
@@ -123,36 +126,23 @@ class MapaCena extends Phaser.Scene {
     this.criarClima();
     this.criarAmbiente();
 
-    // toque e clique no cenário
-    this.input.on('pointerdown', (p) => {
-      if (this.visaoGeral) { this.tocarVisao(p.worldX, p.worldY); return; }
-      if (this.travado()) return;
-      tocarMusica();
-      const wx = p.worldX; const wy = p.worldY;
-      const dentroDe = (spr) => spr && spr.visible && Phaser.Geom.Rectangle.Contains(spr.getBounds(), wx, wy);
-      if (dentroDe(this.rosa)) { this.irAte(peca(this.rosa.x, this.rosa.y), () => this.conversarRosalina(), 1); return; }
-      const npc = this.gente.find((g) => dentroDe(g.spr));
-      if (npc) { this.irAte(peca(npc.spr.x, npc.spr.y), () => this.conversarCom(npc), 1); return; }
-      const bicho = this.bichos.find((b) => b.tipo === 'pombo' && dentroDe(b.spr));
-      if (bicho) { this.irAte(peca(bicho.spr.x, bicho.spr.y), () => this.achar('pombo'), 1); return; }
-      const alvo = this.interativos.find((i) => Phaser.Geom.Rectangle.Contains(i.area, wx, wy));
-      if (alvo) { this.irAte(alvo.alvo, () => this.agir(alvo)); return; }
-      this.irAte(peca(wx, wy));
-    });
-    this.input.on('pointermove', (p) => {
-      if (this.visaoGeral || p.wasTouch) return;
-      const i = this.interativos.find((x) => Phaser.Geom.Rectangle.Contains(x.area, p.worldX, p.worldY));
-      this.input.setDefaultCursor(i ? 'pointer' : 'default');
-      this.o.dica?.(i ? this.nomeDe(i) : '', p.x / this.scale.width, p.y / this.scale.height);
-    });
+    // Andar é só pelo teclado ou pelo controle na tela. Tocar no cenário só vale na visão do mapa inteiro, para viajar.
+    this.input.on('pointerdown', (p) => { if (this.visaoGeral) this.tocarVisao(p.worldX, p.worldY); });
+    this.modoToque = ehToque();
     this.teclas = this.input.keyboard?.addKeys('UP,DOWN,LEFT,RIGHT,W,A,S,D');
+    this.input.keyboard?.addCapture('SPACE,UP,DOWN,LEFT,RIGHT');
     this.input.keyboard?.on('keydown', (ev) => {
-      const m = { ArrowUp: 'cima', KeyW: 'cima', ArrowDown: 'baixo', KeyS: 'baixo', ArrowLeft: 'esq', KeyA: 'esq', ArrowRight: 'dir', KeyD: 'dir', KeyB: 'B', KeyZ: 'B', KeyE: 'A', Enter: 'A', Space: 'A', KeyX: 'A' }[ev.code];
+      const m = { ArrowUp: 'cima', KeyW: 'cima', ArrowDown: 'baixo', KeyS: 'baixo', ArrowLeft: 'esq', KeyA: 'esq', ArrowRight: 'dir', KeyD: 'dir', KeyE: 'A', Enter: 'A', KeyX: 'A', KeyJ: 'A', Space: 'B', KeyB: 'B', KeyZ: 'B', KeyK: 'B' }[ev.code];
       if (ev.code === 'Escape') { o.alternarConfig?.(); return; }
       if (ev.code === 'KeyM') { this.alternarVisao(); return; }
-      if (m) { if (m === 'A' && o.dialogoAberto?.()) { o.avancarDialogo?.(); return; } this.botao(m); }
+      if (m) { this.modoToque = false; if ((m === 'A' || m === 'B') && o.dialogoAberto?.()) { o.avancarDialogo?.(); return; } this.botao(m); }
     });
     this.historico = []; this.esbarroes = 0;
+    // balão com a tecla em cima do que está ao alcance, e a seta da borda da tela
+    this.balao = this.add.image(0, 0, 'balaoA').setOrigin(0.5, 1).setDepth(975).setVisible(false);
+    this.tweens.add({ targets: this.balao, scale: { from: 1, to: 1.12 }, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.setaBorda = this.add.image(0, 0, 'setaBorda').setScrollFactor(0).setDepth(995).setVisible(false);
+    this.setaTexto = this.add.text(0, 0, '', { fontFamily: 'Nunito, sans-serif', fontStyle: '800', fontSize: '8px', color: '#fff3c4', stroke: '#120f22', strokeThickness: 3, resolution: 4 }).setOrigin(0.5).setScrollFactor(0).setDepth(996).setVisible(false);
   }
 
   // ---------- animações do pacote ----------
@@ -251,7 +241,7 @@ class MapaCena extends Phaser.Scene {
     // detalhes de cada fase
     const fx = (id) => this.fases[id];
     const arv = fx('m1f6'); this.add.image(arv.img.x + 24, arv.img.y + 4, 'organograma').setOrigin(0.5, 0).setDepth(arv.img.depth + 1).setScale(0.75);
-    const torre = fx('m1f7'); this.add.image(torre.img.x + 32, torre.img.y + 16, 'lupa').setScale(2).setDepth(torre.img.depth + 1);
+    const torre = fx('m1f7'); const pl = this.add.image(torre.img.x + torre.img.width - 8, torre.img.y + torre.img.height + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y);
     const portal = fx('m1f4'); this.add.sprite(portal.img.x + 24, portal.img.y - 2, 'bandeiraAmarela').setOrigin(0.5, 1).setDepth(portal.img.depth + 1).play('bandeiraAmarela');
     const camp = fx('m1f5'); const fog = this.add.sprite(camp.img.x - 10, camp.img.y + 26, 'fogueira-0').setDepth(100 + camp.img.y + 30);
     this.time.addEvent({ delay: 180, loop: true, callback: () => fog.setTexture(fog.texture.key === 'fogueira-0' ? 'fogueira-1' : 'fogueira-0') });
@@ -347,6 +337,12 @@ class MapaCena extends Phaser.Scene {
     const m = this.objetos.moinho.img; this.add.sprite(m.x, m.y - 26, 'moinho').setScale(0.5).setDepth(m.depth + 1).play('moinho');
     const imp = this.objetos.impressora.img; this.add.sprite(imp.x, imp.y - 9, 'gato').setOrigin(0.5, 1).setDepth(imp.depth + 1).play('gato');
     const esc = this.objetos.escola.img; this.antena = this.add.image(esc.x + 21, esc.y - esc.height + 6, 'antena-0').setOrigin(0.5, 1).setDepth(esc.depth + 1);
+    const cafe = this.objetos.porta.img;
+    this.time.addEvent({ delay: 650, loop: true, callback: () => {
+      if (this.cfg.menosMovimento || !this.cameras.main.worldView.contains(cafe.x, cafe.y - 10)) return;
+      const v = this.add.circle(cafe.x - 1 + Phaser.Math.Between(-1, 1), cafe.y - 18, 1, 0xffffff, 0.85).setDepth(cafe.depth + 1);
+      this.tweens.add({ targets: v, y: v.y - 7, x: v.x + Phaser.Math.Between(-2, 2), alpha: 0, scale: 1.6, duration: 1000, onComplete: () => v.destroy() });
+    } });
     this.time.addEvent({ delay: 1400, loop: true, callback: () => { const il = this.objetos.ilha.img; il.setTexture(il.texture.key === 'ilha' ? 'ilha-brilho' : 'ilha'); } });
   }
 
@@ -569,7 +565,41 @@ class MapaCena extends Phaser.Scene {
     for (let i = 0; i < gal.quantas; i++) nova('galinha', gal.area, i % 2 ? 'galinhaMarrom' : 'galinhaBranca');
     nova('pombo', pom.area);
     const [sx, sy] = centro([4, 21]); this.sapo = this.add.sprite(sx, sy, 'sapo', 0).setDepth(100 + sy).play('sapo');
-    this.time.addEvent({ delay: 7000, loop: true, callback: () => { if (Phaser.Math.Distance.Between(this.sapo.x, this.sapo.y, this.av.x, this.av.y) < 120) croac(); this.tweens.add({ targets: this.sapo, y: this.sapo.y - 5, duration: 160, yoyo: true }); } });
+    this.sapo.casa = [sx, sy];
+    this.time.addEvent({ delay: 7000, loop: true, callback: () => { if (this.sapo.mergulhou) return; if (Phaser.Math.Distance.Between(this.sapo.x, this.sapo.y, this.av.x, this.av.y) < 120) croac(); this.pulinhoSapo(); } });
+  }
+
+  pulinhoSapo(alto = 5) {
+    const s = this.sapo; if (s.pulando || s.mergulhou) return;
+    s.pulando = true; this.tweens.add({ targets: s, y: s.casa[1] - alto, duration: 160, yoyo: true, onComplete: () => { s.y = s.casa[1]; s.pulando = false; } });
+  }
+
+  // Conversa com o sapo: ele fala uma frase e depois mergulha na lagoa; volta alguns segundos depois
+  conversarSapo() {
+    croac(); this.emote(this.sapo, 'pontos', 900);
+    this.o.aoSapo?.(() => this.mergulhoSapo());
+  }
+
+  mergulhoSapo() {
+    const s = this.sapo; if (s.mergulhou) return;
+    s.mergulhou = true; s.pulando = true;
+    const [cx, cy] = s.casa; const [lx] = centro([2, 21]);
+    const arco = (para, aoFim) => { this.tweens.add({ targets: s, x: para, duration: 480 }); this.tweens.add({ targets: s, y: cy - 14, duration: 240, yoyo: true, ease: 'Sine.easeOut', onComplete: () => { s.y = cy; aoFim(); } }); };
+    s.setFlipX(true); croac();
+    arco(lx, () => {
+      s.setVisible(false); this.respingo(lx, cy);
+      this.time.delayedCall(4200, () => {
+        this.respingo(lx, cy); s.setVisible(true).setFlipX(false);
+        arco(cx, () => { s.mergulhou = false; s.pulando = false; croac(); });
+      });
+    });
+  }
+
+  respingo(x, y) {
+    efeitoPoof();
+    for (let i = 0; i < 6; i++) { const g = this.add.circle(x, y, 1.5, 0xffffff, 0.9).setDepth(6); this.tweens.add({ targets: g, x: x + Math.cos(i * 1.05) * 8, y: y - 5 - (i % 3) * 2, alpha: 0, duration: 450, onComplete: () => g.destroy() }); }
+    const o = this.add.ellipse(x, y + 2, 6, 3).setStrokeStyle(1, 0xffffff, 0.9).setDepth(2);
+    this.tweens.add({ targets: o, scaleX: 3, scaleY: 3, alpha: 0, duration: 700, onComplete: () => o.destroy() });
   }
 
   moverBichos(time, dt) {
@@ -651,13 +681,78 @@ class MapaCena extends Phaser.Scene {
     if (conferirSequencia(this.historico)) { this.historico = []; this.danca(); return; }
     if (this.travado()) return;
     tocarMusica();
-    if (nome === 'A') {
-      const [ax, ay] = peca(this.av.x, this.av.y);
-      if (Phaser.Math.Distance.Between(this.rosa.x, this.rosa.y, this.av.x, this.av.y) < 22) { this.conversarRosalina(); return; }
-      const npc = this.gente.find((g) => g.spr.visible && Phaser.Math.Distance.Between(g.spr.x, g.spr.y, this.av.x, this.av.y) < 22);
-      if (npc) { this.conversarCom(npc); return; }
-      const perto = this.interativos.find((i) => Math.abs(i.alvo[0] - ax) + Math.abs(i.alvo[1] - ay) <= 1);
-      if (perto) this.agir(perto);
+    if (nome === 'A') { const alvo = this.quemPerto(); if (alvo) alvo.agir(); }
+    if (nome === 'B') this.pular();
+  }
+
+  // O que está ao alcance do botão A, nesta ordem: Rosalina, pessoas, sapo, pombo, fases, casas e objetos
+  quemPerto() {
+    const av = this.av; const t = this.o.textos ?? {};
+    const dist = (spr) => Phaser.Math.Distance.Between(spr.x, spr.y, av.x, av.y);
+    if (this.rosa.visible && dist(this.rosa) < 22) return { x: this.rosa.x, y: this.rosa.y - 13, nome: 'Rosalina', acao: 'conversar', agir: () => this.conversarRosalina() };
+    const npc = this.gente.find((g) => g.spr.visible && !g.fugindo && dist(g.spr) < 22);
+    if (npc) return { x: npc.spr.x, y: npc.spr.y - 14, nome: t.nomes?.[npc.quem] ?? '', acao: 'conversar', agir: () => this.conversarCom(npc) };
+    if (this.sapo.visible && !this.sapo.mergulhou && dist(this.sapo) < 22) return { x: this.sapo.x, y: this.sapo.y - 8, nome: t.nomes?.sapo ?? 'Sapo', acao: 'conversar', agir: () => this.conversarSapo() };
+    const pombo = this.bichos.find((b) => b.tipo === 'pombo' && dist(b.spr) < 20);
+    if (pombo) return { x: pombo.spr.x, y: pombo.spr.y - 12, nome: t.nomes?.pombo ?? 'Pombo', acao: 'conversar', agir: () => this.achar('pombo') };
+    const [ax, ay] = peca(av.x, av.y);
+    let i = null; let melhor = 9;
+    for (const q of this.interativos) { const d = Math.abs(q.alvo[0] - ax) + Math.abs(q.alvo[1] - ay); if (d <= 1 && d < melhor) { melhor = d; i = q; } }
+    if (!i) return null;
+    const fase = i.tipo === 'fase' ? i.id : null;
+    const x = i.tipo === 'casa' ? centro(i.alvo)[0] : i.area.centerX;
+    return { x, y: i.area.y + 2, nome: this.nomeDe(i), acao: fase ? this.acaoFase(fase) : 'olhar', fase, agir: () => this.agir(i) };
+  }
+
+  acaoFase(id) {
+    if ((this.o.concluidas ?? []).includes(id)) return 'rever';
+    const est = this.o.estados?.[id] ?? 'trancada';
+    return est === 'aberta' || est === 'encerrada' ? 'entrar' : 'olhar';
+  }
+
+  // Balão com a tecla certa em cima do que dá para usar, e o aviso com o nome embaixo da tela
+  atualizarAlcance() {
+    const p = !this.travado() && this.cfg.dicas !== false ? this.quemPerto() : null;
+    // o balão fica em cima da cabeça do personagem: sempre à vista, inclusive perto da barra do alto
+    if (p && !this.av.pulando) this.balao.setTexture(this.modoToque ? 'balaoA' : 'balaoE').setPosition(Math.round(this.av.x), Math.round(this.av.y - 14)).setVisible(true);
+    else this.balao.setVisible(false);
+    const chave = p ? `${p.nome}|${p.acao}|${this.modoToque}` : '';
+    if (chave !== this.alcanceAntes) { this.alcanceAntes = chave; this.o.aoAlcance?.(p ? { nome: p.nome, acao: p.acao, fase: p.fase, tecla: this.modoToque ? 'A' : 'E' } : null); }
+  }
+
+  // Botão B: pulo com achatamento na saída e na chegada, sombra que encolhe e poeirinha ao cair
+  pular() {
+    const av = this.av; if (av.pulando) return;
+    av.pulando = true; efeitoPulo();
+    const h = { v: 0 }; const base = av.height || 16;
+    this.tweens.add({ targets: av, scaleX: 1.2, scaleY: 0.8, duration: 60, yoyo: true });
+    this.tweens.add({
+      targets: h, v: 12, duration: 190, delay: 50, yoyo: true, ease: 'Quad.easeOut',
+      onUpdate: () => { av.setOrigin(0.5, 0.8 + h.v / base); this.sombra.setScale(1 - h.v / 26); },
+      onComplete: () => {
+        av.setOrigin(0.5, 0.8); this.sombra.setScale(1); av.pulando = false;
+        this.tweens.add({ targets: av, scaleX: 1.25, scaleY: 0.75, duration: 70, yoyo: true });
+        if (!this.cfg.menosMovimento) for (const lado of [-1, 1]) { const p = this.add.circle(av.x + lado * 3, av.y + 5, 1.6, 0xd8c8a0, 0.8).setDepth(4); this.tweens.add({ targets: p, x: p.x + lado * 6, y: p.y - 2, alpha: 0, scale: 1.8, duration: 350, onComplete: () => p.destroy() }); }
+        this.reagirAoPulo();
+      },
+    });
+  }
+
+  // Quem está perto reage ao pulo: galinhas fogem, o sapo pula junto e a Rosalina às vezes imita
+  reagirAoPulo() {
+    const av = this.av; const dist = (spr) => Phaser.Math.Distance.Between(spr.x, spr.y, av.x, av.y);
+    let assustou = false;
+    for (const b of this.bichos) {
+      if (b.tipo !== 'galinha' || b.persegue || dist(b.spr) > 34) continue;
+      const s = b.spr; assustou = true;
+      b.alvo = [s.x + (s.x - av.x) * 3, s.y + (s.y - av.y) * 3]; b.fuga = true; b.pausa = 0;
+      this.tweens.add({ targets: s, y: s.y - 6, duration: 110, yoyo: true });
+    }
+    if (assustou) cocorico();
+    if (this.sapo.visible && dist(this.sapo) < 44) this.time.delayedCall(140, () => this.pulinhoSapo(9));
+    const r = this.rosa; const ia = r.ia;
+    if (dist(r) < 40 && !ia.rota.length && ['senta', 'passeia', 'segue', 'cava'].includes(ia.modo) && Math.random() < 0.6) {
+      this.time.delayedCall(160, () => { this.tweens.add({ targets: r, y: r.y - 6, duration: 150, yoyo: true }); latido(1); });
     }
   }
 
@@ -745,15 +840,17 @@ class MapaCena extends Phaser.Scene {
 
   // seta na borda da tela apontando a fase aberta que falta fazer
   atualizarSeta() {
-    const seta = this.o.seta; if (!seta) return;
+    const s = this.setaBorda; const tx = this.setaTexto;
     const feitas = new Set(this.o.concluidas ?? []);
     const alvo = Object.values(this.fases).find((f) => this.o.estados?.[f.def.id] === 'aberta' && !feitas.has(f.def.id));
-    const vista = this.cameras.main.worldView;
-    if (!alvo || this.visaoGeral || vista.contains(alvo.no.x, alvo.no.y)) { seta.hidden = true; return; }
-    const ang = Math.atan2(alvo.no.y - this.av.y, alvo.no.x - this.av.x);
-    const ex = 0.5 + Math.cos(ang) * 0.46; const ey = 0.5 + Math.sin(ang) * 0.4;
-    seta.hidden = false; seta.style.left = `${ex * 100}%`; seta.style.top = `${ey * 100}%`;
-    seta.querySelector('i').style.transform = `rotate(${ang}rad)`; seta.querySelector('b').textContent = this.o.fases?.[alvo.def.id]?.codigo ?? '';
+    const cam = this.cameras.main; const vista = cam.worldView;
+    if (!alvo || this.visaoGeral || this.emCena || vista.contains(alvo.no.x, alvo.no.y)) { s.setVisible(false); tx.setVisible(false); return; }
+    const dx = alvo.no.x - vista.centerX; const dy = alvo.no.y - vista.centerY;
+    const meiaL = cam.width / 2 - 12; const meiaA = dy < 0 ? cam.height / 2 - 30 : cam.height / 2 - 14;
+    const k = Math.min(meiaL / Math.max(Math.abs(dx), 0.001), meiaA / Math.max(Math.abs(dy), 0.001));
+    const x = Math.round(cam.width / 2 + dx * k); const y = Math.round(cam.height / 2 + dy * k); const ang = Math.atan2(dy, dx);
+    s.setVisible(true).setPosition(x, y).setRotation(ang).setScale(this.cfg.menosMovimento ? 1 : 1 + Math.sin(this.time.now / 150) * 0.1);
+    tx.setVisible(true).setText(this.o.fases?.[alvo.def.id]?.codigo ?? '').setPosition(Math.round(x - Math.cos(ang) * 14), Math.round(y - Math.sin(ang) * 11));
   }
 
   update(time, dt) {
@@ -783,6 +880,7 @@ class MapaCena extends Phaser.Scene {
       this.borboletas.forEach((b, i) => { b.x += Math.sin(time / 600 + i) * 0.4; b.y += Math.cos(time / 300 + i * 2) * 0.3; b.setScale(1, Math.floor(time / 120 + i) % 2 ? 1 : 0.4); });
     }
     this.atualizarSeta();
+    this.atualizarAlcance();
     this.imersao(time);
   }
 }
@@ -791,17 +889,20 @@ class MapaCena extends Phaser.Scene {
 export function iniciarMapa(raiz, opcoes) {
   const cfg = config();
   raiz.classList.add('mapa');
-  raiz.dataset.controles = cfg.controles;
+  const aplicarCfg = (c) => { raiz.dataset.controles = c.controles; raiz.dataset.botoes = c.botoes; raiz.dataset.dicas = c.dicas ? 'sim' : 'nao'; };
+  aplicarCfg(cfg);
+  const ic = Object.fromEntries(Object.entries(iconesBarra()).map(([k, r]) => [k, emCanvas(r, 2).toDataURL()]));
+  const icone = (k) => `<img src="${ic[k]}" alt="" width="30" height="30">`;
   raiz.innerHTML = `<div class="mapa-jogo" id="mapa-jogo"></div>
     <div class="mapa-barra"><span class="mapa-mundo">${opcoes.nomeMundo ?? ''}</span>
       <span class="mapa-dir"><span class="mapa-segredos" id="mapa-segredos"></span>${opcoes.botoesBarra ?? ''}
-      <button class="mapa-btn" id="mapa-visao" aria-label="Mapa inteiro (M)" title="Mapa inteiro (M)">🗺</button>
-      <button class="mapa-btn" id="mapa-cfg" aria-label="Configurações (Esc)" title="Configurações (Esc)">⚙</button>
-      <button class="mapa-btn" id="mapa-cheia" aria-label="Tela cheia" title="Tela cheia">⛶</button></span></div>
-    <div class="mapa-seta" id="mapa-seta" hidden aria-hidden="true"><i>➜</i><b></b></div>
-    <div class="mapa-dica" id="mapa-dica" hidden></div>
+      <button class="mapa-btn ic" id="mapa-som" aria-label="Som" title="Som">${icone('som')}</button>
+      <button class="mapa-btn ic" id="mapa-visao" aria-label="Mapa inteiro (M)" title="Mapa inteiro (M)">${icone('mapa')}</button>
+      <button class="mapa-btn ic" id="mapa-cfg" aria-label="Configurações (Esc)" title="Configurações (Esc)">${icone('cfg')}</button>
+      <button class="mapa-btn ic" id="mapa-cheia" aria-label="Tela cheia" title="Tela cheia">${icone('cheia')}</button></span></div>
+    <div class="mapa-alvo" id="mapa-alvo" hidden aria-live="polite"></div>
     <div class="mapa-dpad" aria-label="Direcional">${['cima', 'esq', 'dir', 'baixo'].map((d) => `<button class="mapa-tecla ${d}" data-dir="${d}" aria-label="${d}">${{ cima: '▲', baixo: '▼', esq: '◀', dir: '▶' }[d]}</button>`).join('')}</div>
-    <div class="mapa-ab"><button class="mapa-tecla b" data-bt="B" aria-label="Botão B">B</button><button class="mapa-tecla a" data-bt="A" aria-label="Botão A">A</button></div>
+    <div class="mapa-ab"><button class="mapa-tecla b" data-bt="B" data-rotulo="Pular" aria-label="Botão B, pular">B</button><button class="mapa-tecla a" data-bt="A" data-rotulo="Usar" aria-label="Botão A, conversar ou entrar">A</button></div>
     <div class="mapa-dialogo" id="mapa-dialogo" hidden>
       <div class="mapa-rosto" id="mapa-rosto" hidden><img id="mapa-rosto-img" alt=""><canvas id="mapa-retrato" width="46" height="40" hidden></canvas></div>
       <div class="mapa-falas"><b id="mapa-nome"></b><span id="mapa-texto"></span><div class="mapa-opcoes" id="mapa-opcoes"></div></div><span class="mapa-seta-dlg" id="mapa-seta-dlg" hidden>▼</span></div>
@@ -811,8 +912,10 @@ export function iniciarMapa(raiz, opcoes) {
         <label>Efeitos <input type="range" min="0" max="1" step="0.05" id="cfg-efeitos"></label>
         <label>Velocidade do texto <select id="cfg-texto"><option value="lenta">Lenta</option><option value="normal">Normal</option><option value="rapida">Rápida</option></select></label>
         <label>Controle na tela <select id="cfg-controles"><option value="auto">Automático</option><option value="sempre">Sempre</option><option value="nunca">Nunca</option></select></label>
+        <label>Tamanho dos botões <select id="cfg-botoes"><option value="normal">Normal</option><option value="grande">Grande</option></select></label>
+        <label class="check"><input type="checkbox" id="cfg-dicas"> Mostrar dicas dos botões</label>
         <label class="check"><input type="checkbox" id="cfg-movimento"> Menos movimento na tela</label>
-        <p class="mapa-cfg-dica">No computador: setas ou WASD para andar, E, Enter ou Espaço para falar, M para o mapa inteiro, Esc para este menu.</p>
+        <p class="mapa-cfg-dica">No celular: direcional para andar, A para conversar ou entrar, B para pular. No computador: setas ou W A S D para andar, E ou Enter para conversar ou entrar, Espaço para pular, M para o mapa inteiro e Esc para este menu.</p>
         <button class="btn verde" id="cfg-fechar">Voltar ao jogo</button></div></div>
     <div class="mapa-faixa" id="mapa-faixa" hidden></div>
     <div class="mapa-zona" id="mapa-zona" hidden></div>
@@ -833,7 +936,7 @@ export function iniciarMapa(raiz, opcoes) {
     pararRetrato();
     rosto.hidden = !(atual.pose || atual.rosto); retrato.hidden = !atual.pose; rostoImg.hidden = !atual.rosto;
     if (atual.rosto) { rostoImg.src = atual.rosto === 'consultor' ? (rostoSilas ?? '') : `${opcoes.urls.base}${ROSTOS[atual.rosto]}`; }
-    if (atual.icone && cena) { rosto.hidden = false; rostoImg.hidden = false; rostoImg.src = cena.textures.getBase64(atual.icone); }
+    if (atual.icone && cena) { rosto.hidden = false; rostoImg.hidden = false; rostoImg.src = cena.textures.getBase64(atual.icone, atual.quadro); }
     if (atual.pose) { const g = retrato.getContext('2d'); const ini = performance.now(); const pinta = (t) => { g.clearRect(0, 0, 46, 40); desenhaPose(g, atual.pose, t - ini, 1, 2); retratoAnim = requestAnimationFrame(pinta); }; retratoAnim = requestAnimationFrame(pinta); }
     let i = 0; clearInterval(digita);
     digita = setInterval(() => { i += 1; txt.textContent = atual.texto.slice(0, i); if (i % 3 === 0) efeitoLetra(); if (i >= atual.texto.length) terminar(); }, VELOC[config().texto] ?? 26);
@@ -860,13 +963,13 @@ export function iniciarMapa(raiz, opcoes) {
   const abrirCfg = (abrir = painel.hidden) => {
     painel.hidden = !abrir; if (!abrir) return;
     const c = config(); const v = volumes();
-    $('#cfg-musica').value = v.musica; $('#cfg-efeitos').value = v.efeitos; $('#cfg-texto').value = c.texto; $('#cfg-controles').value = c.controles; $('#cfg-movimento').checked = c.menosMovimento;
+    $('#cfg-musica').value = v.musica; $('#cfg-efeitos').value = v.efeitos; $('#cfg-texto').value = c.texto; $('#cfg-controles').value = c.controles; $('#cfg-movimento').checked = c.menosMovimento; $('#cfg-botoes').value = c.botoes; $('#cfg-dicas').checked = c.dicas;
   };
   $('#cfg-musica').addEventListener('input', (e) => definirVolume('musica', Number(e.target.value)));
   $('#cfg-efeitos').addEventListener('input', (e) => { definirVolume('efeitos', Number(e.target.value)); efeitoToque(); });
   painel.addEventListener('change', () => {
-    const c = { texto: $('#cfg-texto').value, controles: $('#cfg-controles').value, menosMovimento: $('#cfg-movimento').checked };
-    salvarConfig(c); raiz.dataset.controles = c.controles; if (cena) cena.cfg = c;
+    const c = { texto: $('#cfg-texto').value, controles: $('#cfg-controles').value, menosMovimento: $('#cfg-movimento').checked, botoes: $('#cfg-botoes').value, dicas: $('#cfg-dicas').checked };
+    salvarConfig(c); aplicarCfg(c); if (cena) cena.cfg = c;
   });
   $('#cfg-fechar').addEventListener('click', () => abrirCfg(false));
   $('#mapa-cfg').addEventListener('click', () => abrirCfg());
@@ -875,15 +978,26 @@ export function iniciarMapa(raiz, opcoes) {
   let segurando = null; let cena = null;
   raiz.querySelectorAll('[data-dir]').forEach((b) => {
     const solta = () => { if (segurando === b.dataset.dir) segurando = null; b.classList.remove('apertada'); };
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); segurando = b.dataset.dir; b.classList.add('apertada'); cena?.botao(b.dataset.dir); });
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); segurando = b.dataset.dir; b.classList.add('apertada'); if (cena) { cena.modoToque = true; cena.botao(b.dataset.dir); } });
     b.addEventListener('pointerup', solta); b.addEventListener('pointerleave', solta); b.addEventListener('pointercancel', solta);
   });
   raiz.querySelectorAll('[data-bt]').forEach((b) => b.addEventListener('pointerdown', (e) => {
     e.preventDefault(); b.classList.add('apertada'); setTimeout(() => b.classList.remove('apertada'), 120);
-    if (!caixa.hidden && b.dataset.bt === 'A') { avancar(); return; }
+    if (cena) cena.modoToque = true;
+    if (!caixa.hidden) { avancar(); return; }
     cena?.botao(b.dataset.bt);
   }));
   $('#mapa-visao').addEventListener('click', () => cena?.alternarVisao());
+  // botão de som: mostra se está ligado; se estiver ligado mas o navegador travou o áudio, o clique destrava
+  const btSom = $('#mapa-som');
+  const pintarSom = () => { const on = somLigado(); btSom.querySelector('img').src = on ? ic.som : ic.mudo; btSom.title = on ? 'Som ligado' : 'Som desligado'; btSom.setAttribute('aria-label', btSom.title); };
+  pintarSom();
+  btSom.addEventListener('click', () => {
+    const e = estadoSom();
+    if (somLigado() && !(e.estado === 'running' && e.tocando)) garantirSom();
+    else { alternarSom(); if (somLigado()) garantirSom(); }
+    pintarSom(); efeitoToque();
+  });
   $('#mapa-cheia').addEventListener('click', async () => {
     try { if (!document.fullscreenElement) { await raiz.requestFullscreen(); await screen.orientation?.lock?.('landscape'); } else await document.exitFullscreen(); } catch { /* aparelho sem tela cheia */ }
   });
@@ -896,7 +1010,7 @@ export function iniciarMapa(raiz, opcoes) {
   const aoAcharSegredo = (id) => {
     const novo = !achados.has(id);
     if (novo) { achados.add(id); placar(); efeitoSegredo(); opcoes.aoAcharSegredo?.(id, achados.size); }
-    const ICONES = { bau: 'disquete', cacto: 'cacto', lapide: 'lapide', 404: 'placa404', professores: 'porta', antena: 'escola', gato: 'impressora', pombo: 'pombo-0', galinhas: 'galinhaBranca' };
+    const ICONES = { bau: 'disquete', cacto: 'cacto', lapide: 'lapide', 404: 'placa404', professores: 'placaCafe', antena: 'escola', gato: 'impressora', pombo: 'pombo-0', galinhas: 'galinhaBranca' };
     falar({ nome: novo ? `Segredo encontrado! (${achados.size} de ${planta.SEGREDOS.length})` : 'Segredo já encontrado', texto: textos.segredos?.[id] ?? '', icone: ICONES[id] });
   };
 
@@ -960,7 +1074,27 @@ export function iniciarMapa(raiz, opcoes) {
     if (fase === 'inicio') { faixa.textContent = opcoes.nomeMundo ?? ''; faixa.hidden = false; pular.hidden = false; }
     else if (fase === 'pulou') { faixa.hidden = true; pular.hidden = true; }
     else { faixa.hidden = true; pular.hidden = true; falar(...(textos.intro ?? []).map((t) => ({ nome: textos.nomes?.consultor ?? '', rosto: 'consultor', texto: t }))); }
+    // depois da apresentação (ou do pulo dela), explica os controles do aparelho em uso
+    if (fase === 'fim' || fase === 'pulou') { const t = textos.controles?.[cena?.modoToque ? 'toque' : 'teclado']; if (t) falar({ nome: 'Como jogar', texto: t }); }
   };
+  // aviso embaixo da tela: o nome do que está ao alcance, o estado da fase e a tecla para usar
+  const alvoEl = $('#mapa-alvo');
+  const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ACOES = { conversar: 'Conversar', olhar: 'Olhar', entrar: 'Entrar', rever: 'Rever' };
+  const aoAlcance = (p) => {
+    if (!p || !p.nome) { alvoEl.hidden = true; return; }
+    let est = '';
+    if (p.fase) {
+      const e = opcoes.estados?.[p.fase] ?? 'trancada'; const feita = (opcoes.concluidas ?? []).includes(p.fase);
+      const [rot, cls] = feita ? ['Concluída', 'feita'] : e === 'aberta' ? ['Aberta', 'aberta'] : e === 'encerrada' ? ['Encerrada', 'aberta'] : e === 'adiada' ? ['Adiada', 'obra'] : e === 'cancelada' ? ['Cancelada', 'obra'] : ['Em obras', 'obra'];
+      est = `<span class="est ${cls}">${rot}</span>`;
+    }
+    alvoEl.innerHTML = `<b>${esc(p.nome)}</b>${est}<span class="acao"><span class="tecla ${p.tecla === 'A' ? 'redonda' : ''}">${p.tecla}</span>${ACOES[p.acao] ?? ''}</span>`;
+    alvoEl.hidden = false;
+  };
+  const falasSapo = textos.sapo ?? [];
+  let iSapo = 0;
+  const aoSapo = (fim) => { const t = falasSapo[iSapo % Math.max(1, falasSapo.length)] ?? 'Croac.'; iSapo += 1; falar({ nome: textos.nomes?.sapo ?? 'Sapo', icone: 'sapo', quadro: 0, texto: t, aoFechar: fim }); };
 
   const largura = () => { const r = raiz.getBoundingClientRect(); const asp = r.width && r.height ? r.width / r.height : 16 / 9; return Math.round(Math.min(480, Math.max(240, 180 * asp))); };
   const jogo = new Phaser.Game({
@@ -968,8 +1102,7 @@ export function iniciarMapa(raiz, opcoes) {
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, input: { activePointers: 3 }, audio: { noAudio: true }, banner: false,
     scene: new MapaCena({
       ...opcoes, falar, segurando: () => segurando, dialogoAberto: () => !caixa.hidden || !painel.hidden, avancarDialogo: avancar,
-      alternarConfig: () => abrirCfg(), seta: $('#mapa-seta'),
-      dica: (t, fx, fy) => { const d = $('#mapa-dica'); d.hidden = !t; if (t) { d.textContent = t; d.style.left = `${fx * 100}%`; d.style.top = `${fy * 100}%`; } },
+      alternarConfig: () => abrirCfg(), aoAlcance, aoSapo,
       aoAcharSegredo, aoTocarRosalina, aoConversar, aoTocarFase, aoIntro, aoVisao: (v) => raiz.classList.toggle('visao', v),
       aoCasinha: (fim) => falar({ nome: 'Rosalina', pose: 'latindo', texto: textos.casinha ?? '', aoFechar: fim }),
       aoZona: (id) => { const n = textos.zonas?.[id]; if (!n) return; const z = $('#mapa-zona'); z.textContent = n; z.hidden = false; z.classList.remove('some'); void z.offsetWidth; z.classList.add('some'); clearTimeout(z.t); z.t = setTimeout(() => { z.hidden = true; }, 2600); },
