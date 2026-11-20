@@ -9,6 +9,19 @@ export function definirVolume(qual, v) {
   const atual = { ...volumes(), [qual]: v }; try { localStorage.setItem(CHAVE_VOL, JSON.stringify(atual)); } catch { /* segue */ }
   if (gMusica && qual === 'musica') gMusica.gain.value = v; if (gEfeitos && qual === 'efeitos') gEfeitos.gain.value = v;
 }
+// O áudio só nasce no primeiro toque, clique ou tecla do jogador (exigência dos navegadores, principalmente
+// dentro de outras páginas e no celular). Antes disso, os efeitos são ignorados e a música fica esperando.
+let liberado = false; let musicaPendente = false;
+function liberar() {
+  if (liberado) return;
+  liberado = true;
+  try { contexto(); } catch { /* aparelho sem som */ }
+  if (musicaPendente) { musicaPendente = false; tocarMusica(); }
+  for (const ev of ['pointerdown', 'keydown', 'touchend', 'click']) window.removeEventListener(ev, liberar, true);
+}
+if (typeof window !== 'undefined') for (const ev of ['pointerdown', 'keydown', 'touchend', 'click']) window.addEventListener(ev, liberar, true);
+export const somLiberado = () => liberado;
+
 const CHAVE = 'admq-som';
 export const somLigado = () => { try { return localStorage.getItem(CHAVE) !== '0'; } catch { return true; } };
 const guardar = (v) => { try { localStorage.setItem(CHAVE, v ? '1' : '0'); } catch { /* sem armazenamento */ } };
@@ -107,9 +120,10 @@ function agendar() {
 
 export function tocarMusica() {
   if (tocando || !somLigado()) return;
+  if (!liberado) { musicaPendente = true; return; }
   try { contexto(); tocando = true; proximo = ac.currentTime + 0.06; passo = 0; relogio = setInterval(agendar, 25); } catch { tocando = false; }
 }
-export function pararMusica() { tocando = false; clearInterval(relogio); }
+export function pararMusica() { tocando = false; musicaPendente = false; clearInterval(relogio); }
 export const musicaTocando = () => tocando;
 export function alternarSom() {
   const novo = !somLigado(); guardar(novo);
@@ -118,7 +132,7 @@ export function alternarSom() {
 }
 
 // ---------- efeitos ----------
-const seSom = (fn) => { if (!somLigado()) return; try { fn(contexto()); } catch { /* aparelho sem som */ } };
+const seSom = (fn) => { if (!somLigado() || !liberado) return; try { fn(contexto()); } catch { /* aparelho sem som */ } };
 export const efeitoInicio = () => seSom((a) => ['C5', 'E5', 'G5', 'C6', 'E6'].forEach((n, i) => tom(freq(n), a.currentTime + i * 0.07, 0.18, { vol: 0.06 })));
 export const efeitoMoeda = () => seSom((a) => { tom(freq('B5'), a.currentTime, 0.07, { vol: 0.05 }); tom(freq('E6'), a.currentTime + 0.07, 0.25, { vol: 0.05 }); });
 export const efeitoToque = () => seSom((a) => tom(freq('A5'), a.currentTime, 0.05, { vol: 0.03, comEco: false }));
@@ -139,3 +153,5 @@ export const efeitoSegredo = () => seSom((a) => ['G5', 'C6', 'E6', 'G6', 'C7'].f
 export const efeitoPoof = () => seSom((a) => chiado(a.currentTime, 0.25, 0.08, { tipo: 'bandpass', corte: 900 }));
 export const croac = () => seSom((a) => { tom(freq('C3'), a.currentTime, 0.09, { tipo: 'square', vol: 0.05, corte: 900, comEco: false }); tom(freq('G2'), a.currentTime + 0.1, 0.12, { tipo: 'square', vol: 0.05, corte: 800, comEco: false }); });
 export const cocorico = () => seSom((a) => ['E6', 'G6', 'E6', 'C7'].forEach((n, i) => tom(freq(n), a.currentTime + i * 0.07, 0.07, { tipo: 'square', vol: 0.025, corte: 2600, comEco: false })));
+// Para diagnóstico: estado do áudio (suspenso, rodando) e se a música está tocando.
+export const estadoSom = () => ({ estado: ac?.state ?? 'sem contexto', tocando, ligado: somLigado() });

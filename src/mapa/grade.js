@@ -23,7 +23,7 @@ export function montarTerreno(planta) {
   for (let y = 0; y < H; y++) for (let x = planta.RIO.x; x < planta.RIO.x + planta.RIO.w; x++) { agua[idx(x, y)] = 1; floresta[idx(x, y)] = 0; }
   for (const l of planta.LAGOS ?? []) for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) if (dentro(x, y)) { agua[idx(x, y)] = 1; floresta[idx(x, y)] = 0; }
   const d = planta.DESERTO;
-  for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) areia[idx(x, y)] = 1;
+  if (d?.w) for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) areia[idx(x, y)] = 1;
   const igual = (m, foraConta) => (x, y) => (dentro(x, y) ? m[idx(x, y)] === 1 : foraConta);
   const chao = new Array(W * H); const molhado = new Array(W * H).fill(-1);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {

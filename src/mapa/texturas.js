@@ -244,13 +244,6 @@ function rosaFrente({ olhos = 'abertos', treme = 0 } = {}) {
 
 
 // ---------- peças novas do mapa 2.0 ----------
-// Ponto de fase no caminho, no espírito dos mapas de mundo: amarelo aberto, vermelho com segredo, cinza trancado.
-function no(cor = 'y', escura = 'G', brilho = false) {
-  const r = tela(16, 12);
-  el(r, 8, 7, 6.5, 4, escura); el(r, 8, 6, 6, 3.6, cor); el(r, 6, 5, 2.5, 1.3, 'w');
-  if (brilho) { pon(r, 13, 2, 'w'); pon(r, 2, 3, 'w'); }
-  return fim(r);
-}
 function moinhoBase() {
   const r = tela(32, 32);
   poli(r, [[9, 31], [11, 10], [21, 10], [23, 31]], (x) => (x > 17 ? 'd' : 'q'));
@@ -286,23 +279,83 @@ function lupa() {
   return fim(r);
 }
 
+// ---------- rodada de detalhes (fechado, pontos, bandeira, casinha, baú, disquete) ----------
+function tabuas() {
+  const r = tela(18, 14);
+  poli(r, [[0, 3], [17, 9], [17, 12], [0, 6]], 'O'); poli(r, [[0, 9], [17, 2], [17, 5], [0, 12]], 'd');
+  for (const [x, y] of [[2, 4], [15, 10], [2, 10], [15, 3]]) pon(r, x, y, 'a');
+  return fim(r);
+}
+function portaFechada() {
+  const r = tela(14, 15);
+  ret(r, 0, 0, 14, 15, 'o'); for (const x of [3, 7, 11]) ret(r, x, 1, 1, 14, 'D'); ret(r, 0, 4, 14, 1, 'D'); ret(r, 0, 10, 14, 1, 'D');
+  ret(r, 10, 7, 2, 2, 'g');
+  return fim(r);
+}
+function cadeado() {
+  const r = tela(10, 12);
+  ret(r, 2, 0, 6, 2, 'S'); ret(r, 1, 1, 2, 5, 'S'); ret(r, 7, 1, 2, 5, 'S');
+  ret(r, 0, 5, 10, 7, 'g'); ret(r, 0, 10, 10, 2, 'G'); ret(r, 4, 7, 2, 3, 'K'); pon(r, 1, 6, 'Y');
+  return fim(r);
+}
+function noFase(cor, escura, simbolo) {
+  const r = tela(16, 13);
+  el(r, 8, 9, 7, 3.6, 'K'); // sombra no chão
+  el(r, 8, 6.5, 6.5, 5, escura); el(r, 8, 5.5, 6.2, 4.6, cor);
+  el(r, 6, 4, 2.6, 1.4, 'w');
+  if (simbolo === 'estrela') poli(r, [[8, 2], [9, 4.5], [11.5, 4.7], [9.6, 6.3], [10.3, 8.8], [8, 7.4], [5.7, 8.8], [6.4, 6.3], [4.5, 4.7], [7, 4.5]], 'Y');
+  if (simbolo === 'caveira') { el(r, 8, 5.5, 3, 2.6, 'w'); pon(r, 7, 5, 'K'); pon(r, 9, 5, 'K'); ret(r, 7, 7, 3, 1, 'w'); }
+  return fim(r);
+}
+function bandeiraGrande(f = 0) {
+  const r = tela(36, 48);
+  ret(r, 3, 4, 2, 44, 'a'); ret(r, 3, 4, 1, 44, 'S'); el(r, 4, 3, 2.6, 2.6, 'g', { sombra: 'G' });
+  const onda = [0, 2, -1][f];
+  poli(r, [[5, 6], [20, 6 + onda], [34, 7], [33, 15 + onda], [34, 23], [19, 23 - onda], [5, 22]], (x, y) => (y > 18 + (x % 7 === 0 ? 1 : 0) ? 's' : 'w'));
+  for (let x = 8; x < 32; x += 6) pon(r, x, 12 + (f === 1 ? 1 : 0), 's');
+  return fim(r);
+}
+function casinha2() {
+  const r = tela(26, 22);
+  ret(r, 3, 9, 20, 12, 'O'); for (let y = 11; y < 21; y += 3) ret(r, 3, y, 20, 1, 'o');
+  poli(r, [[0, 11], [13, 1], [26, 11], [23, 11], [13, 4], [3, 11]], 'r'); poli(r, [[3, 11], [13, 4], [23, 11]], 'R');
+  el(r, 13, 17, 4, 4.5, 'K'); ret(r, 9, 17, 9, 4, 'K');
+  ret(r, 9, 10, 8, 3, 'q'); ret(r, 10, 11, 6, 1, 'P');
+  el(r, 23, 19.5, 3, 1.5, 'u'); ret(r, 21, 17, 4, 1, 'w'); pon(r, 21, 16, 'w'); pon(r, 24, 16, 'w');
+  return fim(r);
+}
+function ilha2({ brilho = false } = {}) {
+  const r = tela(22, 16);
+  el(r, 11, 12, 10, 3.5, 'd', { sombra: 'D' }); el(r, 11, 11, 9, 2.6, 'c');
+  ret(r, 5, 4, 12, 7, 'o'); poli(r, [[5, 4], [7, 1], [15, 1], [17, 4]], 'O');
+  ret(r, 5, 6, 12, 1, 'g'); ret(r, 10, 4, 2, 7, 'g'); ret(r, 10, 6, 2, 2, 'Y'); pon(r, 10, 7, 'K');
+  if (brilho) { pon(r, 18, 1, 'Y'); pon(r, 17, 2, 'Y'); pon(r, 19, 2, 'Y'); pon(r, 18, 3, 'Y'); }
+  return fim(r);
+}
+function disquete() {
+  const r = tela(16, 16);
+  poli(r, [[1, 1], [13, 1], [15, 3], [15, 15], [1, 15]], 'u'); ret(r, 4, 1, 8, 5, 'S'); ret(r, 9, 2, 2, 3, 'a');
+  ret(r, 3, 8, 10, 7, 'w'); ret(r, 4, 10, 8, 1, 'l'); ret(r, 4, 12, 6, 1, 'l'); ret(r, 1, 13, 2, 2, 'U');
+  return fim(r);
+}
+function brilho() { const r = tela(7, 7); ret(r, 3, 0, 1, 7, 'w'); ret(r, 0, 3, 7, 1, 'w'); pon(r, 3, 3, 'Y'); return r; }
+function setaQuica() { const r = tela(11, 10); poli(r, [[0, 1], [10, 1], [5, 9]], 'g'); ret(r, 3, 1, 4, 3, 'y'); return fim(r); }
+
 export const DESENHOS = {
   casa, aviao, oficina, terraNova, acampamento, arvore, torre, castelo,
   casinha, impressora, cacto, escola, porta, lapide, placa404, ilha, portao,
   galinha, pombo, consultor, bandeira, estrela, obra, operarios, embargo,
-  rosaLado, rosaFrente,
+  rosaLado, rosaFrente, disquete, casinha2,
 };
 
 // Todas as texturas que a cena precisa: [chave, grade]
 export function todasAsTexturas() {
   const lista = [];
-  for (const nome of ['aviao', 'casinha', 'cacto', 'porta', 'lapide', 'placa404', 'portao', 'estrela', 'obra', 'embargo']) lista.push([nome, DESENHOS[nome]()]);
+  for (const nome of ['aviao', 'cacto', 'porta', 'lapide', 'placa404', 'portao', 'estrela', 'obra', 'embargo']) lista.push([nome, DESENHOS[nome]()]);
   lista.push(['castelo', castelo()]);
   for (let i = 1; i <= 6; i++) lista.push([`castelo-cai-${i}`, castelo({ caindo: i * 5 })]);
   lista.push(['impressora', impressora()], ['impressora-olho', impressora({ olho: true })]);
   lista.push(['escola', escola()], ['escola-antena', escola({ antena: 1 })]);
-  lista.push(['ilha', ilha()], ['ilha-brilho', ilha({ brilho: true })]);
-  lista.push(['no-aberto', no('y', 'G', true)], ['no-segredo', no('r', 'R', true)], ['no-trancado', no('S', 'a')], ['no-feito', no('n', 'N')]);
   lista.push(['moinhoBase', moinhoBase()], ['quadroSwot', quadroSwot()], ['organograma', organograma()], ['lupa', lupa()]);
   for (const f of [0, 1]) {
     lista.push([`pombo-${f}`, pombo(f)], [`consultorDanca-${f}`, consultor(f)], [`operarios-${f}`, operarios(f)], [`fogueira-${f}`, fogueira(f)]);
@@ -310,5 +363,9 @@ export function todasAsTexturas() {
     lista.push([`rosa-medo-${f}`, rosaFrente({ olhos: 'medo', treme: f ? 1 : -1 })]);
   }
   lista.push(['rosa-sentada', rosaFrente()], ['rosa-dorme', rosaFrente({ olhos: 'fechados' })]);
+  lista.push(['tabuas', tabuas()], ['portaFechada', portaFechada()], ['cadeado', cadeado()], ['disquete', disquete()], ['brilho', brilho()], ['setaQuica', setaQuica()]);
+  lista.push(['casinha', casinha2()], ['ilha', ilha2()], ['ilha-brilho', ilha2({ brilho: true })]);
+  lista.push(['no-aberto', noFase('y', 'G')], ['no-feito', noFase('u', 'U', 'estrela')], ['no-trancado', noFase('S', 'A')], ['no-segredo', noFase('r', 'R', 'caveira')]);
+  for (const f of [0, 1, 2]) lista.push([`bandeiraGrande-${f}`, bandeiraGrande(f)]);
   return lista;
 }

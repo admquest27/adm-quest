@@ -28,7 +28,10 @@ export const DIRECOES = { baixo: 0, cima: 1, esq: 2, dir: 3 };
 // quantas linhas de caminhada cada folha tem (algumas pessoas só têm duas)
 export const LINHAS = { senhora: 2, crianca: 2 };
 
-const R = (folha, x, y, w = 1, h = 1) => ({ folha, x, y, w, h });
+// Recorte em peças (x, y, w, h) ou em pixels (RP); w e h em peças servem para a planta (ocupação no chão).
+// porta: centro da porta em pixels, a partir do canto de cima do recorte (para fechar com tábuas ou porta).
+const R = (folha, x, y, w = 1, h = 1, extra = {}) => ({ folha, px: x * 16, py: y * 16, pw: w * 16, ph: h * 16, w, h, ...extra });
+const RP = (folha, px, py, pw, ph, extra = {}) => ({ folha, px, py, pw, ph, w: Math.ceil(pw / 16), h: Math.ceil(ph / 16), ...extra });
 export const RECORTES = {
   // árvores e natureza
   arvoreRedonda: R('natureza', 0, 0, 2, 2), pinheiro: R('natureza', 2, 0, 2, 2), arvoreSeca: R('natureza', 4, 0, 2, 2), arvoreClara: R('natureza', 16, 0, 2, 2),
@@ -37,8 +40,9 @@ export const RECORTES = {
   florAmarela: R('natureza', 0, 11), florLaranja: R('natureza', 1, 11), florVermelha: R('natureza', 3, 11), florBranca: R('natureza', 6, 11),
   pedraGrande: R('natureza', 12, 8, 2, 2), trigo: R('natureza', 7, 11), mato: R('natureza', 8, 11),
   // casas da Vila (3x3)
-  casaLaranja: R('casas', 0, 0, 3, 3), casaBege: R('casas', 4, 0, 3, 3), casaLaranja2: R('casas', 8, 0, 3, 3), templo: R('casas', 12, 0, 3, 3),
-  loja: R('casas', 16, 0, 3, 3), lojaVerde: R('casas', 19, 0, 4, 3), casaPedra: R('casas', 23, 0, 3, 3), casaPartida: R('casas', 26, 0, 3, 3),
+  casaLaranja: RP('casas', 0, 0, 64, 48, { porta: [24, 41] }), casaBege: RP('casas', 64, 0, 64, 48, { porta: [23, 41] }), casaLaranja2: RP('casas', 128, 0, 64, 48, { porta: [23, 41] }),
+  templo: RP('casas', 192, 0, 64, 48, { porta: [24, 41] }), loja: RP('casas', 256, 0, 48, 48, { porta: [14, 41] }), lojaVerde: RP('casas', 304, 0, 64, 48, { porta: [33, 41] }),
+  casaPedra: RP('casas', 368, 0, 48, 48, { porta: [24, 41] }), casaPartida: RP('casas', 416, 0, 48, 48, { porta: [24, 41] }),
   estatuaMestre: R('casas', 4, 15, 1, 2), estatuaMestre2: R('casas', 5, 15, 1, 2), estatuaUrso: R('casas', 0, 15, 2, 3),
   estandarte1: R('casas', 22, 20, 1, 2), estandarte2: R('casas', 24, 20, 1, 2), estandarte3: R('casas', 26, 20, 1, 2),
   portal: R('casas', 1, 5, 3, 2),
