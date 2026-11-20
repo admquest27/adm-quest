@@ -701,3 +701,17 @@ dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
 .pc-avs { padding-left: 1.3em; margin: 0 0 8px; display: grid; gap: 6px; font-size: 0.9rem; }
 .pc-mud { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
 .fc-outro-bim { border-top: 1px dashed var(--borda); margin-top: 8px; }
+/* PCTD desenhado como a folha do Word (A4 deitada, margens de 1,5 cm) */
+.pc-doc-rolagem { width: min(calc(100vw - 28px), 33cm); position: relative; left: 50%; transform: translateX(-50%); box-sizing: border-box; overflow-x: auto; -webkit-overflow-scrolling: touch; background: #8a8a8a; border-radius: 10px; padding: 12px; margin: 8px 0 16px; }
+.pc-doc { width: 29.7cm; min-height: 21cm; box-sizing: border-box; padding: 1.5cm; margin: 0 auto; background: #fff; color: #000; font-family: Calibri, Carlito, Arial, sans-serif; font-size: 10pt; line-height: 1.25; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+.pc-doc p { margin: 0 0 4pt; }
+.pc-doc .d-titulo { font-size: 15pt; font-weight: 700; margin-bottom: 6pt; }
+.pc-doc .d-sub { font-size: 12pt; font-weight: 700; margin: 10pt 0 4pt; }
+.pc-doc .d-lista { margin: 0 0 4pt; padding-left: 18pt; }
+.pc-doc .d-lista li { margin-bottom: 2pt; }
+.pc-doc .d-tab { border-collapse: collapse; table-layout: fixed; margin: 0 0 8pt; }
+.pc-doc .d-tab th, .pc-doc .d-tab td { border: 1px solid #999; padding: 2pt 4pt; vertical-align: top; text-align: left; font-size: 9pt; overflow-wrap: anywhere; }
+.pc-doc .d-tab th { background: #d9d9d9; font-weight: 700; }
+.pc-doc .d-neg { font-weight: 700; }
+.pc-doc .d-semana { cursor: pointer; }
+.pc-doc .d-semana:hover td { background: #eef5ff; }

@@ -198,7 +198,7 @@ export function pctdFtp({ bim, turmaNome, ano, p, roteiro, marcas, cfg = {}, mun
       [{ texto: 'Nome', negrito: true }, cfg.situacao || `${mundo?.nome ?? 'Mundo'}: ${mundo?.pergunta ?? ''}`.trim()],
       [{ texto: 'Professores', negrito: true }, professores],
     ] },
-    { tipo: 'tabela', cabecalho: 1, colunas: [2.3, 2.2, 2.8, 5.4, 7, 3.2, 3.8], linhas: [
+    { tipo: 'tabela', semanas: true, cabecalho: 1, colunas: [2.3, 2.2, 2.8, 5.4, 7, 3.2, 3.8], linhas: [
       ['Semana / Período', 'Professor', 'Habilidade (Verbo)', 'O quê? Recorte da habilidade e saberes', 'Como? Descrição das etapas', 'Avaliação (Instrumentos)', 'Atitudes e Valores esperados'],
       ...semanasDoBimestre({ p, roteiro, marcas, habsDoBim, editadas: cfg.semanas }).map((w) => [`Semana ${w.n}\n${w.periodo}`, professores, w.campos.hab, w.campos.oque, w.campos.como, w.campos.aval, w.campos.atit]),
     ] },

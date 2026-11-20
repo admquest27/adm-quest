@@ -5,7 +5,7 @@ import { db } from './firebase.js';
 import { esc, hoje } from './ui.js';
 import { MAPA, curto } from './fechamento.js';
 import { COMPETENCIAS, HABILIDADES } from './catalogo.js';
-import { semanasDoBimestre, agendaAvaliativa, saberesPadrao, CAMPOS_SEMANA } from './documentos.js';
+import { semanasDoBimestre, agendaAvaliativa, saberesPadrao, CAMPOS_SEMANA, pctdFtp } from './documentos.js';
 import { MARCAS } from './registros.js';
 import { roteiroDaFase, ANO } from './calendario.js';
 import { formatar } from './agenda.js';
@@ -15,6 +15,28 @@ export const idPctd = (bim) => `pctd_${bim}`;
 export const cfgPctd = (st, bim) => st.profTodas?.[idPctd(bim)] ?? {};
 const gravar = (bim, dados) => setDoc(doc(db, 'fasesProfessor', idPctd(bim)), { tipo: 'pctd', bim, professor: dados, atualizadoEm: serverTimestamp() }, { merge: true });
 const linhas = (t) => String(t ?? '').split('\n').map(esc).join('<br>');
+const negrito = (h) => h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+// O mesmo conteúdo do .docx, desenhado na tela como a folha do Word (A4 deitada, tabelas com as mesmas larguras).
+export function htmlDocumento(blocos) {
+  return blocos.map((b) => {
+    if (b.tipo === 'titulo') return `<p class="d-titulo">${negrito(esc(b.texto))}</p>`;
+    if (b.tipo === 'subtitulo') return `<p class="d-sub">${negrito(esc(b.texto))}</p>`;
+    if (b.tipo === 'lista') return `<ul class="d-lista">${b.itens.map((t) => `<li>${negrito(esc(t))}</li>`).join('')}</ul>`;
+    if (b.tipo === 'tabela') {
+      const cab = b.cabecalho ?? 0;
+      return `<table class="d-tab"><colgroup>${b.colunas.map((c) => `<col style="width:${c}cm">`).join('')}</colgroup>${b.linhas.map((cels, r) => {
+        const sem = b.semanas && r >= cab ? ` data-acao="pc-ir-semana" data-n="${r - cab + 1}" class="d-semana" title="Editar esta semana"` : '';
+        return `<tr${sem}>${cels.map((c) => {
+          const cel = typeof c === 'object' && c !== null ? c : { texto: c };
+          const tag = r < cab ? 'th' : 'td';
+          return `<${tag}${cel.mesclar > 1 ? ` colspan="${cel.mesclar}"` : ''}${cel.negrito ? ' class="d-neg"' : ''}>${negrito(linhas(cel.texto))}</${tag}>`;
+        }).join('')}</tr>`;
+      }).join('')}</table>`;
+    }
+    return `<p>${negrito(esc(b.texto))}</p>`;
+  }).join('');
+}
 
 export function htmlPctd(st, p) {
   const bim = p.b.id;
@@ -27,9 +49,21 @@ export function htmlPctd(st, p) {
   const mudancas = [...(cfg.mudancas ?? [])].sort((a, b) => String(b.data).localeCompare(String(a.data)));
   const saberes = cfg.saberes?.length ? cfg.saberes : saberesPadrao(bim);
 
+  const modo = st.pctdModo === 'editar' ? 'editar' : 'doc';
+  const alternar = `<div class="fc-passos">${[['doc', 'Ver o documento'], ['editar', 'Editar']].map(([id, r]) => `<button class="mini ${modo === id ? 'ok cheio' : ''}" data-acao="pc-modo" data-id="${id}">${r}</button>`).join('')}</div>`;
+  if (modo === 'doc') {
+    const turma = st.turmas?.find((t) => t.id === st.turma);
+    const blocos = pctdFtp({ bim, turmaNome: turma?.nome || st.turma, ano: ANO, p, roteiro: (f, tipo) => roteiroDaFase(st, f, tipo), marcas: MARCAS, cfg, mundo: st.mundo?.ordem === bim ? st.mundo : null });
+    return `${alternar}
+      <p class="nota">Assim fica o documento que você baixa. Toque numa semana da tabela para editá-la; os outros campos ficam em "Editar". No celular, arraste a folha para os lados.</p>
+      <div class="linha-btn"><button class="botao" data-acao="pc-docx">Baixar PCTD (.docx)</button></div>
+      <p class="nota" id="pc-msg"></p>
+      <div class="pc-doc-rolagem"><div class="pc-doc">${htmlDocumento(blocos)}</div></div>`;
+  }
+
   const semana = (w) => {
     const ab = aberta === w.n;
-    return `<li class="pc-semana ${ab ? 'aberta' : ''}">
+    return `<li class="pc-semana ${ab ? 'aberta' : ''}" id="pc-sem-${w.n}">
       <button class="pc-sem-topo" data-acao="pc-semana" data-n="${w.n}" aria-expanded="${ab}">
         <strong>Semana ${w.n}</strong> <span class="nota">${esc(w.periodo)}</span>
         <span class="pc-resumo">${esc(w.resumo)}</span>${w.editados.length ? '<span class="chip">editada</span>' : ''}</button>
@@ -39,7 +73,7 @@ export function htmlPctd(st, p) {
       : `<dl class="pc-ver">${CAMPOS_SEMANA.filter(([k]) => w.campos[k]).map(([k, rot]) => `<dt>${esc(rot)}</dt><dd>${linhas(w.campos[k]).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')}</dd>`).join('')}</dl>`}</li>`;
   };
 
-  return `<p class="nota">O PCTD da Formação Técnica do ${bim}º bimestre, montado a partir das fases e da Agenda. Confira, ajuste o que quiser e baixe o .docx para enviar à coordenação no início do bimestre. Toque numa semana para editar.</p>
+  return `${alternar}<p class="nota">O PCTD da Formação Técnica do ${bim}º bimestre, montado a partir das fases e da Agenda. Ajuste o que quiser; tudo aparece em "Ver o documento" e no .docx. Toque numa semana para editar.</p>
     ${temFases ? '' : '<div class="alerta"><p>As fases deste bimestre ainda não foram cadastradas no jogo: as semanas aparecem só com as datas.</p></div>'}
     <div class="linha-btn"><button class="botao" data-acao="pc-docx">Baixar PCTD (.docx)</button></div>
     <p class="nota" id="pc-msg"></p>
@@ -81,6 +115,14 @@ export async function tratarPctd(acao, b, { st, p, desenhar, turma }) {
   const cfg = cfgPctd(st, bim);
   const msg = (t) => { const el = document.getElementById('pc-msg'); if (el) el.textContent = t; };
   switch (acao) {
+    case 'pc-modo': st.pctdModo = b.dataset.id; desenhar(); return true;
+    case 'pc-ir-semana': {
+      st.pctdModo = 'editar';
+      st.pctdSemana = Number(b.dataset.n);
+      desenhar();
+      document.getElementById(`pc-sem-${b.dataset.n}`)?.scrollIntoView({ block: 'start' });
+      return true;
+    }
     case 'pc-semana': st.pctdSemana = st.pctdSemana === Number(b.dataset.n) ? null : Number(b.dataset.n); desenhar(); return true;
     case 'pc-auto': await gravar(bim, { semanas: { [b.dataset.n]: deleteField() } }); return true;
     case 'pc-mudanca': {
