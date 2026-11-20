@@ -1,84 +1,101 @@
-// Planta da Vila dos Planos (Mundo 1): terreno, caminhos, construções das fases, enfeites e segredos.
-// Só posições e ids, em peças de 16x16. Os textos (falas, placas, segredos) vêm do banco.
+// Planta da Vila dos Planos (Mundo 1): terreno, estradas, construções das fases, enfeites, segredos e
+// personagens. Só posições e ids, em peças de 16x16. Os textos (falas, placas, segredos) vêm do banco.
+import { RECORTES } from './arte.js';
 
 export const LARG = 48;
 export const ALT = 27;
 
-// Áreas de terreno
+// Áreas de mata (desenhadas com árvores) e de água
 export const FLORESTA = [
   { x: 0, y: 0, w: 48, h: 2 }, { x: 0, y: 24, w: 48, h: 3 }, { x: 0, y: 0, w: 1, h: 27 },
-  { x: 47, y: 0, w: 1, h: 11 }, { x: 47, y: 16, w: 1, h: 11 }, { x: 41, y: 0, w: 7, h: 3 },
+  { x: 47, y: 0, w: 1, h: 11 }, { x: 47, y: 16, w: 1, h: 11 }, { x: 40, y: 0, w: 8, h: 3 },
   { x: 19, y: 2, w: 5, h: 2 }, { x: 36, y: 22, w: 6, h: 2 }, { x: 1, y: 2, w: 2, h: 4 },
 ];
-export const RIO = { x: 27, w: 3 }; // de cima a baixo
-export const LAGOS = [{ x: 37, y: 2, w: 4, h: 3 }, { x: 1, y: 21, w: 3, h: 2 }];
+export const RIO = { x: 27, w: 3 };
+export const LAGOS = [{ x: 36, y: 3, w: 4, h: 3 }, { x: 1, y: 20, w: 3, h: 3 }];
 export const PONTE = { y: 13, x0: 26, x1: 30 };
-export const DESERTO = { x: 4, y: 3, w: 10, h: 8 };
+export const DESERTO = { x: 3, y: 3, w: 11, h: 8 };
 
-// Estradas de terra (polilinhas em peças); só enfeite, o gramado também é caminhável.
+// Estradas (polilinhas em peças). A primeira peça de cada uma diz qual fase ela leva (para revelar o caminho).
 export const ESTRADAS = [
-  [[6, 17], [6, 12], [8, 9.5], [9, 9.5]],
-  [[9, 9.5], [13, 9.5], [16, 9.5]],
-  [[16, 9.5], [18, 12], [22, 13], [31, 13]],
-  [[31, 13], [33, 10], [33, 8.5]],
-  [[31, 13], [34, 15], [35, 17.5]],
-  [[33, 10], [37, 10.5], [40, 11.5]],
-  [[35, 17.5], [39, 17.5], [43, 18.5]],
-  [[40, 11.5], [42, 8.5], [44, 7.5]],
-  [[44, 7.5], [46, 11], [47, 13]],
-  [[43, 18.5], [46, 15], [47, 13]],
-  [[6, 17], [10, 18], [13, 18], [18, 18]],
-  [[13, 18], [13, 21], [12, 23]],
+  { para: 'm1f2', pontos: [[5, 16.5], [5, 12], [8, 10], [9, 10]] },
+  { para: 'm1f3', pontos: [[9, 10], [13, 10], [16, 10]] },
+  { para: 'm1f4', pontos: [[16, 10], [18, 12], [22, 13], [31, 13], [33, 10], [33, 8.5]] },
+  { para: 'm1f5', pontos: [[31, 13], [34, 15], [35, 17.5]] },
+  { para: 'm1f6', pontos: [[33, 10], [37, 10.5], [40, 11.5]] },
+  { para: 'm1f7', pontos: [[35, 17.5], [39, 18.5], [43, 18.5]] },
+  { para: 'm1chefao', pontos: [[40, 11.5], [42, 9], [43, 7.5]] },
+  { para: 'mundo2', pontos: [[43, 7.5], [46, 11], [47, 13]] },
+  { para: null, pontos: [[43, 18.5], [46, 15], [47, 13]] },
+  { para: null, pontos: [[5, 16.5], [10, 18], [13, 18], [19, 18]] },
+  { para: null, pontos: [[13, 18], [13, 21], [12, 23]] },
 ];
 
-// Construções das fases: canto de cima à esquerda (x, y), tamanho em peças e a entrada (onde o avatar para).
+// Construções das fases: canto de cima à esquerda (x, y), tamanho, arte e entrada (onde fica o ponto da fase).
+const fase = (id, arte, x, y, entrada) => ({ id, arte, x, y, w: RECORTES[arte]?.w ?? 2, h: RECORTES[arte]?.h ?? 2, entrada });
 export const FASES = [
-  { id: 'm1f1', arte: 'casa', x: 5, y: 14, w: 2, h: 2, entrada: [6, 16] },
-  { id: 'm1f2', arte: 'aviao', x: 8, y: 7, w: 2, h: 2, entrada: [9, 9] },
-  { id: 'm1f3', arte: 'oficina', x: 15, y: 7, w: 2, h: 2, entrada: [16, 9] },
-  { id: 'm1f4', arte: 'terraNova', x: 32, y: 6, w: 2, h: 2, entrada: [33, 8] },
-  { id: 'm1f5', arte: 'acampamento', x: 34, y: 15, w: 2, h: 2, entrada: [35, 17] },
-  { id: 'm1f6', arte: 'arvore', x: 39, y: 8, w: 3, h: 3, entrada: [40, 11] },
-  { id: 'm1f7', arte: 'torre', x: 42, y: 16, w: 2, h: 2, entrada: [43, 18] },
-  { id: 'm1chefao', arte: 'castelo', x: 43, y: 4, w: 3, h: 3, entrada: [44, 7] },
+  fase('m1f1', 'casaPartida', 4, 13, [5, 16]),
+  fase('m1f2', 'casaDeserto', 8, 6, [9, 9]),
+  fase('m1f3', 'templo', 15, 6, [16, 9]),
+  fase('m1f4', 'portal', 32, 6, [33, 8]),
+  fase('m1f5', 'barraca', 34, 15, [35, 17]),
+  fase('m1f6', 'arvoreGrande', 39, 8, [40, 11]),
+  fase('m1f7', 'torreDeserto', 42, 14, [43, 18]),
+  { id: 'm1chefao', arte: 'castelo', x: 42, y: 4, w: 3, h: 3, entrada: [43, 7] },
 ];
 
-// Enfeites do tileset (coluna, linha no tileset) e se bloqueiam a passagem.
-const T = (c, r) => r * 27 + c;
-export const PECAS = {
-  casaVermelha: T(16, 34), casaAzul: T(7, 34), casaLaranja: T(7, 27), casaVerde: T(4, 34),
-  poco: T(4, 30), placa: T(9, 30), arvoreRedonda: T(3, 26), arvoreFruta: T(2, 26), pinheiro: T(0, 29),
-  palmeira: T(2, 28), trigo: T(0, 28), pedra: T(0, 26), arbusto: T(1, 26), toco: T(1, 27), bau: T(2, 29), mesa: T(4, 31),
+// Enfeites: peça do pacote no canto (x, y). Bloqueiam só a base (a última linha, ou as duas de baixo nas casas).
+const casa = new Set(['casaLaranja', 'casaBege', 'casaLaranja2', 'loja', 'lojaVerde', 'casaPedra']);
+const naoBloqueia = new Set(['florAmarela', 'florLaranja', 'florVermelha', 'florBranca', 'mato', 'trigo', 'arbusto1', 'arbusto2', 'arbusto3', 'arbusto4', 'estandarte1', 'estandarte2', 'estandarte3']);
+const enfeite = (peca, x, y) => {
+  const r = RECORTES[peca]; const fh = casa.has(peca) ? 2 : 1;
+  return { peca, x, y, w: r.w, h: r.h, bloqueia: !naoBloqueia.has(peca), bx: x, by: y + r.h - fh, bw: r.w, bh: fh };
 };
 export const ENFEITES = [
-  ['casaVermelha', 9, 16], ['casaAzul', 11, 15], ['casaLaranja', 15, 16], ['casaVerde', 10, 20], ['casaVermelha', 15, 20], ['casaAzul', 8, 21],
-  ['poco', 12, 19], ['arvoreRedonda', 3, 12], ['arvoreFruta', 4, 20], ['arvoreRedonda', 8, 13], ['pinheiro', 19, 5], ['pinheiro', 21, 6],
-  ['arvoreRedonda', 23, 9], ['arvoreFruta', 24, 17], ['arvoreRedonda', 31, 4], ['pinheiro', 36, 5], ['arvoreRedonda', 38, 14], ['pinheiro', 31, 20],
-  ['arvoreFruta', 37, 21], ['arvoreRedonda', 45, 21], ['pinheiro', 25, 21], ['arvoreRedonda', 20, 14],
-  ['palmeira', 5, 4], ['palmeira', 12, 4], ['palmeira', 6, 9], ['pedra', 10, 5], ['pedra', 34, 12], ['arbusto', 30, 9], ['arbusto', 24, 4],
-  ['trigo', 21, 20], ['trigo', 22, 20], ['trigo', 23, 20], ['trigo', 21, 21], ['trigo', 22, 21], ['trigo', 23, 21],
-  ['toco', 38, 19], ['placa', 32, 13], ['mesa', 36, 17],
-].map(([peca, x, y]) => ({ peca, x, y, bloqueia: !['trigo', 'arbusto'].includes(peca) }));
+  // Vila
+  ['casaLaranja', 8, 13], ['casaBege', 16, 13], ['casaLaranja2', 8, 19], ['lojaVerde', 14, 20], ['casaPedra', 2, 9],
+  ['arvoreRedonda', 2, 12], ['arvoreClara', 11, 13], ['arvoreRosa', 20, 14], ['arvoreRedonda', 24, 9], ['arvoreClara', 24, 16],
+  // deserto
+  ['palmeira', 4, 4], ['palmeira', 11, 4], ['palmeira', 6, 8], ['palmeira', 12, 8],
+  // leste
+  ['arvoreRedonda', 30, 3], ['pinheiro', 30, 9], ['arvoreClara', 37, 13], ['arvoreRosa', 31, 19], ['arvoreRedonda', 38, 20], ['pinheiro', 45, 20], ['arvoreClara', 25, 20],
+  ['estandarte1', 31, 6], ['estandarte2', 35, 6], ['estandarte3', 36, 7],
+  // flores e plantas
+  ['trigo', 22, 19], ['trigo', 23, 19], ['trigo', 24, 19], ['trigo', 22, 20], ['trigo', 23, 20], ['trigo', 24, 20],
+  ['florAmarela', 7, 17], ['florVermelha', 2, 18], ['florBranca', 12, 16], ['florLaranja', 20, 11], ['florAmarela', 30, 16], ['florBranca', 38, 16], ['florVermelha', 44, 11],
+  ['arbusto1', 10, 11], ['arbusto2', 22, 15], ['arbusto3', 33, 12], ['arbusto4', 41, 21], ['mato', 19, 9], ['mato', 29, 20],
+].map(([p, x, y]) => enfeite(p, x, y));
 
-// Objetos desenhados para o jogo (sem fase). Os que guardam segredo têm o id do segredo.
+// Objetos desenhados para o jogo. Os que guardam segredo têm o id do segredo.
 export const OBJETOS = [
-  { id: 'casinha', arte: 'casinha', x: 4, y: 16, bloqueia: true },
+  { id: 'casinha', arte: 'casinha', x: 3, y: 16, bloqueia: true },
   { id: 'impressora', arte: 'impressora', x: 7, y: 15, bloqueia: true, segredo: 'gato' },
-  { id: 'cacto', arte: 'cacto', x: 11, y: 7, bloqueia: true, segredo: 'cacto', toques: 5 },
-  { id: 'escola', arte: 'escola', x: 17, y: 20, w: 2, h: 2, bloqueia: true, segredo: 'antena' },
-  { id: 'porta', arte: 'porta', x: 20, y: 21, bloqueia: true, segredo: 'professores' },
-  { id: 'lapide', arte: 'lapide', x: 46, y: 3, bloqueia: true, segredo: 'lapide' },
+  { id: 'cacto', arte: 'cacto', x: 6, y: 5, bloqueia: true, segredo: 'cacto', toques: 5 },
+  { id: 'aviao', arte: 'aviao', x: 11, y: 6, w: 2, h: 2, bloqueia: true, conversa: 'aviao' },
+  { id: 'escola', arte: 'escola', x: 19, y: 21, w: 2, h: 2, bloqueia: true, segredo: 'antena' },
+  { id: 'porta', arte: 'porta', x: 21, y: 22, bloqueia: true, segredo: 'professores' },
+  { id: 'lapide', arte: 'lapide', x: 46, y: 5, bloqueia: true, segredo: 'lapide' },
   { id: 'placa404', arte: 'placa404', x: 11, y: 23, bloqueia: true, segredo: '404' },
   { id: 'ilha', arte: 'ilha', x: 28, y: 21, bloqueia: true, segredo: 'bau', alcance: 2.5 },
+  { id: 'quadro', arte: 'quadroSwot', x: 36, y: 16, bloqueia: true, conversa: 'swot' },
+  { id: 'moinho', arte: 'moinhoBase', x: 25, y: 18, w: 2, h: 2, bloqueia: true, conversa: 'moinho' },
   { id: 'portao', arte: 'portao', x: 47, y: 11, w: 1, h: 5, bloqueia: true, conversa: 'portao' },
 ];
 
-// Personagens que andam sozinhos
+// Personagens e bichos que andam sozinhos
 export const PERSONAGENS = {
-  rosalina: { casa: [4, 17] },
+  rosalina: { casa: [3, 17] },
+  consultor: { pos: [7, 17], area: { x: 6, y: 16, w: 4, h: 3 } },
+  barao: { pos: [43, 8], area: { x: 41, y: 7, w: 5, h: 2 } },
+  aldeoes: [
+    { quem: 'senhora', area: { x: 9, y: 16, w: 6, h: 3 } },
+    { quem: 'crianca', area: { x: 11, y: 17, w: 7, h: 4 } },
+    { quem: 'monge', area: { x: 14, y: 9, w: 6, h: 3 } },
+  ],
   pombo: { area: { x: 11, y: 17, w: 4, h: 3 }, segredo: 'pombo' },
-  galinhas: { area: { x: 19, y: 17, w: 6, h: 3 }, quantas: 4, segredo: 'galinhas', esbarroes: 6 },
+  galinhas: { area: { x: 19, y: 16, w: 7, h: 3 }, quantas: 5, segredo: 'galinhas', esbarroes: 6 },
+  peixes: { rio: { x0: 27, x1: 29 }, lagos: true },
 };
 
-export const INICIO = [6, 17]; // onde o avatar aparece na primeira vez
+export const INICIO = [5, 17];
 export const SEGREDOS = ['cacto', 'galinhas', 'konami', 'lapide', 'gato', 'professores', 'pombo', 'antena', 'bau', '404'];

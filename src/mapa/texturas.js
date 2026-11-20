@@ -156,13 +156,6 @@ function portao() {
   return fim(r);
 }
 
-// flores e matinhos do gramado (não bloqueiam)
-function flor(cor = 'y') {
-  const r = tela(8, 8); pon(r, 3, 5, 'N'); pon(r, 3, 6, 'N'); pon(r, 3, 3, cor); pon(r, 2, 4, cor); pon(r, 4, 4, cor); pon(r, 3, 5, cor); pon(r, 3, 4, 'Y');
-  pon(r, 6, 6, 'N'); pon(r, 6, 5, 'w'); return r;
-}
-function mato() { const r = tela(8, 6); pon(r, 1, 5, 'N'); pon(r, 2, 4, 'N'); pon(r, 3, 5, 'N'); pon(r, 4, 3, 'N'); pon(r, 5, 5, 'N'); pon(r, 6, 4, 'N'); return r; }
-
 // ---------- bichos ----------
 function galinha(passo = 0) {
   const r = tela(12, 11);
@@ -249,6 +242,50 @@ function rosaFrente({ olhos = 'abertos', treme = 0 } = {}) {
   return r;
 }
 
+
+// ---------- peças novas do mapa 2.0 ----------
+// Ponto de fase no caminho, no espírito dos mapas de mundo: amarelo aberto, vermelho com segredo, cinza trancado.
+function no(cor = 'y', escura = 'G', brilho = false) {
+  const r = tela(16, 12);
+  el(r, 8, 7, 6.5, 4, escura); el(r, 8, 6, 6, 3.6, cor); el(r, 6, 5, 2.5, 1.3, 'w');
+  if (brilho) { pon(r, 13, 2, 'w'); pon(r, 2, 3, 'w'); }
+  return fim(r);
+}
+function moinhoBase() {
+  const r = tela(32, 32);
+  poli(r, [[9, 31], [11, 10], [21, 10], [23, 31]], (x) => (x > 17 ? 'd' : 'q'));
+  for (let y = 14; y < 31; y += 4) ret(r, 10, y, 12, 1, 'C');
+  ret(r, 13, 22, 6, 9, 'o'); ret(r, 14, 14, 4, 4, 'u');
+  poli(r, [[8, 11], [16, 2], [24, 11]], (x) => (x > 16 ? 'R' : 'r'));
+  return fim(r);
+}
+function quadroSwot() {
+  const r = tela(16, 16);
+  traco(r, 4, 9, 2, 15, 'o', 1); traco(r, 12, 9, 14, 15, 'o', 1);
+  ret(r, 1, 1, 14, 10, 'q'); ret(r, 2, 2, 6, 4, 'n'); ret(r, 8, 2, 6, 4, 'r'); ret(r, 2, 6, 6, 4, 'u'); ret(r, 8, 6, 6, 4, 'y');
+  pon(r, 4, 3, 'w'); pon(r, 10, 3, 'w'); pon(r, 4, 7, 'w'); pon(r, 10, 7, 'w');
+  return fim(r);
+}
+function fogueira(f = 0) {
+  const r = tela(16, 16);
+  traco(r, 2, 14, 13, 11, 'o', 2); traco(r, 2, 11, 13, 14, 'D', 2);
+  el(r, 8, 9 - f, 4, 5 + f, 'x'); el(r, 8, 10, 2.4, 3 - f, 'y'); pon(r, f ? 5 : 11, 3, 'x');
+  return fim(r);
+}
+function organograma() {
+  const r = tela(48, 48);
+  const caixa = (x, y) => { ret(r, x, y, 7, 5, 'w'); ret(r, x + 1, y + 1, 5, 1, 'u'); ret(r, x + 1, y + 3, 3, 1, 'l'); };
+  traco(r, 24, 11, 24, 15, 'K'); traco(r, 12, 15, 36, 15, 'K'); for (const x of [12, 24, 36]) traco(r, x, 15, x, 18, 'K');
+  caixa(21, 6); caixa(9, 18); caixa(21, 18); caixa(33, 18);
+  contorno(r, 'K'); return r;
+}
+function lupa() {
+  const r = tela(16, 16);
+  el(r, 7, 7, 5.5, 5.5, 'g', { borda: 'G' }); el(r, 7, 7, 3.6, 3.6, 'Y'); ret(r, 5, 5, 2, 2, 'w');
+  traco(r, 11, 11, 15, 15, 'o', 2);
+  return fim(r);
+}
+
 export const DESENHOS = {
   casa, aviao, oficina, terraNova, acampamento, arvore, torre, castelo,
   casinha, impressora, cacto, escola, porta, lapide, placa404, ilha, portao,
@@ -259,19 +296,19 @@ export const DESENHOS = {
 // Todas as texturas que a cena precisa: [chave, grade]
 export function todasAsTexturas() {
   const lista = [];
-  for (const nome of ['casa', 'aviao', 'oficina', 'terraNova', 'acampamento', 'arvore', 'torre', 'casinha', 'cacto', 'porta', 'lapide', 'placa404', 'portao', 'estrela', 'obra', 'embargo']) lista.push([nome, DESENHOS[nome]()]);
+  for (const nome of ['aviao', 'casinha', 'cacto', 'porta', 'lapide', 'placa404', 'portao', 'estrela', 'obra', 'embargo']) lista.push([nome, DESENHOS[nome]()]);
   lista.push(['castelo', castelo()]);
   for (let i = 1; i <= 6; i++) lista.push([`castelo-cai-${i}`, castelo({ caindo: i * 5 })]);
   lista.push(['impressora', impressora()], ['impressora-olho', impressora({ olho: true })]);
   lista.push(['escola', escola()], ['escola-antena', escola({ antena: 1 })]);
   lista.push(['ilha', ilha()], ['ilha-brilho', ilha({ brilho: true })]);
+  lista.push(['no-aberto', no('y', 'G', true)], ['no-segredo', no('r', 'R', true)], ['no-trancado', no('S', 'a')], ['no-feito', no('n', 'N')]);
+  lista.push(['moinhoBase', moinhoBase()], ['quadroSwot', quadroSwot()], ['organograma', organograma()], ['lupa', lupa()]);
   for (const f of [0, 1]) {
-    lista.push([`galinha-${f}`, galinha(f)], [`pombo-${f}`, pombo(f)], [`consultor-${f}`, consultor(f)], [`bandeira-${f}`, bandeira(f)], [`operarios-${f}`, operarios(f)]);
+    lista.push([`pombo-${f}`, pombo(f)], [`consultorDanca-${f}`, consultor(f)], [`operarios-${f}`, operarios(f)], [`fogueira-${f}`, fogueira(f)]);
     lista.push([`rosa-anda-${f}`, rosaLado({ passo: f })], [`rosa-cava-${f}`, rosaLado({ passo: f, cavar: true })], [`rosa-corda-${f}`, rosaLado({ passo: f, corda: true })]);
     lista.push([`rosa-medo-${f}`, rosaFrente({ olhos: 'medo', treme: f ? 1 : -1 })]);
   }
-  lista.push(['branca-0', bandeira(0, true)], ['branca-1', bandeira(1, true)]);
-  lista.push(['flor-0', flor('y')], ['flor-1', flor('p')], ['flor-2', flor('w')], ['mato', mato()]);
   lista.push(['rosa-sentada', rosaFrente()], ['rosa-dorme', rosaFrente({ olhos: 'fechados' })]);
   return lista;
 }

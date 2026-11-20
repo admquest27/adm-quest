@@ -1,15 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as planta from '../src/mapa/vila.js';
-import { montarTerreno, caminho, livreMaisPerto, pecaDeBorda, conferirSequencia, SEQUENCIA } from '../src/mapa/grade.js';
+import { montarTerreno, caminho, livreMaisPerto, pecaBloco, conferirSequencia, SEQUENCIA } from '../src/mapa/grade.js';
 
 const t = montarTerreno(planta);
 const livre = (x, y) => t.passa[y * t.W + x] === 1;
 
 test('borda dos blocos 3x3 do tileset', () => {
-  assert.equal(pecaDeBorda('floresta', false, true, false, true), 7 * 27 + 0); // canto de cima à esquerda
-  assert.equal(pecaDeBorda('floresta', true, true, true, true), 8 * 27 + 1); // miolo
-  assert.equal(pecaDeBorda('agua', true, true, true, false), 11 * 27 + 9); // margem direita
+  assert.equal(pecaBloco({ x: 0, y: 6 }, 28, false, true, false, true), 6 * 28 + 0); // canto de cima à esquerda
+  assert.equal(pecaBloco({ x: 0, y: 6 }, 28, true, true, true, true), 7 * 28 + 1); // miolo
+  assert.equal(pecaBloco({ x: 0, y: 6 }, 28, true, true, true, false), 7 * 28 + 2); // margem direita
 });
 
 test('o início, as entradas das fases e a ponte são caminháveis; rio e floresta não', () => {

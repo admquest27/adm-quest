@@ -1,5 +1,5 @@
 // Rosalina, a maltês do professor: branquinha, orelhas compridas, lacinho rosa, olhos brilhantes.
-// Carinhosa, ama petisco e passear, e é medrosa (placas e coisas novas a assustam).
+// Carinhosa, ama petisco e passear, e é medrosa: tem medo das galinhas, do pombo e do Barão.
 import { tela, el, ret, pon, contorno, desenha } from './formas.js';
 
 // De frente (sentada). olhos: abertos | feliz | fechados | medo
@@ -101,7 +101,7 @@ export function desenhaPose(g, pose, t, x, y, espelho = false) {
 // Falas padrão (no jogo elas vêm do banco e o professor pode editar). Cada uma tem a pose e o número de latidos.
 export const FALAS_PADRAO = [
   { pose: 'latindo', latidos: 2, texto: 'Au! Au! Eu sou a Rosalina, a guardiã oficial da Vila dos Planos.' },
-  { pose: 'medo', latidos: 0, texto: 'Você viu aquela placa nova? Eu não vou passar perto dela. Pode ir na frente.' },
+  { pose: 'medo', latidos: 0, texto: 'Você viu as galinhas? Elas me olham de um jeito estranho. Pode ir na frente que eu vou atrás.' },
   { pose: 'petisco', latidos: 1, texto: 'Isso é um petisco? Para mim? Você é a melhor pessoa desta Vila inteira!' },
   { pose: 'corda', latidos: 1, texto: 'Eu trouxe a minha corda. Vamos brincar só um pouquinho antes da fase?' },
   { pose: 'cavando', latidos: 0, texto: 'Estou cavando para achar o planejamento do Barão. Até agora, só terra.' },
