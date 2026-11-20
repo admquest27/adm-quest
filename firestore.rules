@@ -65,7 +65,8 @@ service cloud.firestore {
       allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
 
       // O aluno cria só o próprio documento, sempre "pendente", com um código válido e aberto.
-      allow create: if logado()
+      // O professor também cria (restauração de backup).
+      allow create: if ehProfessor() || logado()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['turma', 'codigo', 'apelido', 'status', 'criadoEm'])
         && request.resource.data.keys().hasAll(['turma', 'codigo', 'apelido', 'status', 'criadoEm'])
@@ -122,7 +123,7 @@ service cloud.firestore {
     match /progresso/{pid} {
       allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
 
-      allow create: if ativo()
+      allow create: if ehProfessor() || ativo()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'turma', 'fase', 'tarefas', 'respostas', 'concluida', 'concluidaEm', 'atualizadoEm'])
         && request.resource.data.keys().hasAll(['uid', 'turma', 'fase', 'tarefas', 'concluida', 'atualizadoEm'])
@@ -137,7 +138,7 @@ service cloud.firestore {
         && request.resource.data.atualizadoEm == request.time
         && (!('concluidaEm' in request.resource.data) || request.resource.data.concluidaEm == request.time);
 
-      allow update: if ativo()
+      allow update: if ehProfessor() || ativo()
         && resource.data.uid == request.auth.uid
         && podeEditarFase(resource.data.turma, resource.data.fase, request.auth.uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tarefas', 'respostas', 'concluida', 'concluidaEm', 'atualizadoEm'])
@@ -361,7 +362,7 @@ service cloud.firestore {
 
     match /votos/{id} {
       allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
-      allow create, update: if ativo()
+      allow create, update: if ehProfessor() || ativo()
         && request.resource.data.keys().hasOnly(['uid', 'turma', 'votacao', 'opcao', 'em'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.votacao is string
@@ -383,7 +384,7 @@ service cloud.firestore {
 
     match /acertos/{id} {
       allow read: if ehProfessor() || (ativo() && resource.data.turma == meuAluno().turma);
-      allow create: if ativo()
+      allow create: if ehProfessor() || ativo()
         && request.resource.data.keys().hasOnly(['turma', 'fase', 'bau', 'grupo', 'codigo', 'uid', 'em'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.turma == meuAluno().turma
@@ -398,6 +399,11 @@ service cloud.firestore {
         && request.resource.data.em == request.time;
       allow update: if false;
       allow delete: if ehProfessor();
+    }
+
+    // Configurações do professor (data do último backup): só ele.
+    match /config/{id} {
+      allow read, write: if ehProfessor();
     }
 
     // AdmBux: loja, conquistas e valores. O aluno ativo lê; só o professor altera.
@@ -429,7 +435,7 @@ service cloud.firestore {
     match /compras/{uid} {
       allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
 
-      allow create: if ativo()
+      allow create: if ehProfessor() || ativo()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['uid', 'turma', 'itens', 'usando', 'atualizadoEm'])
         && request.resource.data.uid == uid
@@ -440,7 +446,7 @@ service cloud.firestore {
         && usandoValido(request.resource.data.get('usando', {}))
         && request.resource.data.atualizadoEm == request.time;
 
-      allow update: if ativo()
+      allow update: if ehProfessor() || ativo()
         && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['itens', 'usando', 'atualizadoEm'])
         && request.resource.data.itens is list

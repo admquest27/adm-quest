@@ -508,3 +508,15 @@ test('castelo fechado não aceita código', async () => {
   await semearCastelo('trancada');
   await assertFails(setDoc(doc(aluno('ativo1'), 'acertos/1A_m1chefao_b1_gg'), acerto('ativo1', 'SAL42')));
 });
+// ---------- Backup ----------
+test('restauração: o professor recria cadastro, progresso, compras, votos e baús; o aluno não lê a config', async () => {
+  const p = prof();
+  await assertSucceeds(setDoc(doc(p, 'alunos/volta1'), { turma: '1A', codigo: 'ABC12', apelido: 'Volta', status: 'ativo' }));
+  await assertSucceeds(setDoc(doc(p, 'progresso/volta1_m1f1'), { uid: 'volta1', turma: '1A', fase: 'm1f1', tarefas: { e1: true }, concluida: true }));
+  await assertSucceeds(setDoc(doc(p, 'compras/volta1'), { uid: 'volta1', turma: '1A', itens: [{ id: 'x', preco: 1, em: 1 }], usando: {} }));
+  await assertSucceeds(setDoc(doc(p, 'votos/v_volta1'), { uid: 'volta1', turma: '1A', votacao: 'v', opcao: 'a', em: 1 }));
+  await assertSucceeds(setDoc(doc(p, 'acertos/1A_m1chefao_b1_g'), { turma: '1A', fase: 'm1chefao', bau: 'b1', grupo: 'g', codigo: 'X', uid: 'volta1', em: 1 }));
+  await assertSucceeds(setDoc(doc(p, 'config/backup'), { ultimo: serverTimestamp() }));
+  await assertFails(getDoc(doc(aluno('ativo1'), 'config/backup')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'progresso/ativo1_m1f2'), { uid: 'ativo1', turma: '1A', fase: 'm1f2', tarefas: {}, concluida: false, atualizadoEm: serverTimestamp() }));
+});

@@ -14,6 +14,7 @@ import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
 import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
 import { htmlVotacaoProfessor, tratarVotacao } from './votacoes.js';
+import { fazerBackup, htmlAvisoBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './backup.js';
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
 import { ATV_GUILDA, configGuilda } from './grupos.js';
@@ -114,6 +115,10 @@ export function iniciarProfessor(user, opcoes = {}) {
     s.docs.forEach((d) => { st.profTodas[d.id] = d.data().professor ?? {}; });
     desenhar();
   }, () => {}));
+  // data do último backup (aviso depois de sete dias)
+  st.cfgBackup = null;
+  paradas.push(onSnapshot(doc(db, 'config', 'backup'), (s) => { st.cfgBackup = s.exists() ? s.data() : null; desenhar(); }, () => {}));
+
   // AdmBux: loja, carteiras (prêmios e rendimentos) e compras de todos os alunos
   st.eco = null; st.carteiras = {}; st.compras = {};
   paradas.push(onSnapshot(doc(db, 'economia', 'geral'), (s) => { st.eco = s.exists() ? s.data() : null; desenhar(); }, () => {}));
@@ -176,7 +181,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (faseProj) { tela(htmlProjecao(st, faseProj, turmaAtual()), 'pagina projetar'); return; }
     const pend = pendentesTotal();
     const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlConteudo()}`;
+    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlSecaoBackup(st.cfgBackup, st.previaBackup)}<hr>${htmlConteudo()}`;
     const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['mais', 'Mais']];
     tela(
       `<header class="topo">
@@ -187,6 +192,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         <button id="sair" class="mini">Sair</button>
       </header>
       ${st.aviso ? `<p class="aviso">${esc(st.aviso)}</p>` : ''}
+      ${htmlAvisoBackup(st.cfgBackup)}
       <main class="corpo">${corpo}</main>
       <nav class="abas" aria-label="Seções">
         ${nav.map(([id, rot]) => `<button data-acao="aba" data-v="${id}" class="${aba === id ? 'sel' : ''}">${rot}</button>`).join('')}
@@ -466,6 +472,20 @@ export function iniciarProfessor(user, opcoes = {}) {
         await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, alternarSegunda: (id) => alternarLiberacaoItem('seg', id), irParaFase: (id) => { st.aba = 'fases'; st.faseSel = id; guardar('aba', 'fases'); ligarProf(); desenhar(); } });
         return;
       }
+      if (acao === 'backup' || acao === 'backup-pasta') {
+        try { falha(await fazerBackup({ trocarPasta: acao === 'backup-pasta' })); }
+        catch (err) { falha(err?.name === 'AbortError' ? 'Backup cancelado: nenhuma pasta escolhida.' : 'Não consegui fazer o backup. Tente de novo.'); }
+        return;
+      }
+      if (acao === 'restaurar-cancelar') { st.previaBackup = null; desenhar(); return; }
+      if (acao === 'restaurar') {
+        if (document.getElementById('conf-rest')?.value.trim().toUpperCase() !== 'RESTAURAR') { falha('Digite RESTAURAR para confirmar.'); return; }
+        if (!confirm('Última confirmação: gravar de volta todos os documentos deste backup?')) return;
+        const n = await restaurar(st.previaBackup.json);
+        st.previaBackup = null;
+        falha(`Backup restaurado: ${n} documento(s).`);
+        return;
+      }
       if (acao.startsWith('vt-')) { await tratarVotacao(acao, b, st); return; }
       if (acao.startsWith('cs-')) { if ((await tratarCastelo(acao, b, st, falha)) === 'desenhar') desenhar(); return; }
       if (acao.startsWith('gr-')) { await tratarGrupos(acao, b, { st, dlg, ativos: ativosDaTurma(), falha }); return; }
@@ -522,6 +542,10 @@ export function iniciarProfessor(user, opcoes = {}) {
         await mudarEstado(e.target.dataset.estado, novo);
       }
       else if (e.target.id === 'arq') { await lerArquivo(e.target.files?.[0]); }
+      else if (e.target.id === 'arq-backup') {
+        try { st.previaBackup = await lerArquivoBackup(e.target.files[0]); desenhar(); }
+        catch { falha('Esse arquivo não é um backup do ADM Quest.'); }
+      }
       else if (e.target.id === 'arq-cal') { if (e.target.files?.[0]) await importarCalendario(e.target.files[0], falha); }
       else if (e.target.id === 'painel-aluno') { if (e.target.value) { st.painelVista = { tipo: 'aluno', id: e.target.value }; desenhar(); window.scrollTo(0, 0); } }
     } catch { falha('Não consegui salvar essa alteração. Tente de novo.'); }
