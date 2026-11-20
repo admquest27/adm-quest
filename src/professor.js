@@ -377,6 +377,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       <ul class="lista">
         ${item('admbux', 'AdmBux, loja e conquistas', 'As moedas já são contadas desde a primeira fase validada; ao ligar, o aluno vê o saldo acumulado.')}
         ${item('guildas', 'Guildas', 'Botão "Guilda" no topo: integrantes, nome e escudo. Os grupos de cada fase funcionam mesmo desligado.')}
+        ${item('mapa', 'Mapa da Vila', 'Botão "Abrir o mapa da Vila" na tela de fases: o aluno anda pela Vila, entra nas fases pelo mapa e procura os segredos. A lista continua disponível.')}
       </ul>`;
   }
 
@@ -637,7 +638,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     const lote = writeBatch(db);
     lote.set(doc(db, 'mundos', m.id), {
       nome: m.nome ?? '', ordem: m.ordem ?? 1, pergunta: m.pergunta ?? '', competencias: m.competencias ?? [],
-      guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {}, atualizadoEm: serverTimestamp(),
+      guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {}, mapa: m.mapa ?? {}, atualizadoEm: serverTimestamp(),
     });
     for (const f of json.fases) {
       lote.set(doc(db, 'fases', f.id), { ...parteAluno(f, m.id), atualizadoEm: serverTimestamp() });
@@ -663,7 +664,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       .map(({ mundo, ...resto }) => resto);
     const saida = {
       formato: 1,
-      mundo: { id: MUNDO, ordem: m.ordem ?? 1, nome: m.nome ?? '', pergunta: m.pergunta ?? '', competencias: m.competencias ?? [], guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {} },
+      mundo: { id: MUNDO, ordem: m.ordem ?? 1, nome: m.nome ?? '', pergunta: m.pergunta ?? '', competencias: m.competencias ?? [], guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {}, mapa: m.mapa ?? {} },
       fases,
     };
     const blob = new Blob([JSON.stringify(saida, null, 2)], { type: 'application/json' });

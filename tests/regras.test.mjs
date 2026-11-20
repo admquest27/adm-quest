@@ -525,3 +525,16 @@ test('fechamento: só o professor lê e escreve', async () => {
   await assertFails(getDoc(doc(aluno('ativo1'), 'fechamentos/1A_1_ativo1')));
   await assertFails(setDoc(doc(aluno('ativo1'), 'fechamentos/1A_1_ativo1'), { diretas: { EMT1ADM702: 'A' } }));
 });
+test('aluno guarda os próprios segredos do mapa, sem apagar nem mexer nos dos outros', async () => {
+  const ref = doc(aluno('ativo1'), 'segredos/ativo1');
+  await assertSucceeds(setDoc(ref, { turma: '1A', achados: ['cacto'], atualizadoEm: serverTimestamp() }));
+  await assertSucceeds(setDoc(ref, { turma: '1A', achados: ['cacto', 'pombo'], atualizadoEm: serverTimestamp() }));
+  await assertSucceeds(getDoc(ref));
+  await assertFails(setDoc(ref, { turma: '1A', achados: ['pombo'], atualizadoEm: serverTimestamp() }));
+  await assertFails(setDoc(ref, { turma: '1B', achados: ['cacto', 'pombo'], atualizadoEm: serverTimestamp() }));
+  await assertFails(setDoc(ref, { turma: '1A', achados: ['cacto', 'pombo'], moedas: 99, atualizadoEm: serverTimestamp() }));
+  await assertFails(deleteDoc(ref));
+  await assertFails(setDoc(doc(aluno('outro1'), 'segredos/ativo1'), { turma: '1B', achados: [], atualizadoEm: serverTimestamp() }));
+  await assertFails(getDoc(doc(aluno('outro1'), 'segredos/ativo1')));
+  await assertFails(setDoc(doc(aluno('pend1'), 'segredos/pend1'), { turma: '1A', achados: [], atualizadoEm: serverTimestamp() }));
+});

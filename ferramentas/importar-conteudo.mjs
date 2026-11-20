@@ -62,7 +62,7 @@ for (const f of json.fases) {
 const lote = db.batch();
 lote.set(db.collection('mundos').doc(mundoId), {
   nome: m.nome ?? '', ordem: m.ordem ?? 1, pergunta: m.pergunta ?? '', competencias: m.competencias ?? [],
-  guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {}, atualizadoEm: FieldValue.serverTimestamp(),
+  guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {}, mapa: m.mapa ?? {}, atualizadoEm: FieldValue.serverTimestamp(),
 });
 for (const f of json.fases) {
   // set sem merge: substitui o documento inteiro, removendo campos antigos (instrucoes, tarefas)

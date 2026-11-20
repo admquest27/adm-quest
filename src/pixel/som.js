@@ -15,11 +15,14 @@ let liberado = false; let musicaPendente = false;
 // Os ouvintes ficam ligados o tempo todo: se o navegador suspender o áudio (aba escondida, fone trocado,
 // política de reprodução do computador), o próximo toque ou tecla retoma o som.
 const GESTOS = ['pointerdown', 'pointerup', 'mousedown', 'keydown', 'touchend', 'click'];
+let momentoLiberado = -1e9;
 function liberar() {
-  if (!liberado) { liberado = true; try { contexto(); } catch { /* aparelho sem som */ } }
-  else if (ac && ac.state !== 'running') { try { ac.resume(); } catch { /* segue */ } }
+  if (!liberado) { liberado = true; momentoLiberado = performance.now(); try { contexto(); } catch { /* aparelho sem som */ } }
+  else if (ac && ac.state !== 'running') { momentoLiberado = performance.now(); try { ac.resume(); } catch { /* segue */ } }
   if (musicaPendente) { musicaPendente = false; tocarMusica(); }
 }
+// true quando o som acabou de nascer ou voltar neste mesmo toque (o botão de som não deve desligar nesse caso)
+export const acabouDeLiberar = () => performance.now() - momentoLiberado < 700;
 if (typeof window !== 'undefined') for (const ev of GESTOS) window.addEventListener(ev, liberar, true);
 // Botão de som: chamado dentro de um clique, força o áudio a nascer ou voltar e começa a música.
 export function garantirSom() {

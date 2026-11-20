@@ -4,6 +4,7 @@ import { auth, db } from './firebase.js';
 import { app, tela, esc, carregando } from './ui.js';
 import { FANTASIAS, TONS, imgAvatar } from './avatar.js';
 import { htmlCartao } from './cartao.js';
+import { criarMapaAluno } from './mapaAluno.js';
 import { calcularCarteira, CONQUISTAS, podeComprar } from './economia.js';
 import { htmlCarteira, visual, avatarComMoldura, conquistasNovas } from './carteira.js';
 import { htmlVotacaoAluno, votar } from './votacoes.js';
@@ -27,9 +28,10 @@ export function iniciarAluno(user, opcoes = {}) {
     turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
     eco: null, carteira: null, compras: null, naCarteira: false,
     grupos: [], perfis: {}, naGuilda: false, montando: null, rascunho: null, perfilEnviado: '', tutorial: null,
-    votacoes: [], meusVotos: {}, acertos: [],
+    votacoes: [], meusVotos: {}, acertos: [], noMapa: false, voltarMapa: false,
   };
   let paradasAtivo = [];
+  let mapa = null;
 
   const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>` : '');
   const mostrar = (html, classe) => tela(faixa() + html, classe);
@@ -157,7 +159,21 @@ export function iniciarAluno(user, opcoes = {}) {
     if (st.naCarteira && rec.admbux) return telaCarteira();
     if (st.naGuilda && rec.guildas) return telaGuilda();
     if (st.faseAberta) return telaCartao();
+    if (st.noMapa && rec.mapa) return telaMapa();
+    mapa?.esconder();
     return telaLista();
+  }
+
+  // Mapa por cima da lista; a lista continua sendo o caminho simples (e o de quem tem celular mais fraco).
+  function telaMapa() {
+    if (!mapa) {
+      mapa = criarMapaAluno({
+        alvo, ver, turma: st.dados.turma,
+        aoAbrirFase: (id) => { st.faseAberta = id; st.voltarMapa = true; st.noMapa = false; mapa.esconder(); st.aviso = ''; desenhar(); window.scrollTo(0, 0); },
+        aoVoltar: () => { st.noMapa = false; mapa.esconder(); desenhar(); },
+      });
+    }
+    mapa.mostrar(st);
   }
 
   const dataCurta = (ts) => (ts?.toMillis ? new Date(ts.toMillis()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '');
@@ -206,6 +222,7 @@ export function iniciarAluno(user, opcoes = {}) {
         </div>
         ${novidades}${avisoConvite}${votos}
         <h2>${esc(st.mundo?.nome ?? 'Vila dos Planos')}</h2>
+        ${rec.mapa ? '<button id="abrir-mapa" class="botao botao-mapa">Abrir o mapa da Vila</button>' : ''}
         <ul class="lista">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
         ${excelAbertos ? `<h2>Trilha de Excel</h2><ul class="lista">${excelAbertos}</ul>` : ''}
         ${recados}
@@ -399,10 +416,11 @@ export function iniciarAluno(user, opcoes = {}) {
     const b = e.target.closest('button');
     if (!b) return;
     try {
-      if (b.id === 'sair') { signOut(auth); return; }
-      if (b.id === 'sair-ver') { opcoes.aoSair?.(); return; }
+      if (b.id === 'sair') { mapa?.destruir(); mapa = null; signOut(auth); return; }
+      if (b.id === 'sair-ver') { mapa?.destruir(); mapa = null; opcoes.aoSair?.(); return; }
+      if (b.id === 'abrir-mapa') { st.noMapa = true; st.aviso = ''; desenhar(); return; }
       if (b.dataset.fase) { st.faseAberta = b.dataset.fase; st.aviso = ''; desenhar(); return; }
-      if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; desenhar(); return; }
+      if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; if (st.voltarMapa) { st.voltarMapa = false; st.noMapa = true; } desenhar(); return; }
       if (b.id === 'abrir-carteira') { st.naCarteira = true; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
       if (b.id === 'voltar-carteira') { st.naCarteira = false; st.aviso = ''; desenhar(); return; }
       if (b.id === 'tut-prox') { if (st.tutorial >= TUTORIAL.length - 1) { st.tutorial = null; marcarVisto(`admq-tut-${alvo}`); } else st.tutorial += 1; desenhar(); return; }
@@ -501,6 +519,7 @@ export function iniciarAluno(user, opcoes = {}) {
   return () => {
     parar();
     pararDados();
+    mapa?.destruir(); mapa = null;
     app.onclick = null; app.onchange = null; app.oninput = null; app.onsubmit = null;
   };
 }

@@ -208,6 +208,21 @@ service cloud.firestore {
       allow delete: if ehProfessor();
     }
 
+    // Segredos achados no mapa: o aluno guarda os ids dos que encontrou (só acrescenta, nunca apaga).
+    match /segredos/{uid} {
+      allow read: if ehProfessor() || (ativo() && request.auth.uid == uid);
+      allow create, update: if ehProfessor()
+        || (ativo()
+            && request.auth.uid == uid
+            && request.resource.data.keys().hasOnly(['turma', 'achados', 'atualizadoEm'])
+            && request.resource.data.turma == meuAluno().turma
+            && request.resource.data.achados is list
+            && request.resource.data.achados.size() <= 40
+            && (resource == null || request.resource.data.achados.hasAll(resource.data.achados))
+            && request.resource.data.atualizadoEm == request.time);
+      allow delete: if ehProfessor();
+    }
+
     // Configuração de cada atividade em grupo, guardada na turma: atividades.{id} = { modo, tamanho, aberta }.
     function atividade(turma, atv) {
       return get(/databases/$(database)/documents/turmas/$(turma)).data.get('atividades', {}).get(atv, {});

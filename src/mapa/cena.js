@@ -9,7 +9,7 @@ import { tela, el, emCanvas } from '../pixel/formas.js';
 import { desenhaPose } from '../pixel/rosalina.js';
 import {
   tocarMusica, pararMusica, alternarSom, efeitoToque, piado, efeitoLetra, efeitoSegredo, efeitoPoof, latido, ganido, croac, cocorico,
-  volumes, definirVolume, efeitoPulo, garantirSom, somLigado, estadoSom,
+  volumes, definirVolume, efeitoPulo, garantirSom, somLigado, estadoSom, acabouDeLiberar,
 } from '../pixel/som.js';
 
 const P = 16;
@@ -17,6 +17,8 @@ const centro = ([x, y]) => [x * P + P / 2, y * P + P / 2];
 const peca = (px, py) => [Math.floor(px / P), Math.floor(py / P)];
 const VEL = 64;
 const EMOTES = { susto: 1, feliz: 6, pontos: 20, ex: 21, exVermelho: 22, pergunta: 23, coracao: 27, sono: 28, estrela: 29, bravo: 9 };
+
+const ICONES = { bau: 'disquete', cacto: 'cacto', lapide: 'lapide', 404: 'placa404', professores: 'placaCafe', antena: 'escola', gato: 'impressora', pombo: 'pombo-0', galinhas: 'galinhaBranca', konami: 'consultorDanca-0' };
 
 // ---------- configurações do jogador (guardadas no aparelho) ----------
 const CHAVE_CFG = 'admq-config';
@@ -125,6 +127,7 @@ class MapaCena extends Phaser.Scene {
     this.criarBichos();
     this.criarClima();
     this.criarAmbiente();
+    if (o.casteloCaido) this.casteloCaido();
 
     // Andar é só pelo teclado ou pelo controle na tela. Tocar no cenário só vale na visão do mapa inteiro, para viajar.
     this.input.on('pointerdown', (p) => { if (this.visaoGeral) this.tocarVisao(p.worldX, p.worldY); });
@@ -317,6 +320,14 @@ class MapaCena extends Phaser.Scene {
     });
   }
 
+  // Castelo que já caiu numa visita anterior: ruínas, bandeira branca e o Barão longe dali
+  casteloCaido() {
+    const img = this.fases.m1chefao.img; img.setTexture('castelo-cai-6');
+    const b = this.add.sprite(img.x, img.y - 18, 'bandeiraGrande-0').setOrigin(0.15, 1).setDepth(901);
+    let fb = 0; this.time.addEvent({ delay: 200, loop: true, callback: () => { fb = (fb + 1) % 3; b.setTexture(`bandeiraGrande-${fb}`); } });
+    const barao = this.gente.find((g) => g.quem === 'barao'); if (barao) { barao.spr.setVisible(false); barao.foi = true; }
+  }
+
   // ---------- objetos e segredos ----------
   criarObjetos() {
     this.objetos = {};
@@ -330,7 +341,7 @@ class MapaCena extends Phaser.Scene {
       this.interativos.push({ tipo: 'objeto', id: ob.id, area: new Phaser.Geom.Rectangle(img.x - img.width / 2 - 2, img.y - img.height - 2, img.width + 4, img.height + 4), alvo });
     }
     this.time.addEvent({ delay: 3200, loop: true, callback: () => {
-      const lista = Object.values(this.objetos).filter((o) => o.def.segredo && !this.o.segredosAchados?.has?.(o.def.segredo));
+      const lista = Object.values(this.objetos).filter((o) => o.def.conversa);
       const o = lista[Math.floor(Math.random() * lista.length)]; if (!o) return;
       if (this.cameras.main.worldView.contains(o.img.x, o.img.y - 8)) this.brilhar(o.img.x + Phaser.Math.Between(-6, 6), o.img.y - o.img.height + Phaser.Math.Between(0, 8));
     } });
@@ -681,23 +692,28 @@ class MapaCena extends Phaser.Scene {
     if (conferirSequencia(this.historico)) { this.historico = []; this.danca(); return; }
     if (this.travado()) return;
     tocarMusica();
-    if (nome === 'A') { const alvo = this.quemPerto(); if (alvo) alvo.agir(); }
+    if (nome === 'A') { const alvo = this.quemPerto(true); if (alvo) alvo.agir(); }
     if (nome === 'B') this.pular();
   }
 
   // O que está ao alcance do botão A, nesta ordem: Rosalina, pessoas, sapo, pombo, fases, casas e objetos
-  quemPerto() {
+  // todos = false (para o balão e o aviso): esconde o que guarda segredo ainda não achado
+  quemPerto(todos = false) {
     const av = this.av; const t = this.o.textos ?? {};
+    const oculto = (seg) => !todos && seg && !this.o.segredoAchado?.(seg);
     const dist = (spr) => Phaser.Math.Distance.Between(spr.x, spr.y, av.x, av.y);
     if (this.rosa.visible && dist(this.rosa) < 22) return { x: this.rosa.x, y: this.rosa.y - 13, nome: 'Rosalina', acao: 'conversar', agir: () => this.conversarRosalina() };
     const npc = this.gente.find((g) => g.spr.visible && !g.fugindo && dist(g.spr) < 22);
     if (npc) return { x: npc.spr.x, y: npc.spr.y - 14, nome: t.nomes?.[npc.quem] ?? '', acao: 'conversar', agir: () => this.conversarCom(npc) };
     if (this.sapo.visible && !this.sapo.mergulhou && dist(this.sapo) < 22) return { x: this.sapo.x, y: this.sapo.y - 8, nome: t.nomes?.sapo ?? 'Sapo', acao: 'conversar', agir: () => this.conversarSapo() };
-    const pombo = this.bichos.find((b) => b.tipo === 'pombo' && dist(b.spr) < 20);
+    const pombo = oculto('pombo') ? null : this.bichos.find((b) => b.tipo === 'pombo' && dist(b.spr) < 20);
     if (pombo) return { x: pombo.spr.x, y: pombo.spr.y - 12, nome: t.nomes?.pombo ?? 'Pombo', acao: 'conversar', agir: () => this.achar('pombo') };
     const [ax, ay] = peca(av.x, av.y);
     let i = null; let melhor = 9;
-    for (const q of this.interativos) { const d = Math.abs(q.alvo[0] - ax) + Math.abs(q.alvo[1] - ay); if (d <= 1 && d < melhor) { melhor = d; i = q; } }
+    for (const q of this.interativos) {
+      if (q.tipo === 'objeto' && oculto(this.objetos[q.id].def.segredo)) continue;
+      const d = Math.abs(q.alvo[0] - ax) + Math.abs(q.alvo[1] - ay); if (d <= 1 && d < melhor) { melhor = d; i = q; }
+    }
     if (!i) return null;
     const fase = i.tipo === 'fase' ? i.id : null;
     const x = i.tipo === 'casa' ? centro(i.alvo)[0] : i.area.centerX;
@@ -857,6 +873,7 @@ class MapaCena extends Phaser.Scene {
     if (!this.av) return;
     if (this.o.primeiraVez && !this.introFeita) { this.introFeita = true; this.introducao(); }
     if (this.o.revelar && !this.revelado && !this.emCena) { this.revelado = true; this.revelarCaminho(this.o.revelar); }
+    if (this.o.derrotar && !this.derrotou && !this.emCena && !this.o.dialogoAberto?.()) { this.derrotou = true; this.time.delayedCall(700, () => this.derrotarCastelo()); }
     const av = this.av; const k = this.teclas; const seg = this.o.segurando?.() ?? null;
     const dir = seg ?? (k ? (k.UP.isDown || k.W.isDown ? 'cima' : k.DOWN.isDown || k.S.isDown ? 'baixo' : k.LEFT.isDown || k.A.isDown ? 'esq' : k.RIGHT.isDown || k.D.isDown ? 'dir' : null) : null);
     if (dir && !av.rota.length && !this.travado()) {
@@ -895,7 +912,7 @@ export function iniciarMapa(raiz, opcoes) {
   const icone = (k) => `<img src="${ic[k]}" alt="" width="30" height="30">`;
   raiz.innerHTML = `<div class="mapa-jogo" id="mapa-jogo"></div>
     <div class="mapa-barra"><span class="mapa-mundo">${opcoes.nomeMundo ?? ''}</span>
-      <span class="mapa-dir"><span class="mapa-segredos" id="mapa-segredos"></span>${opcoes.botoesBarra ?? ''}
+      <span class="mapa-dir"><button class="mapa-segredos" id="mapa-segredos" title="Álbum de segredos"></button>${opcoes.botoesBarra ?? ''}
       <button class="mapa-btn ic" id="mapa-som" aria-label="Som" title="Som">${icone('som')}</button>
       <button class="mapa-btn ic" id="mapa-visao" aria-label="Mapa inteiro (M)" title="Mapa inteiro (M)">${icone('mapa')}</button>
       <button class="mapa-btn ic" id="mapa-cfg" aria-label="Configurações (Esc)" title="Configurações (Esc)">${icone('cfg')}</button>
@@ -917,6 +934,9 @@ export function iniciarMapa(raiz, opcoes) {
         <label class="check"><input type="checkbox" id="cfg-movimento"> Menos movimento na tela</label>
         <p class="mapa-cfg-dica">No celular: direcional para andar, A para conversar ou entrar, B para pular. No computador: setas ou W A S D para andar, E ou Enter para conversar ou entrar, Espaço para pular, M para o mapa inteiro e Esc para este menu.</p>
         <button class="btn verde" id="cfg-fechar">Voltar ao jogo</button></div></div>
+    <div class="mapa-cfg" id="mapa-album" hidden role="dialog" aria-label="Álbum de segredos">
+      <div class="mapa-cfg-caixa"><h2>Álbum de segredos</h2><p class="mapa-cfg-dica" id="album-conta"></p><ul class="mapa-album" id="album-lista"></ul>
+        <button class="btn verde" id="album-fechar">Voltar ao jogo</button></div></div>
     <div class="mapa-faixa" id="mapa-faixa" hidden></div>
     <div class="mapa-zona" id="mapa-zona" hidden></div>
     <button class="mapa-btn mapa-pular" id="mapa-pular" hidden>Pular ⏭</button>
@@ -936,7 +956,7 @@ export function iniciarMapa(raiz, opcoes) {
     pararRetrato();
     rosto.hidden = !(atual.pose || atual.rosto); retrato.hidden = !atual.pose; rostoImg.hidden = !atual.rosto;
     if (atual.rosto) { rostoImg.src = atual.rosto === 'consultor' ? (rostoSilas ?? '') : `${opcoes.urls.base}${ROSTOS[atual.rosto]}`; }
-    if (atual.icone && cena) { rosto.hidden = false; rostoImg.hidden = false; rostoImg.src = cena.textures.getBase64(atual.icone, atual.quadro); }
+    if (atual.icone && cena) { rosto.hidden = false; rostoImg.hidden = false; rostoImg.src = imagem(atual.icone); }
     if (atual.pose) { const g = retrato.getContext('2d'); const ini = performance.now(); const pinta = (t) => { g.clearRect(0, 0, 46, 40); desenhaPose(g, atual.pose, t - ini, 1, 2); retratoAnim = requestAnimationFrame(pinta); }; retratoAnim = requestAnimationFrame(pinta); }
     let i = 0; clearInterval(digita);
     digita = setInterval(() => { i += 1; txt.textContent = atual.texto.slice(0, i); if (i % 3 === 0) efeitoLetra(); if (i >= atual.texto.length) terminar(); }, VELOC[config().texto] ?? 26);
@@ -987,6 +1007,7 @@ export function iniciarMapa(raiz, opcoes) {
     if (!caixa.hidden) { avancar(); return; }
     cena?.botao(b.dataset.bt);
   }));
+  raiz.querySelectorAll('.mapa-barra button').forEach((b) => { b.addEventListener('mousedown', (e) => e.preventDefault()); b.addEventListener('click', () => b.blur()); });
   $('#mapa-visao').addEventListener('click', () => cena?.alternarVisao());
   // botão de som: mostra se está ligado; se estiver ligado mas o navegador travou o áudio, o clique destrava
   const btSom = $('#mapa-som');
@@ -994,7 +1015,7 @@ export function iniciarMapa(raiz, opcoes) {
   pintarSom();
   btSom.addEventListener('click', () => {
     const e = estadoSom();
-    if (somLigado() && !(e.estado === 'running' && e.tocando)) garantirSom();
+    if (somLigado() && (acabouDeLiberar() || !(e.estado === 'running' && e.tocando))) garantirSom();
     else { alternarSom(); if (somLigado()) garantirSom(); }
     pintarSom(); efeitoToque();
   });
@@ -1007,10 +1028,22 @@ export function iniciarMapa(raiz, opcoes) {
   const placar = () => { $('#mapa-segredos').textContent = `Segredos ${achados.size}/${planta.SEGREDOS.length}`; };
   placar();
   const textos = opcoes.textos ?? {};
+  const album = $('#mapa-album');
+  const imagem = (k) => { if (!cena || !cena.textures.exists(k)) return ''; return cena.textures.getBase64(k, cena.textures.get(k).has(0) ? 0 : undefined); };
+  const abrirAlbum = (abrir = album.hidden) => {
+    album.hidden = !abrir; if (!abrir) return;
+    const n = planta.SEGREDOS.length;
+    $('#album-conta').textContent = achados.size ? `Você encontrou ${achados.size} de ${n}. Os outros continuam escondidos pela Vila.` : 'Nenhum segredo encontrado ainda. Converse, examine e teste coisas estranhas pela Vila.';
+    const ordem = [...planta.SEGREDOS].sort((a, b) => Number(achados.has(b)) - Number(achados.has(a)));
+    $('#album-lista').innerHTML = ordem.map((id) => (achados.has(id)
+      ? `<li class="achado"><img src="${imagem(ICONES[id] ?? 'brilho')}" alt=""><span>${esc(textos.segredos?.[id] ?? '')}</span></li>`
+      : '<li class="oculto"><b>?</b><span>Ainda escondido.</span></li>')).join('');
+  };
+  $('#mapa-segredos').addEventListener('click', () => abrirAlbum());
+  $('#album-fechar').addEventListener('click', () => abrirAlbum(false));
   const aoAcharSegredo = (id) => {
     const novo = !achados.has(id);
     if (novo) { achados.add(id); placar(); efeitoSegredo(); opcoes.aoAcharSegredo?.(id, achados.size); }
-    const ICONES = { bau: 'disquete', cacto: 'cacto', lapide: 'lapide', 404: 'placa404', professores: 'placaCafe', antena: 'escola', gato: 'impressora', pombo: 'pombo-0', galinhas: 'galinhaBranca' };
     falar({ nome: novo ? `Segredo encontrado! (${achados.size} de ${planta.SEGREDOS.length})` : 'Segredo já encontrado', texto: textos.segredos?.[id] ?? '', icone: ICONES[id] });
   };
 
@@ -1096,12 +1129,21 @@ export function iniciarMapa(raiz, opcoes) {
   let iSapo = 0;
   const aoSapo = (fim) => { const t = falasSapo[iSapo % Math.max(1, falasSapo.length)] ?? 'Croac.'; iSapo += 1; falar({ nome: textos.nomes?.sapo ?? 'Sapo', icone: 'sapo', quadro: 0, texto: t, aoFechar: fim }); };
 
-  const largura = () => { const r = raiz.getBoundingClientRect(); const asp = r.width && r.height ? r.width / r.height : 16 / 9; return Math.round(Math.min(480, Math.max(240, 180 * asp))); };
+  // Escala sempre inteira em pixels reais da tela (inclusive com o zoom de 125% ou 150% do Windows): cada pixel do
+  // jogo vira um quadrado do mesmo tamanho, sem pixels tortos nem borrão. A altura do jogo fica perto de 180.
+  const medida = () => {
+    const r = raiz.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
+    const w = (r.width || 640) * dpr; const h = (r.height || 360) * dpr;
+    const z = Math.max(1, Math.round(h / 180));
+    return { w: Math.min(560, Math.ceil(w / z)), h: Math.ceil(h / z), zoom: z / dpr };
+  };
+  const m0 = medida();
   const jogo = new Phaser.Game({
-    type: Phaser.AUTO, parent: $('#mapa-jogo'), width: largura(), height: 180, pixelArt: true, backgroundColor: '#24452b',
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, input: { activePointers: 3 }, audio: { noAudio: true }, banner: false,
+    type: Phaser.AUTO, parent: $('#mapa-jogo'), width: m0.w, height: m0.h, zoom: m0.zoom, pixelArt: true, backgroundColor: '#24452b',
+    scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.CENTER_BOTH }, input: { activePointers: 3 }, audio: { noAudio: true }, banner: false,
     scene: new MapaCena({
-      ...opcoes, falar, segurando: () => segurando, dialogoAberto: () => !caixa.hidden || !painel.hidden, avancarDialogo: avancar,
+      ...opcoes, falar, segurando: () => segurando, dialogoAberto: () => !caixa.hidden || !painel.hidden || !album.hidden, avancarDialogo: avancar,
+      segredoAchado: (id) => achados.has(id),
       alternarConfig: () => abrirCfg(), aoAlcance, aoSapo,
       aoAcharSegredo, aoTocarRosalina, aoConversar, aoTocarFase, aoIntro, aoVisao: (v) => raiz.classList.toggle('visao', v),
       aoCasinha: (fim) => falar({ nome: 'Rosalina', pose: 'latindo', texto: textos.casinha ?? '', aoFechar: fim }),
@@ -1110,7 +1152,10 @@ export function iniciarMapa(raiz, opcoes) {
   });
   jogo.events.once('ready', () => { cena = jogo.scene.getScene('mapa'); });
   tocarMusica(); // começa no primeiro toque ou tecla do jogador
-  const aoRedimensionar = () => jogo.scale.setGameSize(largura(), 180);
+  const aoRedimensionar = () => {
+    if (!raiz.getBoundingClientRect().width) return; // escondido: ajusta quando voltar
+    const m = medida(); jogo.scale.setZoom(m.zoom); jogo.scale.resize(m.w, m.h);
+  };
   window.addEventListener('resize', aoRedimensionar);
 
   return {
@@ -1118,6 +1163,8 @@ export function iniciarMapa(raiz, opcoes) {
     atualizarEstados(estados, concluidas) { opcoes.estados = estados; opcoes.concluidas = concluidas; cena?.aplicarEstados(estados, concluidas); },
     revelarCaminho(id) { cena?.revelarCaminho(id); },
     derrotarCastelo() { cena?.derrotarCastelo(); },
+    pausar() { pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
+    retomar() { jogo.loop.wake(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = true; aoRedimensionar(); tocarMusica(); },
     destruir() { window.removeEventListener('resize', aoRedimensionar); pararMusica(); pararRetrato(); clearInterval(digita); jogo.destroy(true); raiz.innerHTML = ''; raiz.classList.remove('mapa'); },
     alternarSom,
   };
