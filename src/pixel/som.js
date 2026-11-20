@@ -147,6 +147,7 @@ export const latido = (vezes = 1) => seSom((a) => {
     chiado(ini, 0.06, 0.05, { corte: 2500 });
   }
 });
+export const piado = () => seSom((a) => { for (let i = 0; i < 3; i++) { const t = a.currentTime + i * 0.13; const o = a.createOscillator(); const g = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(2600 + i * 300, t); o.frequency.exponentialRampToValueAtTime(3600, t + 0.06); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.025, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08); o.connect(g).connect(gEfeitos); o.start(t); o.stop(t + 0.09); } });
 export const ganido = () => seSom((a) => { const o = a.createOscillator(); const g = a.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(1300, a.currentTime); o.frequency.exponentialRampToValueAtTime(700, a.currentTime + 0.35); g.gain.setValueAtTime(0.05, a.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.38); o.connect(g).connect(gEfeitos); o.start(); o.stop(a.currentTime + 0.4); });
 
 export const efeitoSegredo = () => seSom((a) => ['G5', 'C6', 'E6', 'G6', 'C7'].forEach((n, i) => tom(freq(n), a.currentTime + i * 0.06, 0.2, { vol: 0.05 })));

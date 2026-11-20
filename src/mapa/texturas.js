@@ -102,13 +102,15 @@ function casinha() {
   ret(r, 2, 7, 12, 8, 'q'); poli(r, [[0, 8], [8, 1], [16, 8]], 'p'); ret(r, 6, 10, 4, 5, 'K');
   el(r, 13, 14, 2.5, 1.2, 'u'); return fim(r);
 }
-function impressora({ olho = false } = {}) {
-  const r = tela(16, 16);
-  ret(r, 1, 7, 14, 8, 'S'); ret(r, 1, 7, 14, 2, 'a'); ret(r, 4, 12, 8, 3, 'w'); ret(r, 11, 9, 2, 1, 'r');
-  el(r, 8, 5, 5, 2.5, 'x', { sombra: 'O' }); el(r, 3, 4, 2, 1.8, 'x'); pon(r, 2, 2, 'x'); pon(r, 4, 2, 'x');
-  traco(r, 12, 5, 15, 3, 'x', 1);
-  contorno(r, 'K'); if (olho) { pon(r, 3, 4, 'K'); } else { pon(r, 2, 4, 'K'); pon(r, 3, 4, 'K'); }
-  return r;
+function impressora() {
+  const r = tela(16, 12);
+  ret(r, 1, 3, 14, 8, 'S'); ret(r, 1, 3, 14, 2, 'a'); ret(r, 4, 8, 8, 3, 'w'); ret(r, 5, 9, 6, 1, 'l'); ret(r, 11, 5, 2, 1, 'r'); ret(r, 3, 0, 10, 3, 'w');
+  return fim(r);
+}
+function antena(f = 0) {
+  const r = tela(11, 14);
+  ret(r, 5, 3, 1, 11, 'a'); traco(r, 1, 3 + f, 9, 3 - f, 'a', 1); traco(r, 2, 6, 8, 6, 'a', 1); el(r, 5.5, 2, 1.4, 1.4, 'r');
+  return fim(r);
 }
 function cacto() {
   const r = tela(16, 16);
@@ -354,7 +356,7 @@ export function todasAsTexturas() {
   for (const nome of ['aviao', 'cacto', 'porta', 'lapide', 'placa404', 'portao', 'estrela', 'obra', 'embargo']) lista.push([nome, DESENHOS[nome]()]);
   lista.push(['castelo', castelo()]);
   for (let i = 1; i <= 6; i++) lista.push([`castelo-cai-${i}`, castelo({ caindo: i * 5 })]);
-  lista.push(['impressora', impressora()], ['impressora-olho', impressora({ olho: true })]);
+  lista.push(['impressora', impressora()], ['antena-0', antena(0)], ['antena-1', antena(1)]);
   lista.push(['escola', escola()], ['escola-antena', escola({ antena: 1 })]);
   lista.push(['moinhoBase', moinhoBase()], ['quadroSwot', quadroSwot()], ['organograma', organograma()], ['lupa', lupa()]);
   for (const f of [0, 1]) {

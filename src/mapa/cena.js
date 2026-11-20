@@ -8,7 +8,7 @@ import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS } from '.
 import { tela, el, emCanvas } from '../pixel/formas.js';
 import { desenhaPose } from '../pixel/rosalina.js';
 import {
-  tocarMusica, pararMusica, alternarSom, efeitoToque, efeitoLetra, efeitoSegredo, efeitoPoof, latido, ganido, croac, cocorico,
+  tocarMusica, pararMusica, alternarSom, efeitoToque, piado, efeitoLetra, efeitoSegredo, efeitoPoof, latido, ganido, croac, cocorico,
   volumes, definirVolume,
 } from '../pixel/som.js';
 
@@ -98,7 +98,7 @@ class MapaCena extends Phaser.Scene {
       if (porta) {
         this.add.image(img.x + porta[0], img.y + porta[1] + 7, 'portaFechada').setOrigin(0.5, 1).setDepth(img.depth + 0.5);
         const i = nCasa++;
-        this.interativos.push({ tipo: 'casa', id: i, nome: this.o.textos?.casas?.[i]?.nome, area: new Phaser.Geom.Rectangle(img.x, img.y, img.width, img.height), alvo: this.alvoPerto(e.x, e.y, e.w, e.h, 1) });
+        this.interativos.push({ tipo: 'casa', id: i, nome: this.o.textos?.casas?.[i]?.nome, area: new Phaser.Geom.Rectangle(img.x, img.y, img.width, img.height), alvo: [Math.floor((img.x + porta[0]) / P), e.y + e.h] });
       }
     }
 
@@ -121,6 +121,7 @@ class MapaCena extends Phaser.Scene {
     this.criarGente();
     this.criarBichos();
     this.criarClima();
+    this.criarAmbiente();
 
     // toque e clique no cenário
     this.input.on('pointerdown', (p) => {
@@ -243,14 +244,14 @@ class MapaCena extends Phaser.Scene {
       const img = f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
       img.setDepth(100 + by);
       const [nx, ny] = centro(f.entrada);
-      const no = this.add.image(nx, ny + 2, 'no-trancado').setDepth(3);
+      const no = this.add.image(nx, ny + 3, 'no-trancado').setDepth(3).setScale(0.7);
       this.fases[f.id] = { def: f, img, no, extras: [] };
       this.interativos.push({ tipo: 'fase', id: f.id, area: new Phaser.Geom.Rectangle(f.x * P, f.y * P, f.w * P, f.h * P + 12), alvo: f.entrada });
     }
     // detalhes de cada fase
     const fx = (id) => this.fases[id];
     const arv = fx('m1f6'); this.add.image(arv.img.x + 24, arv.img.y + 4, 'organograma').setOrigin(0.5, 0).setDepth(arv.img.depth + 1).setScale(0.75);
-    const torre = fx('m1f7'); this.add.image(torre.img.x + 44, torre.img.y + 30, 'lupa').setDepth(torre.img.depth + 1);
+    const torre = fx('m1f7'); this.add.image(torre.img.x + 32, torre.img.y + 16, 'lupa').setScale(2).setDepth(torre.img.depth + 1);
     const portal = fx('m1f4'); this.add.sprite(portal.img.x + 24, portal.img.y - 2, 'bandeiraAmarela').setOrigin(0.5, 1).setDepth(portal.img.depth + 1).play('bandeiraAmarela');
     const camp = fx('m1f5'); const fog = this.add.sprite(camp.img.x - 10, camp.img.y + 26, 'fogueira-0').setDepth(100 + camp.img.y + 30);
     this.time.addEvent({ delay: 180, loop: true, callback: () => fog.setTexture(fog.texture.key === 'fogueira-0' ? 'fogueira-1' : 'fogueira-0') });
@@ -265,7 +266,7 @@ class MapaCena extends Phaser.Scene {
     const feitas = new Set(concluidas);
     for (const [id, f] of Object.entries(this.fases)) {
       f.extras.forEach((e) => e.destroy()); f.extras = [];
-      this.tweens.killTweensOf(f.no); f.no.setScale(1).clearTint();
+      this.tweens.killTweensOf(f.no); f.no.setScale(0.7).clearTint();
       const estado = estados[id] ?? 'trancada';
       const add = (x) => { f.extras.push(x); return x; };
       const img = f.img; const r = RECORTES[f.def.arte];
@@ -277,16 +278,19 @@ class MapaCena extends Phaser.Scene {
         add(this.add.image(px, py, 'tabuas').setDepth(img.depth + 1));
         const cad = add(this.add.image(cx, topo - 4, 'cadeado').setDepth(img.depth + 2));
         add(this.tweens.add({ targets: cad, y: topo - 7, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
-        if (estado === 'adiada') { const op = add(this.add.sprite(cx + 18, fundo + 6, 'operarios-0').setOrigin(0.5, 1).setDepth(fundo + 107)); add(this.time.addEvent({ delay: 400, loop: true, callback: () => op.setTexture(op.texture.key === 'operarios-0' ? 'operarios-1' : 'operarios-0') })); }
+        if (estado === 'adiada') {
+          const ops = [add(this.add.sprite(cx - 26, fundo + 4, 'operario1', 0).setOrigin(0.5, 1).setDepth(fundo + 108)), add(this.add.sprite(cx + 26, fundo + 4, 'operario2', 0).setOrigin(0.5, 1).setDepth(fundo + 108))];
+          add(this.time.addEvent({ delay: 2200, loop: true, callback: () => ops.forEach((o, k) => this.emote(o, (Math.floor(this.time.now / 2200) + k) % 2 ? 'sono' : 'pontos', 1600)) }));
+        }
         if (estado === 'cancelada') add(this.add.image(cx, topo + img.height / 2, 'embargo').setDepth(img.depth + 1));
       } else if (feitas.has(id)) {
         f.no.setTexture('no-feito');
       } else {
         f.no.setTexture(id === 'm1chefao' ? 'no-segredo' : 'no-aberto');
-        const anel = add(this.add.ellipse(f.no.x, f.no.y + 1, 18, 10).setStrokeStyle(1, 0xffe9a3).setDepth(2.9));
+        const anel = add(this.add.ellipse(f.no.x, f.no.y + 1, 12, 7).setStrokeStyle(1, 0xffe9a3).setDepth(2.9));
         add(this.tweens.add({ targets: anel, scaleX: 1.6, scaleY: 1.6, alpha: 0, duration: 1100, repeat: -1 }));
-        const seta = add(this.add.image(f.no.x, f.no.y - 14, 'setaQuica').setDepth(960));
-        add(this.tweens.add({ targets: seta, y: f.no.y - 19, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
+        const seta = add(this.add.image(f.no.x, f.no.y - 11, 'setaQuica').setDepth(960).setScale(0.8));
+        add(this.tweens.add({ targets: seta, y: f.no.y - 15, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
         add(this.time.addEvent({ delay: 1600, loop: true, callback: () => this.brilhar(cx + Phaser.Math.Between(-img.width / 2, img.width / 2), topo + Phaser.Math.Between(4, img.height - 4)) }));
       }
     }
@@ -328,10 +332,12 @@ class MapaCena extends Phaser.Scene {
     this.objetos = {};
     for (const ob of planta.OBJETOS) {
       const w = (ob.w ?? 1) * P; const h = (ob.h ?? 1) * P;
-      const img = this.add.image(ob.x * P + w / 2, ob.y * P + h, ob.arte).setOrigin(0.5, 1);
+      const rec = RECORTES[ob.arte];
+      const img = rec ? this.add.image(ob.x * P + w / 2, ob.y * P + h, rec.folha, ob.arte).setOrigin(0.5, 1) : this.add.image(ob.x * P + w / 2, ob.y * P + h, ob.arte).setOrigin(0.5, 1);
       img.setDepth(100 + img.y);
       this.objetos[ob.id] = { def: ob, img, toques: 0 };
-      this.interativos.push({ tipo: 'objeto', id: ob.id, area: new Phaser.Geom.Rectangle(img.x - img.width / 2 - 2, img.y - img.height - 2, img.width + 4, img.height + 4), alvo: this.alvoPerto(ob.x, ob.y, ob.w ?? 1, ob.h ?? 1, ob.alcance ?? 1) });
+      const alvo = rec?.porta ? [Math.floor((img.x - img.width / 2 + rec.porta[0]) / P), ob.y + (ob.h ?? 1)] : this.alvoPerto(ob.x, ob.y, ob.w ?? 1, ob.h ?? 1, ob.alcance ?? 1);
+      this.interativos.push({ tipo: 'objeto', id: ob.id, area: new Phaser.Geom.Rectangle(img.x - img.width / 2 - 2, img.y - img.height - 2, img.width + 4, img.height + 4), alvo });
     }
     this.time.addEvent({ delay: 3200, loop: true, callback: () => {
       const lista = Object.values(this.objetos).filter((o) => o.def.segredo && !this.o.segredosAchados?.has?.(o.def.segredo));
@@ -339,7 +345,8 @@ class MapaCena extends Phaser.Scene {
       if (this.cameras.main.worldView.contains(o.img.x, o.img.y - 8)) this.brilhar(o.img.x + Phaser.Math.Between(-6, 6), o.img.y - o.img.height + Phaser.Math.Between(0, 8));
     } });
     const m = this.objetos.moinho.img; this.add.sprite(m.x, m.y - 26, 'moinho').setScale(0.5).setDepth(m.depth + 1).play('moinho');
-    this.time.addEvent({ delay: 2600, loop: true, callback: () => { const im = this.objetos.impressora.img; im.setTexture('impressora-olho'); this.time.delayedCall(260, () => im.setTexture('impressora')); } });
+    const imp = this.objetos.impressora.img; this.add.sprite(imp.x, imp.y - 9, 'gato').setOrigin(0.5, 1).setDepth(imp.depth + 1).play('gato');
+    const esc = this.objetos.escola.img; this.antena = this.add.image(esc.x + 21, esc.y - esc.height + 6, 'antena-0').setOrigin(0.5, 1).setDepth(esc.depth + 1);
     this.time.addEvent({ delay: 1400, loop: true, callback: () => { const il = this.objetos.ilha.img; il.setTexture(il.texture.key === 'ilha' ? 'ilha-brilho' : 'ilha'); } });
   }
 
@@ -380,7 +387,8 @@ class MapaCena extends Phaser.Scene {
 
   tocarObjeto(id) {
     const ob = this.objetos[id]; const d = ob.def;
-    if (id === 'escola') { ob.img.setTexture('escola-antena'); this.tweens.add({ targets: ob.img, angle: { from: -1.5, to: 1.5 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => { ob.img.setAngle(0); ob.img.setTexture('escola'); } }); }
+    if (id === 'escola') { this.antena.setTexture('antena-1'); this.tweens.add({ targets: this.antena, angle: { from: -12, to: 12 }, duration: 80, yoyo: true, repeat: 4, onComplete: () => { this.antena.setAngle(0).setTexture('antena-0'); } }); }
+    if (id === 'casinha') { this.defenderCasinha(); return; }
     if (d.toques) { ob.toques += 1; this.tweens.add({ targets: ob.img, scaleY: 0.85, duration: 70, yoyo: true }); if (ob.toques < d.toques) { efeitoToque(); return; } }
     if (d.segredo) this.achar(d.segredo);
     else if (d.conversa) this.o.falar?.({ nome: '', texto: this.o.textos?.[d.conversa] ?? '' });
@@ -426,7 +434,7 @@ class MapaCena extends Phaser.Scene {
     const r = this.rosa; const ia = r.ia; const { passa, W, H } = this.t;
     const passo = Math.floor(time / 150) % 2;
     const distAv = Phaser.Math.Distance.Between(r.x, r.y, this.av.x, this.av.y) / P;
-    if (!['medo', 'conversa', 'corre', 'truque'].includes(ia.modo) && time > (ia.calma ?? 0)) {
+    if (!['medo', 'conversa', 'corre', 'truque', 'defende'].includes(ia.modo) && time > (ia.calma ?? 0)) {
       const susto = this.oQueAssusta();
       if (susto) { ia.modo = 'medo'; ia.ate = time + 1200; ia.rota = []; ia.de = [susto.x, susto.y]; ia.calma = time + 9000; ganido(); this.emote(r, 'susto'); }
     }
@@ -447,6 +455,7 @@ class MapaCena extends Phaser.Scene {
       if (d <= v) { r.setPosition(tx, ty); ia.rota.shift(); } else { r.x += (dx / d) * v; r.y += (dy / d) * v; }
       if (Math.abs(dx) > 0.5) r.setFlipX(dx < 0);
       r.setTexture(`${ia.modo === 'corda' ? 'rosa-corda' : 'rosa-anda'}-${passo}`);
+      if (!ia.rota.length && ia.aoChegar) { const fn = ia.aoChegar; ia.aoChegar = null; fn(); return; }
       if (!ia.rota.length && ia.modo === 'corre') { ia.modo = 'senta'; ia.ate = time + 1800; this.emote(r, 'pontos'); }
       return;
     }
@@ -486,11 +495,22 @@ class MapaCena extends Phaser.Scene {
       return;
     }
     r.ia.modo = 'truque';
-    const fim = () => { r.setAngle(0); r.ia.modo = 'senta'; r.ia.ate = this.time.now + 1200; };
-    if (acao === 'pata') { r.setTexture('rosa-sentada'); this.tweens.add({ targets: r, angle: { from: 0, to: -12 }, duration: 160, yoyo: true, repeat: 2, onComplete: fim }); this.emote(r, 'feliz'); }
-    else if (acao === 'rolar') { this.tweens.add({ targets: r, angle: 360, duration: 700, onComplete: fim }); }
-    else if (acao === 'dancar') { this.tweens.add({ targets: r, y: r.y - 5, scaleX: { from: 0.8, to: -0.8 }, duration: 160, yoyo: true, repeat: 5, onComplete: () => { r.setScale(0.8); fim(); } }); latido(2); }
-    else fim();
+    r.setTexture('rosa-sentada'); this.emote(r, 'coracao', 1500);
+    this.tweens.add({ targets: r, y: r.y - 5, duration: 150, yoyo: true, repeat: acao === 'dancar' ? 4 : 1, onComplete: () => { r.ia.modo = 'senta'; r.ia.ate = this.time.now + 1500; } });
+    if (acao === 'dancar') latido(2);
+  }
+
+  // Tocar na casinha: a Rosalina vem correndo defender a propriedade
+  defenderCasinha() {
+    const r = this.rosa; const { passa, W, H } = this.t; const casa = planta.PERSONAGENS.rosalina.casa;
+    r.ia.modo = 'defende'; r.ia.vel = 125;
+    r.ia.rota = caminho(passa, W, H, peca(r.x, r.y), livreMaisPerto(passa, W, H, casa, 2) ?? casa);
+    this.emote(r, 'exVermelho', 900); latido(1);
+    r.ia.aoChegar = () => {
+      r.setTexture('rosa-sentada').setFlipX(this.av.x < r.x); latido(2); this.emote(r, 'bravo', 1500);
+      this.o.aoCasinha?.(() => { r.ia.modo = 'senta'; r.ia.ate = this.time.now + 1500; r.ia.vel = null; });
+    };
+    if (!r.ia.rota.length) { const fn = r.ia.aoChegar; r.ia.aoChegar = null; fn(); }
   }
 
   // ---------- pessoas da Vila ----------
@@ -679,8 +699,48 @@ class MapaCena extends Phaser.Scene {
     const cast = this.fases.m1chefao.img;
     this.cameras.main.stopFollow(); this.cameras.main.centerOn(cast.x, cast.y);
     this.o.aoIntro?.('inicio');
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.PAN_COMPLETE, () => { this.cameras.main.startFollow(this.av, true, 0.12, 0.12); this.emCena = false; this.o.aoIntro?.('fim'); });
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.PAN_COMPLETE, () => { if (this.pulouIntro) return; this.cameras.main.startFollow(this.av, true, 0.12, 0.12); this.emCena = false; this.o.aoIntro?.('fim'); });
     this.time.delayedCall(900, () => this.cameras.main.pan(this.av.x, this.av.y, 3800, 'Sine.easeInOut', true));
+  }
+
+  pularIntro() {
+    if (!this.emCena || this.pulouIntro) return;
+    this.pulouIntro = true; this.cameras.main.panEffect.reset(); this.cameras.main.startFollow(this.av, true, 1, 1);
+    this.time.delayedCall(50, () => this.cameras.main.setLerp(0.12, 0.12)); this.emCena = false; this.o.aoIntro?.('pulou');
+  }
+
+  // Imersão: nome da região, poeira dos passos, pegadas na areia, passarinhos e luz do dia conforme o horário
+  imersao(time) {
+    const [tx, ty] = peca(this.av.x, this.av.y);
+    if (time > (this.proxZona ?? 0)) {
+      this.proxZona = time + 400;
+      const z = planta.ZONAS.find((q) => tx >= q.x && ty >= q.y && tx < q.x + q.w && ty < q.y + q.h);
+      if ((z?.id ?? null) !== this.zona) { this.zona = z?.id ?? null; if (z) this.o.aoZona?.(z.id); }
+    }
+    if (this.av.rota.length && time > (this.proxPasso ?? 0)) {
+      this.proxPasso = time + 230;
+      const d = planta.DESERTO; const naAreia = ((this.av.x / P - d.cx) / d.rx) ** 2 + ((this.av.y / P - d.cy) / d.ry) ** 2 < 0.85;
+      if (naAreia) { const m = this.add.ellipse(this.av.x + (Math.floor(time / 230) % 2 ? 2 : -2), this.av.y + 5, 3, 2, 0xb5703f, 0.6).setDepth(0.7); this.tweens.add({ targets: m, alpha: 0, delay: 1800, duration: 1500, onComplete: () => m.destroy() }); }
+      else if (!this.cfg.menosMovimento) { const p = this.add.circle(this.av.x, this.av.y + 5, 1.6, 0xd8c8a0, 0.7).setDepth(4); this.tweens.add({ targets: p, y: p.y - 3, alpha: 0, scale: 1.8, duration: 400, onComplete: () => p.destroy() }); }
+    }
+  }
+
+  criarAmbiente() {
+    // passarinhos cruzando o céu de vez em quando, com piado
+    this.time.addEvent({ delay: 11000, loop: true, callback: () => {
+      if (this.cfg.menosMovimento || Math.random() < 0.35) return;
+      const v = this.cameras.main.worldView; const y = v.top + 20 + Math.random() * 40;
+      for (let i = 0; i < 3; i++) {
+        const b = this.add.text(v.left - 10 - i * 12, y + i * 5, 'v', { fontFamily: 'monospace', fontSize: '8px', color: '#2b2233', resolution: 4 }).setDepth(985);
+        this.tweens.add({ targets: b, x: v.right + 20, y: b.y - 15, duration: 6000 + i * 300, onComplete: () => b.destroy() });
+        this.time.addEvent({ delay: 180, repeat: 30, callback: () => b.setScale(1, b.scaleY > 0.6 ? 0.5 : 1) });
+      }
+      piado();
+    } });
+    // luz conforme o horário real: tarde dourada e noite azulada
+    const h = new Date().getHours();
+    const luz = h >= 17 && h < 19 ? [0xff9a3c, 0.12] : (h >= 19 || h < 6) ? [0x1c2a6b, 0.3] : null;
+    if (luz) this.add.rectangle(0, 0, 2000, 2000, luz[0], luz[1]).setOrigin(0).setScrollFactor(0).setDepth(989);
   }
 
   // seta na borda da tela apontando a fase aberta que falta fazer
@@ -723,6 +783,7 @@ class MapaCena extends Phaser.Scene {
       this.borboletas.forEach((b, i) => { b.x += Math.sin(time / 600 + i) * 0.4; b.y += Math.cos(time / 300 + i * 2) * 0.3; b.setScale(1, Math.floor(time / 120 + i) % 2 ? 1 : 0.4); });
     }
     this.atualizarSeta();
+    this.imersao(time);
   }
 }
 
@@ -754,6 +815,8 @@ export function iniciarMapa(raiz, opcoes) {
         <p class="mapa-cfg-dica">No computador: setas ou WASD para andar, E, Enter ou Espaço para falar, M para o mapa inteiro, Esc para este menu.</p>
         <button class="btn verde" id="cfg-fechar">Voltar ao jogo</button></div></div>
     <div class="mapa-faixa" id="mapa-faixa" hidden></div>
+    <div class="mapa-zona" id="mapa-zona" hidden></div>
+    <button class="mapa-btn mapa-pular" id="mapa-pular" hidden>Pular ⏭</button>
     <div class="mapa-girar">Deite o celular para jogar</div>`;
   const $ = (s) => raiz.querySelector(s);
 
@@ -764,8 +827,9 @@ export function iniciarMapa(raiz, opcoes) {
   const VELOC = { lenta: 45, normal: 26, rapida: 10 };
   const pararRetrato = () => { if (retratoAnim) cancelAnimationFrame(retratoAnim); retratoAnim = null; };
   const mostrar = () => {
-    atual = fila.shift(); if (!atual) { caixa.hidden = true; pararRetrato(); return; }
+    atual = fila.shift(); if (!atual) { caixa.hidden = true; pararRetrato(); if (!cena?.emCena) pular.hidden = true; return; }
     caixa.hidden = false; nome.textContent = atual.nome ?? ''; txt.textContent = ''; opcs.innerHTML = ''; seta.hidden = true;
+    pular.hidden = !(fila.length > 0) && !cena?.emCena;
     pararRetrato();
     rosto.hidden = !(atual.pose || atual.rosto); retrato.hidden = !atual.pose; rostoImg.hidden = !atual.rosto;
     if (atual.rosto) { rostoImg.src = atual.rosto === 'consultor' ? (rostoSilas ?? '') : `${opcoes.urls.base}${ROSTOS[atual.rosto]}`; }
@@ -845,8 +909,6 @@ export function iniciarMapa(raiz, opcoes) {
       const d = g.getImageData(0, 0, c.width, c.height);
       const troca = { '48543d': [150, 150, 160], '2c3126': [92, 92, 104], '6f805b': [200, 200, 210], '548789': [61, 127, 214] };
       for (let i = 0; i < d.data.length; i += 4) { const h = [d.data[i], d.data[i + 1], d.data[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join(''); if (troca[h]) [d.data[i], d.data[i + 1], d.data[i + 2]] = troca[h]; }
-      // barba por fazer: pontinhos mais escuros na pele da parte de baixo do rosto
-      for (let y = 22; y < 31; y++) for (let x = 9; x < 30; x++) { const i = (y * c.width + x) * 4; const pele = d.data[i] > 220 && d.data[i + 1] > 130 && d.data[i + 1] < 190; if (pele && (x * 7 + y * 3) % 4 === 0) { d.data[i] = 176; d.data[i + 1] = 112; d.data[i + 2] = 92; } }
       g.putImageData(d, 0, 0); rostoSilas = c.toDataURL();
     };
     im.src = `${opcoes.urls.base}${ROSTOS.consultor}`;
@@ -862,12 +924,13 @@ export function iniciarMapa(raiz, opcoes) {
     const truque = sabidos.length ? sabidos[Math.floor(Math.random() * sabidos.length)] : null;
     falar({ nome: 'Rosalina', texto: f.texto, pose: f.pose, aoFechar: () => acao('fim'), botoes: [
       { rotulo: 'Dar petisco', acao: () => {
+        pular.hidden = true;
         const n = lerNum('admq-petiscos') + 1; guardarNum('admq-petiscos', n); latido(2); acao('petisco');
         const aprendeu = TRUQUES.find((t) => t.n === n);
         falar({ nome: 'Rosalina', pose: 'petisco', texto: textos.petisco ?? 'Nhac!', aoFechar: () => acao('fim') });
         if (aprendeu) falar({ nome: 'Rosalina aprendeu um truque!', pose: 'feliz', texto: `Com tantos petiscos, a Rosalina aprendeu: ${aprendeu.rotulo.toLowerCase()}. Peça na próxima conversa.`, aoFechar: () => acao('fim') });
       } },
-      ...(truque ? [{ rotulo: truque.rotulo, acao: () => acao(truque.id) }] : []),
+      ...(truque ? [{ rotulo: truque.rotulo, acao: () => { acao(truque.id); falar({ nome: 'Rosalina', pose: truque.id, texto: textos.truques?.[truque.id] ?? '', aoFechar: () => acao('fim') }); } }] : []),
       { rotulo: 'Tchau', acao: () => acao('fim') },
     ] });
   };
@@ -891,9 +954,12 @@ export function iniciarMapa(raiz, opcoes) {
     }
   };
   const faixa = $('#mapa-faixa');
+  const pular = $('#mapa-pular');
+  pular.addEventListener('click', () => { if (cena?.emCena) cena.pularIntro(); else { fila = []; avancar(); } });
   const aoIntro = (fase) => {
-    if (fase === 'inicio') { faixa.textContent = opcoes.nomeMundo ?? ''; faixa.hidden = false; }
-    else { faixa.hidden = true; falar(...(textos.intro ?? []).map((t) => ({ nome: textos.nomes?.consultor ?? '', rosto: 'consultor', texto: t }))); }
+    if (fase === 'inicio') { faixa.textContent = opcoes.nomeMundo ?? ''; faixa.hidden = false; pular.hidden = false; }
+    else if (fase === 'pulou') { faixa.hidden = true; pular.hidden = true; }
+    else { faixa.hidden = true; pular.hidden = true; falar(...(textos.intro ?? []).map((t) => ({ nome: textos.nomes?.consultor ?? '', rosto: 'consultor', texto: t }))); }
   };
 
   const largura = () => { const r = raiz.getBoundingClientRect(); const asp = r.width && r.height ? r.width / r.height : 16 / 9; return Math.round(Math.min(480, Math.max(240, 180 * asp))); };
@@ -905,6 +971,8 @@ export function iniciarMapa(raiz, opcoes) {
       alternarConfig: () => abrirCfg(), seta: $('#mapa-seta'),
       dica: (t, fx, fy) => { const d = $('#mapa-dica'); d.hidden = !t; if (t) { d.textContent = t; d.style.left = `${fx * 100}%`; d.style.top = `${fy * 100}%`; } },
       aoAcharSegredo, aoTocarRosalina, aoConversar, aoTocarFase, aoIntro, aoVisao: (v) => raiz.classList.toggle('visao', v),
+      aoCasinha: (fim) => falar({ nome: 'Rosalina', pose: 'latindo', texto: textos.casinha ?? '', aoFechar: fim }),
+      aoZona: (id) => { const n = textos.zonas?.[id]; if (!n) return; const z = $('#mapa-zona'); z.textContent = n; z.hidden = false; z.classList.remove('some'); void z.offsetWidth; z.classList.add('some'); clearTimeout(z.t); z.t = setTimeout(() => { z.hidden = true; }, 2600); },
     }),
   });
   jogo.events.once('ready', () => { cena = jogo.scene.getScene('mapa'); });

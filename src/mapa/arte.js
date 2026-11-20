@@ -22,7 +22,7 @@ export const ANIMADOS = {
   sapo: { arq: 'sapo.png', w: 16, h: 16 },
 };
 // Personagens de 4 direções (colunas: baixo, cima, esquerda, direita; linhas 0 a 3: caminhada)
-export const PESSOAS = { heroi: 'heroi.png', consultor: 'consultor.png', barao: 'barao.png', senhora: 'senhora.png', crianca: 'crianca.png', monge: 'monge.png' };
+export const PESSOAS = { heroi: 'heroi.png', consultor: 'consultor.png', barao: 'barao.png', senhora: 'senhora.png', crianca: 'crianca.png', monge: 'monge.png', operario1: 'operario1.png', operario2: 'operario2.png' };
 export const ROSTOS = { consultor: 'consultor-rosto.png', barao: 'barao-rosto.png' };
 export const DIRECOES = { baixo: 0, cima: 1, esq: 2, dir: 3 };
 // quantas linhas de caminhada cada folha tem (algumas pessoas só têm duas)
@@ -43,6 +43,7 @@ export const RECORTES = {
   casaLaranja: RP('casas', 0, 0, 64, 48, { porta: [24, 41] }), casaBege: RP('casas', 64, 0, 64, 48, { porta: [23, 41] }), casaLaranja2: RP('casas', 128, 0, 64, 48, { porta: [23, 41] }),
   templo: RP('casas', 192, 0, 64, 48, { porta: [24, 41] }), loja: RP('casas', 256, 0, 48, 48, { porta: [14, 41] }), lojaVerde: RP('casas', 304, 0, 64, 48, { porta: [33, 41] }),
   casaPedra: RP('casas', 368, 0, 48, 48, { porta: [24, 41] }), casaPartida: RP('casas', 416, 0, 48, 48, { porta: [24, 41] }),
+  casaTorre: RP('casas', 464, 0, 64, 64, { porta: [26, 57] }),
   estatuaMestre: R('casas', 4, 15, 1, 2), estatuaMestre2: R('casas', 5, 15, 1, 2), estatuaUrso: R('casas', 0, 15, 2, 3),
   estandarte1: R('casas', 22, 20, 1, 2), estandarte2: R('casas', 24, 20, 1, 2), estandarte3: R('casas', 26, 20, 1, 2),
   portal: R('casas', 1, 5, 3, 2),

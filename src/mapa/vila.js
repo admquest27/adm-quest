@@ -40,7 +40,7 @@ export const FASES = [
   fase('m1f4', 'portal', 32, 6, [33, 8]),
   fase('m1f5', 'barraca', 34, 15, [35, 17]),
   fase('m1f6', 'arvoreGrande', 39, 8, [40, 11]),
-  fase('m1f7', 'torreDeserto', 42, 14, [43, 18]),
+  fase('m1f7', 'casaBege', 42, 15, [43, 18]),
   { id: 'm1chefao', arte: 'castelo', x: 42, y: 4, w: 3, h: 3, entrada: [43, 7] },
 ];
 
@@ -48,7 +48,7 @@ export const FASES = [
 const casa = new Set(['casaLaranja', 'casaBege', 'casaLaranja2', 'loja', 'lojaVerde', 'casaPedra']);
 const naoBloqueia = new Set(['florAmarela', 'florLaranja', 'florVermelha', 'florBranca', 'mato', 'trigo', 'arbusto1', 'arbusto2', 'arbusto3', 'arbusto4', 'estandarte1', 'estandarte2', 'estandarte3']);
 const enfeite = (peca, x, y) => {
-  const r = RECORTES[peca]; const fh = casa.has(peca) ? 2 : 1;
+  const r = RECORTES[peca]; const fh = casa.has(peca) ? r.h : 1; // casas bloqueiam inteiras (ninguém anda no telhado)
   return { peca, x, y, w: r.w, h: r.h, bloqueia: !naoBloqueia.has(peca), bx: x, by: y + r.h - fh, bw: r.w, bh: fh };
 };
 export const ENFEITES = [
@@ -72,7 +72,7 @@ export const OBJETOS = [
   { id: 'impressora', arte: 'impressora', x: 7, y: 15, bloqueia: true, segredo: 'gato' },
   { id: 'cacto', arte: 'cacto', x: 6, y: 5, bloqueia: true, segredo: 'cacto', toques: 5 },
   { id: 'aviao', arte: 'aviao', x: 11, y: 6, w: 2, h: 2, bloqueia: true, conversa: 'aviao' },
-  { id: 'escola', arte: 'escola', x: 19, y: 21, w: 2, h: 2, bloqueia: true, segredo: 'antena' },
+  { id: 'escola', arte: 'casaTorre', x: 17, y: 19, w: 4, h: 4, bloqueia: true, segredo: 'antena' },
   { id: 'porta', arte: 'porta', x: 21, y: 22, bloqueia: true, segredo: 'professores' },
   { id: 'lapide', arte: 'lapide', x: 46, y: 5, bloqueia: true, segredo: 'lapide' },
   { id: 'placa404', arte: 'placa404', x: 11, y: 23, bloqueia: true, segredo: '404' },
@@ -93,9 +93,16 @@ export const PERSONAGENS = {
     { quem: 'monge', area: { x: 14, y: 9, w: 6, h: 3 } },
   ],
   pombo: { area: { x: 11, y: 17, w: 4, h: 3 }, segredo: 'pombo' },
-  galinhas: { area: { x: 19, y: 16, w: 7, h: 3 }, quantas: 5, segredo: 'galinhas', esbarroes: 6 },
+  galinhas: { area: { x: 21, y: 15, w: 5, h: 3 }, quantas: 5, segredo: 'galinhas', esbarroes: 6 },
   peixes: { rio: { x0: 27, x1: 29 }, lagos: true },
 };
+
+// Regiões com nome (aparece ao entrar). Os nomes vêm dos textos.
+export const ZONAS = [
+  { id: 'praca', x: 6, y: 15, w: 13, h: 8 }, { id: 'dunas', x: 3, y: 3, w: 11, h: 8 }, { id: 'fazenda', x: 19, y: 15, w: 8, h: 8 },
+  { id: 'rio', x: 25, y: 10, w: 7, h: 6 }, { id: 'leste', x: 31, y: 3, w: 9, h: 11 }, { id: 'acampamento', x: 32, y: 14, w: 9, h: 8 },
+  { id: 'castelo', x: 40, y: 3, w: 7, h: 8 }, { id: 'oficina', x: 14, y: 5, w: 6, h: 6 },
+];
 
 export const INICIO = [5, 17];
 export const SEGREDOS = ['cacto', 'galinhas', 'konami', 'lapide', 'gato', 'professores', 'pombo', 'antena', 'bau', '404'];

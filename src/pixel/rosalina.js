@@ -59,7 +59,7 @@ export function quadro(tipo, op = {}) {
 export const TAMANHO = { frente: [34, 36], lado: [44, 30] };
 
 // Poses animadas. t em milissegundos; (x, y) é o canto de cima da área de 44x38.
-export const POSES = ['parada', 'anda', 'corda', 'feliz', 'latindo', 'dormindo', 'medo', 'cavando', 'petisco', 'carinho'];
+export const POSES = ['parada', 'anda', 'corda', 'feliz', 'latindo', 'dormindo', 'medo', 'cavando', 'petisco', 'carinho', 'pata', 'rolar', 'dancar'];
 export function desenhaPose(g, pose, t, x, y, espelho = false) {
   const f = Math.floor(t / 140) % 2; const lento = Math.floor(t / 400) % 2;
   const fr = (op, dx = 5, dy = 0) => desenha(g, quadro('frente', op), x + dx, y + dy);
@@ -94,6 +94,21 @@ export function desenhaPose(g, pose, t, x, y, espelho = false) {
       if (lento) { g.fillStyle = '#4b5ea8'; g.fillRect(x + 36, y + 2, 4, 1); g.fillRect(x + 38, y + 3, 1, 1); g.fillRect(x + 37, y + 4, 1, 1); g.fillRect(x + 36, y + 5, 4, 1); }
       break;
     }
+    case 'pata': {
+      // dá a pata: a patinha da frente sobe e desce
+      fr({ olhos: 'feliz', boca: 'aberta', rabo: f ? 2 : -1 });
+      const sobe = lento ? 7 : 3;
+      g.fillStyle = '#2b2233'; g.fillRect(x + 9, y + 26 - sobe, 7, 7);
+      g.fillStyle = '#ffffff'; g.fillRect(x + 10, y + 27 - sobe, 5, 5);
+      g.fillStyle = '#ffc2d4'; g.fillRect(x + 11, y + 30 - sobe, 3, 1);
+      break;
+    }
+    case 'rolar': {
+      g.save(); g.translate(x + 22, y + 20); g.rotate(((t % 1200) / 1200) * Math.PI * 2);
+      desenha(g, quadro('frente', { olhos: 'feliz', boca: 'aberta' }), -17, -20); g.restore();
+      break;
+    }
+    case 'dancar': fr({ olhos: 'feliz', boca: 'aberta', rabo: f ? 2 : -2, orelha: lento }, 5 + Math.round(Math.sin(t / 150) * 4), -Math.abs(Math.round(Math.sin(t / 150) * 4))); break;
     default: fr({ olhos: (t % 3200) < 140 ? 'fechados' : 'abertos', rabo: f ? 1 : 0 });
   }
 }
