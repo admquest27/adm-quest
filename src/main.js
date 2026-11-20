@@ -1,6 +1,12 @@
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import { auth, provedorGoogle } from './firebase.js';
-import { tela, esc, carregando } from './ui.js';
+import '@fontsource/pixelify-sans/latin-400.css';
+import '@fontsource/pixelify-sans/latin-700.css';
+import '@fontsource/nunito/latin-400.css';
+import '@fontsource/nunito/latin-700.css';
+import '@fontsource/nunito/latin-800.css';
+import { carregando } from './ui.js';
+import { mostrarAbertura, erroAbertura } from './abertura.js';
 import { iniciarAluno } from './aluno.js';
 import { iniciarProfessor } from './professor.js';
 
@@ -29,28 +35,30 @@ verificarVersao();
 setInterval(verificarVersao, 5 * 60 * 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) verificarVersao(); });
 
+// A abertura aparece para quem ainda não entrou e uma vez por sessão para o aluno. O professor vai direto ao painel.
+let pararAbertura = null;
+let entrouAgora = false;
+const fecharAbertura = () => { if (pararAbertura) { pararAbertura(); pararAbertura = null; } };
+const ABERTURA_VISTA = 'admq-abertura-vista';
+const aberturaVista = () => { try { return sessionStorage.getItem(ABERTURA_VISTA) === '1'; } catch { return false; } };
+const marcarAbertura = () => { try { sessionStorage.setItem(ABERTURA_VISTA, '1'); } catch { /* segue */ } };
+
 function telaLogin(erro) {
-  tela(
-    `<section class="cartao">
-      <h1>ADM Quest</h1>
-      <p class="sub">Vila dos Planos</p>
-      <button id="entrar" class="botao">Entrar com Google</button>
-      ${erro ? `<p class="erro">${esc(erro)}</p>` : ''}
-      <p class="nota">O jogo guarda só o seu apelido, o seu progresso e o e-mail da conta. Só o professor vê esses dados.</p>
-    </section>`,
-    'centro'
-  );
-  document.getElementById('entrar').addEventListener('click', entrar);
+  fecharAbertura();
+  pararAbertura = mostrarAbertura({ aoEntrar: entrar, erro });
 }
 
 async function entrar() {
+  entrouAgora = true;
+  marcarAbertura();
   try {
     await signInWithPopup(auth, provedorGoogle);
   } catch (e) {
+    entrouAgora = false;
     if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
-    if (e.code === 'auth/popup-blocked') { telaLogin('O navegador bloqueou a janela de login. Permita pop-ups para este site e tente de novo.'); return; }
-    if (e.code === 'auth/unauthorized-domain') { telaLogin('Este endereço ainda não foi autorizado no Firebase. Avise o professor.'); return; }
-    telaLogin('Não deu certo entrar agora. Tente de novo em instantes.');
+    if (e.code === 'auth/popup-blocked') { erroAbertura('O navegador bloqueou a janela de login. Permita pop-ups para este site e tente de novo.'); return; }
+    if (e.code === 'auth/unauthorized-domain') { erroAbertura('Este endereço ainda não foi autorizado no Firebase. Avise o professor.'); return; }
+    erroAbertura('Não deu certo entrar agora. Tente de novo em instantes.');
   }
 }
 
@@ -68,8 +76,11 @@ function comoProfessor(user) {
 onAuthStateChanged(auth, async (user) => {
   if (parar) { parar(); parar = null; }
   if (!user) { telaLogin(); return; }
-  carregando('O Consultor Cinzento está chegando. Exatamente no prazo.');
   const token = await user.getIdTokenResult(true);
-  if (token.claims.professor === true) comoProfessor(user);
-  else parar = iniciarAluno(user);
+  if (token.claims.professor === true) { fecharAbertura(); comoProfessor(user); return; }
+  if (entrouAgora || aberturaVista()) { fecharAbertura(); entrouAgora = false; carregando('O Consultor Cinzento está chegando. Exatamente no prazo.'); parar = iniciarAluno(user); return; }
+  pararAbertura = mostrarAbertura({
+    logado: true,
+    aoEntrar: () => { marcarAbertura(); fecharAbertura(); carregando('O Consultor Cinzento está chegando. Exatamente no prazo.'); parar = iniciarAluno(user); },
+  });
 });
