@@ -1,15 +1,12 @@
 // Aba "Fechar", em quatro passos: menções (no formato da planilha da coordenação), recuperação, feedback
-// e arquivos para baixar (planilha .xlsx e PCTD .docx) ou copiar.
+// e a planilha da coordenação para baixar (.xlsx) ou copiar. O PCTD fica na Agenda (é planejamento).
 import { doc, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc } from './ui.js';
 import {
-  MAPA, consolidarAluno, curto, compDe, bimestresDe, sugestaoRecuperacao, precisaDeRecuperacao, feedbackDoAluno, paragrafoFinal, linhasParaColar,
+  MAPA, consolidarAluno, curto, compDe, sugestaoRecuperacao, precisaDeRecuperacao, feedbackDoAluno, paragrafoFinal, linhasParaColar,
 } from './fechamento.js';
-import { COMPETENCIAS, HABILIDADES, PLANILHA, CAMPOS_FEEDBACK } from './catalogo.js';
-import { MARCAS } from './registros.js';
-import { planejar, roteiroDaFase, ANO } from './calendario.js';
-import { MUNDO } from './fases.js';
+import { COMPETENCIAS, HABILIDADES, CAMPOS_FEEDBACK } from './catalogo.js';
 
 export const idFech = (turma, bim, uid) => `${turma}_${bim}_${uid}`;
 const porFase = (mapa, uid) => Object.fromEntries(Object.values(mapa ?? {}).filter((x) => x.uid === uid).map((x) => [x.fase, x]));
@@ -18,7 +15,6 @@ const ms = (ts) => (ts?.toMillis ? ts.toMillis() : ts ? new Date(ts).getTime() :
 const bimDe = (st) => st.mundo?.ordem ?? 1;
 const bimestreCal = (st, bim) => st.cal?.bimestres?.find((b) => b.id === bim) ?? null;
 const descCurta = (st, h) => st.mundo?.habilidades?.[h] ?? HABILIDADES[h] ?? h;
-const cfgPctd = (st) => st.profTodas?.[`${MUNDO}fim`]?.pctd ?? {};
 
 // Registros de atitude do aluno dentro das datas do bimestre.
 function registrosDoBim(st, uid, bim) {
@@ -46,7 +42,7 @@ export function htmlFechamento(st, ativos, turma) {
   const bim = bimDe(st);
   const linhas = linhasDoFechamento(st, bim, ativos, turma);
   const passo = st.fechPasso ?? 'mencoes';
-  const nRec = linhas.filter((l) => precisaDeRecuperacao(l.c).length).length;
+  const nRec = linhas.filter((l) => precisaDeRecuperacao(l.c, l.fech).length).length;
   const nRev = linhas.filter((l) => l.fb.revisado).length;
   const passos = [['mencoes', '1. Menções'], ['recup', `2. Recuperação${nRec ? ` (${nRec})` : ''}`], ['feedback', `3. Feedback (${nRev}/${linhas.length})`], ['baixar', '4. Baixar']];
   const corpo = passo === 'recup' ? htmlRecuperacao(st, bim, linhas) : passo === 'feedback' ? htmlFeedback(st, bim, linhas) : passo === 'baixar' ? htmlBaixar(st, bim, linhas) : htmlMencoes(st, bim, linhas);
@@ -60,9 +56,13 @@ function htmlMencoes(st, bim, linhas) {
   const grupos = gruposDoBim(bim);
   const previsto = grupos.map((g) => `<div class="fc-comp"><p><strong>Competência ${esc(curto(g.comp))}</strong> · ${esc(COMPETENCIAS[g.comp])}</p>
       <ul class="fc-habs">${g.habs.map((h) => `<li><span class="chip">${esc(curto(h))}</span> ${esc(descCurta(st, h))}</li>`).join('')}<li><span class="chip">AV</span> Atitudes e Valores (sugerida pelos seus registros de atitude)</li></ul></div>`).join('');
-  const outras = PLANILHA.flatMap((g) => g.habs).filter((h) => !MAPA[bim].habs.includes(h));
-  const blocoOutras = `<details class="mais"><summary>Outras habilidades do ano (${outras.length})</summary>
-      <ul class="fc-habs">${outras.map((h) => `<li><span class="chip">${esc(curto(h))}</span> ${esc(HABILIDADES[h])} <span class="nota">· ${bimestresDe(h).map((b) => `${b}º bimestre`).join(' e ')}</span></li>`).join('')}</ul></details>`;
+  const outrosBims = Object.keys(MAPA).map(Number).filter((b) => b !== bim);
+  const nOutras = outrosBims.reduce((n, b) => n + MAPA[b].habs.length, 0);
+  const blocoOutras = `<details class="mais"><summary>Outros bimestres (${nOutras} habilidades)</summary>
+      ${outrosBims.map((b) => `<div class="fc-outro-bim"><p><strong>${b}º bimestre</strong></p>
+        ${gruposDoBim(b).map((g) => `<p class="nota"><strong>Competência ${esc(curto(g.comp))}</strong> · ${esc(COMPETENCIAS[g.comp])}</p>
+          <ul class="fc-habs">${g.habs.map((h) => `<li><span class="chip">${esc(curto(h))}</span> ${esc(HABILIDADES[h])}</li>`).join('')}</ul>`).join('')}</div>`).join('')}
+      <p class="nota">A trilha de Excel (701) é trabalhada desde o 1º bimestre como evidência interna e lançada no 3º.</p></details>`;
   const semValidacao = [...new Set(linhas.flatMap((l) => Object.values(l.c.habs).filter((h) => h.semValidacao).map(() => l.aluno.apelido)))];
   const diretas = MAPA[bim].habs.filter((h) => !st.fases.some((f) => (f.habilidades ?? []).includes(h)));
   const blocoDiretas = diretas.map((h) => `<details class="roteiro" ${linhas.some((l) => !l.c.habs[h].final) ? 'open' : ''}><summary>${esc(curto(h))} · ${esc(descCurta(st, h))}: menção direta (nenhuma fase avalia)</summary>
@@ -155,7 +155,7 @@ export function abrirAlunoFechamento(st, dlg, uid, ativos, turma) {
 
 // ---------- passo 2: recuperação ----------
 function htmlRecuperacao(st, bim, linhas) {
-  const lista = linhas.map((l) => ({ ...l, itens: precisaDeRecuperacao(l.c) })).filter((l) => l.itens.length);
+  const lista = linhas.map((l) => ({ ...l, itens: precisaDeRecuperacao(l.c, l.fech) })).filter((l) => l.itens.length);
   const recomendada = lista.filter((l) => l.itens.some((i) => i.nivel === 'recomendada')).length;
   const marcados = lista.filter((l) => Object.values(l.fech?.recup ?? {}).some((r) => r?.vai)).length;
   const cartao = ({ aluno, c, fech, itens }) => `<li class="fc-rec"><div class="fech-topo"><span class="num">${aluno.numeroChamada ?? '—'}</span><strong>${esc(aluno.apelido)}</strong>
@@ -164,15 +164,20 @@ function htmlRecuperacao(st, bim, linhas) {
         const r = fech?.recup?.[h.cod] ?? {};
         const imp = c.impactos.find((i) => i.hab === h.cod);
         const sel = r.naoFez ? 'naofez' : (r.resultado ?? '');
-        return `<div class="fc-rec-hab"><p><strong>${esc(curto(h.cod))}</strong> ${esc(descCurta(st, h.cod))} · ${h.avaliada ? chipM(h.avaliada) : '<span class="chip sem-evid">faltou</span>'} <span class="chip ${h.nivel === 'recomendada' ? 'm-NA' : ''}">${h.nivel}</span></p>
+        return `<div class="fc-rec-hab"><p><strong>${esc(curto(h.cod))}</strong> ${esc(descCurta(st, h.cod))} · ${h.avaliada ? chipM(h.avaliada) : '<span class="chip sem-evid">faltou</span>'} <span class="chip ${h.nivel === 'recomendada' ? 'm-NA' : ''}">${esc(h.nivel)}</span></p>
           <p class="nota">${h.evid.map((e) => `${esc(e.codigo)}: ${e.m ? esc(e.m) : e.faltou ? 'faltou' : 'sem menção'}`).join(' · ')}${imp ? ` · Se chegar a A, a competência ${esc(curto(imp.comp))} passa de ${esc(imp.de)} para ${esc(imp.para)}.` : ''}</p>
           <label class="check"><input type="checkbox" data-fc="rec-vai" data-uid="${esc(aluno.uid)}" data-hab="${esc(h.cod)}" ${r.vai ? 'checked' : ''}> Vai para a recuperação</label>
           ${r.vai ? `<label>Atividade proposta</label><textarea class="fc-edita" rows="2" data-fc="rec-proposta" data-uid="${esc(aluno.uid)}" data-hab="${esc(h.cod)}">${esc(r.proposta ?? sugestaoRecuperacao(h.cod, st.fases, st.mundo?.habilidades))}</textarea>
             <label>Resultado</label><select data-fc="rec-resultado" data-uid="${esc(aluno.uid)}" data-hab="${esc(h.cod)}"><option value="">em andamento</option>${['A', 'PA', 'NA'].map((m) => `<option ${sel === m ? 'selected' : ''}>${m}</option>`).join('')}<option value="naofez" ${sel === 'naofez' ? 'selected' : ''}>não fez</option></select>` : ''}</div>`;
       }).join('')}</li>`;
-  return `<p class="nota">Aparecem aqui os alunos com PA ou NA em alguma habilidade, ou sem evidência porque faltaram. Com NA a recuperação é recomendada; com PA é opcional e você decide. A atividade proposta já vem sugerida pelo critério A da fase; edite à vontade.</p>
+  return `<p class="nota">Aparecem aqui os alunos com PA ou NA em alguma habilidade, os que ficaram sem evidência porque faltaram e quem você incluiu. Com NA a recuperação é recomendada; com PA é opcional e você decide. A atividade proposta já vem sugerida pelo critério A da fase; edite à vontade.</p>
     <p><strong>${lista.length}</strong> aluno(s) na lista · <strong>${recomendada}</strong> com recuperação recomendada · <strong>${marcados}</strong> marcado(s) para a recuperação</p>
     <ul class="fech-lista">${lista.map(cartao).join('') || '<li class="vazio">Ninguém precisa de recuperação. 🎉</li>'}</ul>
+    <section class="fc-bloco"><h3>Incluir outro aluno na recuperação</h3>
+      <p class="nota">Para dar uma nova oportunidade a quem o jogo não apontou: escolha o aluno e a habilidade.</p>
+      <div class="form"><label for="fc-inc-aluno">Aluno</label><select id="fc-inc-aluno">${linhas.map((l) => `<option value="${esc(l.aluno.uid)}">${l.aluno.numeroChamada ?? '—'} · ${esc(l.aluno.apelido)}</option>`).join('')}</select>
+        <label for="fc-inc-hab">Habilidade</label><select id="fc-inc-hab">${MAPA[bim].habs.map((h) => `<option value="${esc(h)}">${esc(curto(h))} · ${esc(descCurta(st, h))}</option>`).join('')}</select></div>
+      <div class="linha-btn"><button class="botao secundario" data-acao="fc-incluir">Incluir na recuperação</button></div></section>
     <p class="nota">Quando você lança o resultado, ele substitui a menção da habilidade no quadro e na planilha, e o feedback ganha o texto da recuperação.</p>`;
 }
 
@@ -184,7 +189,7 @@ function htmlFeedback(st, bim, linhas) {
   const ant = linhas[i - 1]?.aluno.uid ?? '';
   const prox = linhas[i + 1]?.aluno.uid ?? '';
   const editado = (k) => fb.campos[k] !== fb.rascunho[k];
-  return `<p class="nota">Os cinco campos da planilha da coordenação, já com um rascunho montado das menções, da recuperação, dos registros de atitude e das frases padrão da coordenação. Edite o que quiser: cada campo é salvo ao sair dele. O parágrafo final junta os cinco.</p>
+  return `<p class="nota">Os cinco campos da planilha da coordenação, já com um rascunho no seu estilo: o que ficou adequado e o que ficou parcial em cada fase, a evolução, a recuperação, a participação pelos registros de atitude e o próximo passo. Edite o que quiser: cada campo é salvo ao sair dele. O parágrafo final junta os cinco.</p>
     <div class="fc-nav"><button class="mini" data-acao="fc-fb-ir" data-uid="${esc(ant)}" ${ant ? '' : 'disabled'} aria-label="Aluno anterior">◀</button>
       <select id="fc-fb-aluno" aria-label="Aluno">${linhas.map((l) => `<option value="${esc(l.aluno.uid)}" ${l.aluno.uid === aluno.uid ? 'selected' : ''}>${l.aluno.numeroChamada ?? '—'} · ${esc(l.aluno.apelido)}${l.fb.revisado ? ' ✓' : ''}</option>`).join('')}</select>
       <button class="mini" data-acao="fc-fb-ir" data-uid="${esc(prox)}" ${prox ? '' : 'disabled'} aria-label="Próximo aluno">▶</button></div>
@@ -211,8 +216,6 @@ function htmlBaixar(st, bim, linhas) {
     andamento && `${andamento} aluno(s) com recuperação em andamento`,
     semRev && `${semRev} feedback(s) ainda não revisado(s)`,
   ].filter(Boolean);
-  const cfg = cfgPctd(st);
-  const p = planejar({ ...st, calBim: bim });
   return `${pend.length ? `<div class="alerta"><strong>Antes de lançar</strong><p>${pend.map(esc).join('; ')}. Dá para baixar assim mesmo e conferir.</p></div>` : '<p class="nota">Tudo pronto: menções completas, atitudes confirmadas e feedbacks revisados. ✓</p>'}
     <section class="fc-bloco"><h3>Planilha da coordenação</h3>
       <p class="nota">Mesmas colunas da aba de Formação Técnica, com todas as competências de ADM na ordem (as do ${bim}º bimestre preenchidas) e os cinco campos de feedback. Confira se a ordem dos números de chamada é a mesma da planilha da coordenação antes de colar. O arquivo tem dados de alunos: guarde só no seu OneDrive.</p>
@@ -220,18 +223,7 @@ function htmlBaixar(st, bim, linhas) {
       <p class="nota">Ou copie direto: clique na primeira célula de habilidade do primeiro aluno na planilha da coordenação e cole (Ctrl+V).</p>
       <div class="linha-btn"><button class="botao secundario" data-acao="fc-copiar" data-id="mencoes">Copiar as menções</button><button class="botao secundario" data-acao="fc-copiar" data-id="feedback">Copiar os feedbacks</button></div>
       <p class="nota" id="fc-msg"></p></section>
-    <section class="fc-bloco"><h3>PCTD da Formação Técnica</h3>
-      <p class="nota">O documento sai com o cabeçalho do bimestre, a linha da FTP na agenda avaliativa, as competências, as habilidades, os saberes, a avaliação integrada e a situação de ensino-aprendizagem com uma linha por semana, tirada da Agenda. Abra no Word, revise e cole no PCTD da coordenação, no lugar da parte de FTP.</p>
-      ${p ? '' : '<div class="alerta"><p>Importe o calendário na aba Agenda para gerar as semanas.</p></div>'}
-      <div class="form">
-        <label for="pc-prof">Professor(es)</label><input id="pc-prof" class="fc-edita" data-fc="pctd" data-campo="professores" value="${esc(cfg.professores ?? '')}" placeholder="Seu nome como aparece no PCTD">
-        <label for="pc-sit">Nome da situação de ensino-aprendizagem</label><input id="pc-sit" class="fc-edita" data-fc="pctd" data-campo="situacao" value="${esc(cfg.situacao ?? '')}" placeholder="${esc(`${st.mundo?.nome ?? ''}: ${st.mundo?.pergunta ?? ''}`)}">
-        <label for="pc-int">Avaliação integrada: instrumento e data</label><input id="pc-int" class="fc-edita" data-fc="pctd" data-campo="integrada" value="${esc(cfg.integrada ?? '')}" placeholder="Por exemplo: Projeto integrador, 06/04">
-        <label for="pc-intx">Avaliação integrada: descrição</label><textarea id="pc-intx" class="fc-edita" rows="3" data-fc="pctd" data-campo="integradaTexto">${esc(cfg.integradaTexto ?? '')}</textarea>
-        <label for="pc-sab">Saberes do bimestre (um por linha)</label><textarea id="pc-sab" class="fc-edita" rows="6" data-fc="pctd" data-campo="saberes" placeholder="Em branco: usa os saberes das Orientações do curso para as competências do bimestre.">${esc((cfg.saberes ?? []).join('\n'))}</textarea>
-      </div>
-      <div class="linha-btn"><button class="botao" data-acao="fc-docx" ${p ? '' : 'disabled'}>Baixar PCTD (.docx)</button></div>
-      <p class="nota" id="fc-msg2"></p></section>`;
+    <p class="nota">O PCTD agora fica na aba Agenda, em "PCTD do bimestre", porque é enviado no início do bimestre.</p>`;
 }
 
 // ---------- ações ----------
@@ -250,6 +242,12 @@ export async function tratarFechamento(acao, b, ctx) {
     case 'fc-confirmar-av': {
       const linhas = linhasDoFechamento(st, bim, ativos, turma).filter((l) => !l.c.atitude.confirmada);
       await Promise.all(linhas.map((l) => gravarFech(st, bim, l.aluno.uid, { atitude: { mencao: l.c.atitude.sugerida } })));
+      return true;
+    }
+    case 'fc-incluir': {
+      const uid = document.getElementById('fc-inc-aluno')?.value;
+      const h = document.getElementById('fc-inc-hab')?.value;
+      if (uid && h) await gravarFech(st, bim, uid, { recup: { [h]: { vai: true, incluida: true, proposta: sugestaoRecuperacao(h, st.fases, st.mundo?.habilidades) } } });
       return true;
     }
     case 'fc-fb-ir': if (b.dataset.uid) { st.fechFb = b.dataset.uid; desenhar(); } return true;
@@ -285,23 +283,11 @@ export async function tratarFechamento(acao, b, ctx) {
       } catch { msg('Não consegui montar a planilha agora.'); }
       return true;
     }
-    case 'fc-docx': {
-      msg('Montando o PCTD...', 'fc-msg2');
-      try {
-        const p = planejar({ ...st, calBim: bim });
-        if (!p) { msg('Importe o calendário na aba Agenda primeiro.', 'fc-msg2'); return true; }
-        const [{ gerarDocx, baixarArquivo, TIPO_DOCX }, { pctdFtp }] = await Promise.all([import('./arquivos.js'), import('./documentos.js')]);
-        const blocos = pctdFtp({ bim, turmaNome: turma?.nome || st.turma, ano: ANO, p, roteiro: (f, tipo) => roteiroDaFase(st, f, tipo), marcas: MARCAS, cfg: cfgPctd(st), mundo: st.mundo });
-        baixarArquivo(`PCTD FTP ${bim}o bimestre - ${turma?.nome || st.turma}.docx`, gerarDocx(blocos), TIPO_DOCX);
-        msg('PCTD baixado. Ele está na pasta de downloads.', 'fc-msg2');
-      } catch { msg('Não consegui montar o documento agora.', 'fc-msg2'); }
-      return true;
-    }
     default: return false;
   }
 }
 
-// Campos que salvam sozinhos (recuperação, feedback e dados do PCTD).
+// Campos que salvam sozinhos (recuperação e feedback).
 export async function mudarFechamento(el, st) {
   const tipo = el?.dataset?.fc;
   if (!tipo && el?.id !== 'fc-fb-aluno') return false;
@@ -317,10 +303,6 @@ export async function mudarFechamento(el, st) {
     await gravarFech(st, bim, uid, { recup: { [hab]: { resultado: ['A', 'PA', 'NA'].includes(v) ? v : '', naoFez: v === 'naofez' } } });
   } else if (tipo === 'fb') {
     await gravarFech(st, bim, uid, { feedback: { [el.dataset.campo]: el.value.trim() } });
-  } else if (tipo === 'pctd') {
-    const campo = el.dataset.campo;
-    const valor = campo === 'saberes' ? el.value.split('\n').map((s) => s.trim()).filter(Boolean) : el.value.trim();
-    await setDoc(doc(db, 'fasesProfessor', `${MUNDO}fim`), { mundo: MUNDO, professor: { pctd: { [campo]: valor } }, atualizadoEm: serverTimestamp() }, { merge: true });
   }
   return true;
 }

@@ -19,7 +19,8 @@ import { fazerBackup, htmlAvisoBackup, htmlSecaoBackup, lerArquivoBackup, restau
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
 import { ATV_GUILDA, configGuilda } from './grupos.js';
-import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO } from './calendario.js';
+import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO, planejar, seletorBimestre } from './calendario.js';
+import { htmlPctd, tratarPctd, mudarPctd } from './pctdProfessor.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -171,6 +172,16 @@ export function iniciarProfessor(user, opcoes = {}) {
   const ativosDaTurma = () => alunosDaTurma().filter((a) => a.status === 'ativo');
   const pendentesTotal = () => st.alunos.filter((a) => a.status === 'pendente').length;
 
+  // Agenda em duas vistas: o calendário e o PCTD do bimestre (planejamento enviado à coordenação).
+  const planoAgenda = () => (st.cal && st.turma ? planejar(st) : null);
+  function htmlAgendaComPctd() {
+    const vista = st.agVista === 'pctd' ? 'pctd' : 'cal';
+    const topo = `<div class="fc-passos">${[['cal', 'Calendário'], ['pctd', 'PCTD do bimestre']].map(([id, r]) => `<button class="mini ${vista === id ? 'ok cheio' : ''}" data-acao="ag-vista" data-id="${id}">${r}</button>`).join('')}</div>`;
+    const p = vista === 'pctd' ? planoAgenda() : null;
+    if (!p) return htmlAgenda(st).replace('<h2>Agenda</h2>', `<h2>Agenda</h2>${topo}`);
+    return `<h2>Agenda</h2>${topo}${seletorBimestre(p)}${htmlPctd(st, p)}`;
+  }
+
   // ---------- telas ----------
   function desenhar() {
     if (!st.carregou.turmas || !st.carregou.alunos) {
@@ -180,12 +191,12 @@ export function iniciarProfessor(user, opcoes = {}) {
     const ativo = document.activeElement;
     if (st.aba === 'mais' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
     // não redesenhar enquanto o professor escreve um feedback, uma recuperação ou os dados do PCTD
-    if (st.aba === 'fechar' && ativo?.closest?.('.fc-edita')) return;
+    if ((st.aba === 'fechar' || st.aba === 'agenda') && ativo?.closest?.('.fc-edita')) return;
     const faseProj = st.projetando && st.fases.find((x) => x.id === st.faseSel && x.tipo === 'chefao');
     if (faseProj) { tela(htmlProjecao(st, faseProj, turmaAtual()), 'pagina projetar'); return; }
     const pend = pendentesTotal();
     const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : aba === 'fechar' ? htmlFechamento(st, ativosDaTurma(), turmaAtual()) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlSecaoBackup(st.cfgBackup, st.previaBackup)}<hr>${htmlConteudo()}`;
+    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgendaComPctd() : aba === 'painel' ? htmlEstatisticas(st) : aba === 'fechar' ? htmlFechamento(st, ativosDaTurma(), turmaAtual()) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlSecaoBackup(st.cfgBackup, st.previaBackup)}<hr>${htmlConteudo()}`;
     const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['fechar', 'Fechar'], ['mais', 'Mais']];
     tela(
       `<header class="topo">
@@ -490,6 +501,8 @@ export function iniciarProfessor(user, opcoes = {}) {
         falha(`Backup restaurado: ${n} documento(s).`);
         return;
       }
+      if (acao === 'ag-vista') { st.agVista = b.dataset.id; desenhar(); return; }
+      if (acao.startsWith('pc-')) { const p = planoAgenda(); if (p) await tratarPctd(acao, b, { st, p, desenhar, turma: turmaAtual() }); return; }
       if (acao.startsWith('fc-')) { await tratarFechamento(acao, b, { st, dlg, ativos: ativosDaTurma(), turma: turmaAtual(), desenhar }); return; }
       if (acao.startsWith('vt-')) { await tratarVotacao(acao, b, st); return; }
       if (acao.startsWith('cs-')) { if ((await tratarCastelo(acao, b, st, falha)) === 'desenhar') desenhar(); return; }
@@ -540,6 +553,7 @@ export function iniciarProfessor(user, opcoes = {}) {
   app.onchange = async (e) => {
     try {
       if (await mudarConfigGrupos(e.target, st)) return;
+      if (e.target.dataset?.pc && (await mudarPctd(e.target, st, planoAgenda()))) return;
       const fc = await mudarFechamento(e.target, st);
       if (fc) { if (fc === 'desenhar') desenhar(); return; }
       if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); st.faseSel = null; ligarTurma(); ligarProf(); desenhar(); }

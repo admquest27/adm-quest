@@ -14,7 +14,8 @@ const fases = [
   { id: 'f7', codigo: '1-7', ordem: 7, habilidades: ['EMT1ADM101'] },
 ];
 const todasA = { f2: { mencoes: { EMT1ADM102: 'A' }, validada: true }, f3: { mencoes: { EMT1ADM103: 'A' }, validada: true }, f4: { mencoes: { EMT1ADM104: 'A' }, validada: true }, f5: { mencoes: { EMT1ADM105: 'A', EMT1ADM102: 'A' }, validada: true }, f6: { mencoes: { EMT1ADM103: 'A' }, validada: true }, f7: { mencoes: { EMT1ADM101: 'A' }, validada: true } };
-const pos = (t) => ({ tipoAtitude: 'positivo', texto: t });
+const fasesComNome = fases.map((f, i) => ({ ...f, nome: ['Dunas', 'Oficina', 'Terra', 'Noite', 'Árvore', 'Raio-X'][i] }));
+const pos = (t) =>({ tipoAtitude: 'positivo', texto: t });
 const aten = (t) => ({ tipoAtitude: 'atencao', texto: t });
 
 test('Atitudes e Valores entra na regra da competência', () => {
@@ -37,16 +38,26 @@ test('Atitudes e Valores entra na regra da competência', () => {
   assert.equal(c3.comps.EMT1ADM7.final, 'ND');
 });
 
-test('rascunho de feedback com as frases da coordenação', () => {
+test('rascunho de feedback no estilo do professor', () => {
   const aval = { ...todasA, f5: { mencoes: { EMT1ADM105: 'A', EMT1ADM102: 'NA' } } };
   const fech = { diretas: { EMT1ADM702: 'A' }, recup: { EMT1ADM102: { vai: true, proposta: 'Refazer o 5W2H.', resultado: 'A' } } };
-  const c = consolidarAluno({ bim: 1, fases, aval, fech });
-  const r = rascunhoFeedback(c, fech, { fases });
-  assert.ok(r.hab.startsWith('Realizou as atividades avaliativas e atingiu parcialmente os objetivos propostos.'));
-  assert.match(r.hab, /Precisa avançar em propor e monitorar planos de ação/);
-  assert.equal(r.recup, 'Atividade proposta: refazer o 5W2H. Realizou a recuperação proposta e atingiu os objetivos que antes não tinham sido alcançados.');
-  assert.ok(r.part.startsWith('Participa adequadamente'));
+  const c = consolidarAluno({ bim: 1, fases: fasesComNome, aval, fech });
+  const r = rascunhoFeedback(c, fech, { fases: fasesComNome });
+  assert.ok(r.hab.startsWith('Apresentou evidências parciais das habilidades do bimestre.'));
+  assert.match(r.hab, /Atendeu às expectativas nas fases .*1-2 \(Dunas\)/);
+  assert.match(r.hab, /Na fase 1-5 \(Noite\), a evidência ainda não demonstrou domínio de planos de ação/);
+  assert.match(r.hab, /O caderno ficou completo e organizado\./);
+  assert.match(r.hab, /O próximo passo é ganhar segurança em planos de ação./);
+  assert.match(r.recup, /^Foi oferecida uma atividade de recuperação: refazer o 5W2H\. Com ela, apresentou uma nova evidência/);
+  assert.equal(r.part, 'Manteve boa participação e responsabilidade ao longo do bimestre. É importante manter essa constância nas próximas propostas.');
   assert.equal(r.proposta, '');
+  assert.doesNotMatch(Object.values(r).join(' '), /Realizou as atividades avaliativas/); // sem as frases padrão da coordenação
+  // evolução: parcial na 1-3 e A na 1-6
+  const c5 = consolidarAluno({ bim: 1, fases: fasesComNome, aval: { ...todasA, f3: { mencoes: { EMT1ADM103: 'PA' } } }, fech: { diretas: { EMT1ADM702: 'A' } } });
+  assert.match(rascunhoFeedback(c5, {}, { fases: fasesComNome }).hab, /iniciou com resultado parcial na fase 1-3 e avançou para um resultado adequado na fase 1-6, mostrando evolução/);
+  // participação parcial usa a atitude que mais apareceu nos pontos de atenção
+  const c6 = consolidarAluno({ bim: 1, fases, aval: todasA, fech: {}, registros: [{ tipoAtitude: 'atencao', marca: 'Foco em resultados', texto: 'Entregou fora do prazo' }] });
+  assert.equal(rascunhoFeedback(c6, {}, { fases }).part, 'A participação foi parcial; houve registros como: entregou fora do prazo. Para avançar, precisa cumprir os prazos combinados e revisar as entregas antes de concluir.');
   // o que o professor salvou prevalece, e o parágrafo final junta os campos preenchidos
   const fb = feedbackDoAluno(c, { ...fech, feedback: { obs: 'Ótima evolução.', revisado: true } }, { fases });
   assert.equal(fb.campos.obs, 'Ótima evolução.');
@@ -54,7 +65,7 @@ test('rascunho de feedback com as frases da coordenação', () => {
   assert.ok(paragrafoFinal(fb.campos).endsWith('Ótima evolução.'));
   // competência em ND gera a proposta para o próximo bimestre
   const c4 = consolidarAluno({ bim: 1, fases, aval: todasA, fech: { diretas: { EMT1ADM702: 'NA' } } });
-  assert.match(rascunhoFeedback(c4, { diretas: { EMT1ADM702: 'NA' } }, { fases }).proposta, /^Para evidenciar a evolução na competência 7/);
+  assert.match(rascunhoFeedback(c4, { diretas: { EMT1ADM702: 'NA' } }, { fases }).proposta, /^No próximo bimestre, haverá novas oportunidades de evidenciar a evolução na competência 7, pois o caderno e a trilha de Excel continuam o ano todo\./);
 });
 
 test('planilha .xlsx no formato da coordenação', () => {
@@ -97,4 +108,21 @@ test('PCTD .docx com uma linha por semana', () => {
   const corpo = strFromU8(docx['word/document.xml']);
   assert.match(corpo, /Semana \/ Período/);
   assert.match(corpo, /w:orient="landscape"/);
+});
+
+test('recuperação incluída pelo professor e semana do PCTD editada', async () => {
+  const { precisaDeRecuperacao } = await import('../src/fechamento.js');
+  const { semanasDoBimestre } = await import('../src/documentos.js');
+  const fech = { diretas: { EMT1ADM702: 'A' }, recup: { EMT1ADM103: { vai: true, incluida: true } } };
+  const c = consolidarAluno({ bim: 1, fases, aval: todasA, fech });
+  assert.deepEqual(precisaDeRecuperacao(c, fech).map((h) => [h.cod, h.nivel]), [['EMT1ADM103', 'incluída por você']]);
+  assert.equal(precisaDeRecuperacao(c, {}).length, 0);
+  const dias = new Map([['2027-02-02', { data: '2027-02-02', itens: [{ tipo: 'din', faseId: 'f2' }], semAula: null }]]);
+  const p = { b: { inicio: '2027-02-01', fim: '2027-02-12' }, todas: fases, ag: { itens: [] }, dias };
+  const sem = semanasDoBimestre({ p, roteiro: () => [], marcas: [], habsDoBim: ['EMT1ADM102'], editadas: { 1: { como: 'Do meu jeito.' } } });
+  assert.equal(sem.length, 2);
+  assert.equal(sem[0].campos.como, 'Do meu jeito.');
+  assert.deepEqual(sem[0].editados, ['como']);
+  assert.equal(sem[0].resumo, '1-2 dinâmica');
+  assert.equal(sem[1].resumo, 'sem aula de FTP');
 });

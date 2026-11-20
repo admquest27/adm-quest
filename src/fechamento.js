@@ -1,6 +1,6 @@
 // Fechamento do bimestre: consolida as menções de cada aluno, calcula as competências, aponta quem precisa
 // de recuperação e monta os rascunhos de feedback. Funções puras (o professor sempre decide; o jogo só sugere).
-import { FRASES, colunasPlanilha, HABILIDADES } from './catalogo.js';
+import { colunasPlanilha, HABILIDADES, TEMAS } from './catalogo.js';
 
 // Mapa de lançamento: o que entra na planilha da coordenação em cada bimestre (parte de FTP).
 export const MAPA = {
@@ -64,12 +64,15 @@ export function sugerirAtitude(registros = []) {
   let mencao = 'A';
   if (aten.length >= 3 && aten.length > 2 * pos.length) mencao = 'NA';
   else if (aten.length && pos.length < 2 * aten.length) mencao = 'PA';
-  const maisFrequente = (lista) => {
+  const maisFrequente = (lista, campo = 'texto') => {
     const n = {};
-    for (const r of lista) n[r.texto] = (n[r.texto] ?? 0) + 1;
+    for (const r of lista) if (r[campo]) n[r[campo]] = (n[r[campo]] ?? 0) + 1;
     return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
   };
-  return { mencao, positivos: pos.length, atencao: aten.length, semRegistro: !registros.length, destaque: maisFrequente(pos), desenvolver: maisFrequente(aten) };
+  return {
+    mencao, positivos: pos.length, atencao: aten.length, semRegistro: !registros.length,
+    destaque: maisFrequente(pos), desenvolver: maisFrequente(aten), marcaAtencao: maisFrequente(aten, 'marca'),
+  };
 }
 
 export function consolidarAluno({ bim, fases, aval, fech, entrada, datas, registros }) {
@@ -116,15 +119,21 @@ export function impactos(mapa, habs, comps, atitude = 'A') {
   return saida;
 }
 
-// Quem entra na lista da recuperação: NA recomenda, PA é opcional (o professor decide).
-export function precisaDeRecuperacao(c) {
-  return Object.values(c.habs).filter((h) => ['PA', 'NA'].includes(h.avaliada) || (h.semEvidencia && h.faltas.length))
-    .map((h) => ({ ...h, nivel: h.avaliada === 'NA' || !h.avaliada ? 'recomendada' : 'opcional' }));
+// Quem entra na lista da recuperação: NA recomenda, PA é opcional (o professor decide). O professor também
+// pode incluir qualquer aluno em qualquer habilidade ("incluída por você").
+export function precisaDeRecuperacao(c, fech) {
+  return Object.values(c.habs)
+    .filter((h) => ['PA', 'NA'].includes(h.avaliada) || (h.semEvidencia && h.faltas.length) || fech?.recup?.[h.cod]?.vai)
+    .map((h) => {
+      const sugerida = ['PA', 'NA'].includes(h.avaliada) || (h.semEvidencia && h.faltas.length);
+      return { ...h, nivel: !sugerida ? 'incluída por você' : h.avaliada === 'NA' || !h.avaliada ? 'recomendada' : 'opcional' };
+    });
 }
 
 // Sugestão de tarefa de recuperação, a partir do critério A da fase mais recente que avaliou a habilidade.
 export function sugestaoRecuperacao(cod, fases, habsDescricao) {
   const f = [...fases].filter((x) => (x.habilidades ?? []).includes(cod)).sort((a, b) => ordemDaFase(b) - ordemDaFase(a))[0];
+  if (cod === 'EMT1ADM702') return 'Completar e organizar o caderno, com o registro de todas as fases do bimestre, com orientação individual.';
   if (!f) return `Atividade individual de ${habsDescricao?.[cod] ? habsDescricao[cod].toLowerCase() : 'recuperação'}, com orientação do professor.`;
   const ev = f.evidencias?.[cod] ? `Refazer ${minuscula(f.evidencias[cod])}` : `Refazer a evidência da fase ${f.codigo}`;
   const a = f.criterios?.[cod]?.A;
@@ -140,42 +149,120 @@ export function textoRecuperacao(habs, fech) {
 }
 
 // ---------- rascunhos de feedback (os cinco campos da planilha) ----------
-const descr = (cod, desc) => minuscula(semPonto(desc?.[cod] ?? HABILIDADES[cod] ?? cod));
+// Escritos no estilo do professor: parágrafo corrido, citando as atividades pelo nome, o que ficou adequado,
+// o que ficou parcial, a evolução ao longo do bimestre e o próximo passo. Sem o nome do aluno.
+const descr = (cod) => TEMAS[cod] ?? minuscula(semPonto(HABILIDADES[cod] ?? cod));
+const emLista = (itens) => (itens.length < 2 ? itens.join('') : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`);
+const semAcento = (s) => (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+// O que desenvolver, pela atitude que mais apareceu nos pontos de atenção.
+const DESENVOLVER = {
+  colaborativa: 'participar de forma mais ativa do grupo e dividir as responsabilidades até a conclusão',
+  critica: 'justificar as escolhas com argumentos e conferir as informações antes de aceitar',
+  empreendedora: 'tomar a iniciativa e persistir diante das dificuldades',
+  sustentavel: 'cuidar dos materiais e do espaço coletivo',
+  resultados: 'cumprir os prazos combinados e revisar as entregas antes de concluir',
+  tecnico: 'usar os conceitos e o vocabulário da área com mais segurança e manter o caderno completo',
+};
+const desenvolverDe = (marca) => Object.entries(DESENVOLVER).find(([k]) => semAcento(marca).includes(k))?.[1]
+  ?? 'aproveitar melhor o tempo de aula e cumprir os combinados';
+
+// Como cada competência continua nos bimestres seguintes (para a proposta de quem ficou em ND).
+const CONTINUA = {
+  EMT1ADM1: 'o planejamento estratégico será retomado no evento do próximo mundo, com novas situações para planejar e acompanhar ações',
+  EMT1ADM2: 'recrutamento e seleção voltam no guia dos calouros do último mundo',
+  EMT1ADM3: 'desenvolvimento de pessoas e cargos e salários continuam no 4º bimestre',
+  EMT1ADM4: 'qualidade de vida e segurança continuam presentes nas atividades práticas do ano',
+  EMT1ADM5: 'as rotinas de pessoal continuam nas atividades de documentos e arquivo',
+  EMT1ADM6: 'a folha de pagamento continua com o holerite e os cálculos do 4º bimestre',
+  EMT1ADM7: 'o caderno e a trilha de Excel continuam o ano todo',
+};
+
+const TEXTO_DIRETA = {
+  EMT1ADM702: { A: 'O caderno ficou completo e organizado.', PA: 'O caderno ficou parcialmente organizado e precisa de mais regularidade nos registros.', NA: 'O caderno ficou incompleto, sem os registros pedidos ao longo do bimestre.' },
+};
 
 export function rascunhoFeedback(c, fech, { fases = [], habsDescricao } = {}) {
-  const lista = Object.values(c.habs);
-  const feitas = lista.filter((h) => h.avaliada);
-  const todas = feitas.length === lista.length;
-  const F = FRASES.avaliacao;
-  let hab;
-  if (!feitas.length) hab = F.nenhuma;
-  else if (feitas.every((h) => h.avaliada === 'A')) hab = todas ? F.todas : F.parteAtingiu;
-  else if (feitas.every((h) => h.avaliada === 'NA')) hab = todas ? F.todasNao : F.parteNao;
-  else hab = todas ? F.todasParcial : F.parteParcial;
-  const bem = feitas.filter((h) => h.avaliada === 'A' && feitas.some((x) => x.avaliada !== 'A'));
-  const avancar = feitas.filter((h) => h.avaliada !== 'A');
-  if (bem.length) hab += ` Foi bem em ${bem.map((h) => descr(h.cod, habsDescricao)).join('; ')}.`;
-  if (avancar.length) hab += ` Precisa avançar em ${avancar.map((h) => descr(h.cod, habsDescricao)).join('; ')}.`;
+  const faseDe = (id) => fases.find((f) => f.id === id);
+  const nomeFase = (e) => { const f = faseDe(e.fase); return `${e.codigo}${f?.nome ? ` (${f.nome})` : ''}`; };
+  const fasesTxt = (itens) => { const u = [...new Set(itens.map(nomeFase))]; return `${u.length > 1 ? 'nas fases' : 'na fase'} ${emLista(u)}`; };
 
+  // evidências fase a fase (sem a recuperação, que tem campo próprio)
+  const itens = Object.values(c.habs).flatMap((h) => h.evid.filter((e) => e.m || e.faltou).map((e) => ({ ...e, cod: h.cod })))
+    .sort((a, b) => a.ordem - b.ordem);
+  const ok = itens.filter((e) => e.m === 'A');
+  const parc = itens.filter((e) => e.m === 'PA');
+  const na = itens.filter((e) => e.m === 'NA');
+  const faltou = itens.filter((e) => !e.m && e.faltou);
+  const diretas = Object.values(c.habs).filter((h) => h.origem === 'direta' || (h.avaliada && !h.evid.length));
+  const todasA = Object.values(c.habs).every((h) => h.avaliada === 'A');
+  const frases = [];
+  const total = itens.length + diretas.length;
+  if (!total) frases.push('Ainda não apresentou evidências suficientes para demonstrar as habilidades do bimestre.');
+  else if (todasA && !parc.length && !na.length) frases.push('Apresentou desempenho consistente em todo o percurso do bimestre.');
+  else if ((na.length + faltou.length) * 2 >= total) frases.push('Não apresentou evidências suficientes para demonstrar as habilidades centrais do bimestre.');
+  else if (!na.length && parc.length <= ok.length) frases.push('Apresentou bom domínio das habilidades do bimestre.');
+  else frases.push('Apresentou evidências parciais das habilidades do bimestre.');
+
+  const habsDe = (lista) => emLista([...new Set(lista.map((e) => descr(e.cod)))]);
+  if (ok.length) frases.push(`Atendeu às expectativas ${fasesTxt(ok)}, demonstrando domínio de ${habsDe(ok)}.`);
+  if (parc.length) frases.push(`${fasesTxt(parc).replace(/^n/, 'N')}, o resultado foi parcial em ${habsDe(parc)}, indicando oportunidade de aprofundar esse ponto.`);
+  if (na.length) frases.push(`${fasesTxt(na).replace(/^n/, 'N')}, a evidência ainda não demonstrou domínio de ${habsDe(na)}.`);
+  if (faltou.length) frases.push(`${fasesTxt(faltou).replace(/^n/, 'N')}, não houve evidência por causa da ausência.`);
+
+  // evolução: começou parcial e chegou ao A numa fase seguinte
+  for (const h of Object.values(c.habs)) {
+    const com = h.evid.filter((e) => e.m);
+    const i = com.findIndex((e) => e.m !== 'A');
+    const j = com.findLastIndex((e) => e.m === 'A');
+    if (i >= 0 && j > i) frases.push(`Em ${descr(h.cod)}, iniciou com resultado ${com[i].m === 'PA' ? 'parcial' : 'insuficiente'} na fase ${com[i].codigo} e avançou para um resultado adequado na fase ${com[j].codigo}, mostrando evolução.`);
+  }
+  for (const h of diretas) frases.push(TEXTO_DIRETA[h.cod]?.[h.avaliada] ?? `Em ${descr(h.cod)}, o resultado foi ${h.avaliada === 'A' ? 'adequado' : h.avaliada === 'PA' ? 'parcial' : 'insuficiente'}.`);
+
+  const fraca = Object.values(c.habs).find((h) => h.avaliada === 'NA' || h.semEvidencia) ?? Object.values(c.habs).find((h) => h.avaliada === 'PA');
+  if (fraca) frases.push(`O próximo passo é ganhar segurança em ${descr(fraca.cod)}.`);
+  else if (total) frases.push('As evidências mostram que consegue aplicar os conceitos do bimestre em situações diferentes.');
+  const hab = frases.join(' ');
+
+  // recuperação
   const recup = Object.entries(fech?.recup ?? {})
     .filter(([cod, r]) => r?.vai && c.habs[cod])
-    .map(([cod, r]) => `Atividade proposta: ${minuscula(semPonto(r.proposta ?? sugestaoRecuperacao(cod, fases, habsDescricao)))}. ${r.resultado ? FRASES.recuperacao[r.resultado] : r.naoFez ? FRASES.recuperacao.nao : 'Recuperação em andamento.'}`)
-    .join(' ');
+    .map(([cod, r]) => {
+      const oQue = descr(cod);
+      const prop = `Foi oferecida uma atividade de recuperação: ${minuscula(semPonto(r.proposta || sugestaoRecuperacao(cod, fases, habsDescricao)))}.`;
+      if (r.naoFez) return `${prop} A atividade não foi entregue, por isso não houve nova evidência para verificar a evolução em ${oQue}.`;
+      if (r.resultado === 'A') return `${prop} Com ela, apresentou uma nova evidência e passou a demonstrar domínio de ${oQue}, o que antes não havia sido alcançado.`;
+      if (r.resultado === 'PA') return `${prop} A nova evidência mostrou avanço parcial em ${oQue}.`;
+      if (r.resultado === 'NA') return `${prop} Mesmo com a nova oportunidade, a evidência ainda não demonstrou domínio de ${oQue}.`;
+      return `${prop} A recuperação está em andamento.`;
+    }).join(' ');
 
+  // participação, atitudes e valores
   const av = c.atitude ?? { mencao: 'A' };
-  let part = FRASES.participacao[av.mencao] ?? FRASES.participacao.A;
-  if (av.destaque) part += ` Destaque: ${minuscula(semPonto(av.destaque))}.`;
-  if (av.desenvolver && av.mencao !== 'A') part += ` Precisa desenvolver: ${minuscula(semPonto(av.desenvolver))}.`;
+  const part = [];
+  if (av.mencao === 'NA') {
+    part.push('A participação e o acompanhamento das atividades foram insuficientes para garantir a continuidade da aprendizagem.');
+    part.push(`É necessário ${desenvolverDe(av.marcaAtencao)}, aproveitar de forma mais efetiva o tempo de aula e assumir uma responsabilidade concreta nas atividades em grupo.`);
+  } else if (av.mencao === 'PA') {
+    part.push(`A participação foi parcial${av.desenvolver ? `; houve registros como: ${minuscula(semPonto(av.desenvolver))}` : ''}.`);
+    part.push(`Para avançar, precisa ${desenvolverDe(av.marcaAtencao)}.`);
+  } else {
+    part.push('Manteve boa participação e responsabilidade ao longo do bimestre.');
+    if (av.destaque) part.push(`Um ponto forte registrado: ${minuscula(semPonto(av.destaque))}.`);
+    part.push('É importante manter essa constância nas próximas propostas.');
+  }
 
+  // proposta para quem ficou em ND
   const nd = Object.values(c.comps).filter((k) => k.final === 'ND');
   const proposta = nd.length
     ? nd.map((k) => {
-      const fracas = k.habs.filter((h) => c.habs[h].final === 'NA' || c.habs[h].final === 'PA');
-      return `Para evidenciar a evolução na competência ${curto(k.comp)} no próximo bimestre: ${fracas.map((h) => minuscula(sugestaoRecuperacao(h, fases, habsDescricao))).join(' ') || 'retomar as atividades com acompanhamento individual.'}`;
+      const fracas = k.habs.filter((h) => c.habs[h].final === 'NA' || c.habs[h].final === 'PA' || !c.habs[h].final);
+      const como = fracas.map((h) => minuscula(semPonto(sugestaoRecuperacao(h, fases, habsDescricao)))).join('; ');
+      return `No próximo bimestre, haverá novas oportunidades de evidenciar a evolução na competência ${curto(k.comp)}, pois ${CONTINUA[k.comp] ?? 'o tema continua sendo trabalhado'}.${como ? ` Como primeiro passo, a proposta é: ${como}.` : ''} Essas novas etapas permitirão retomar os conteúdos, aplicá-los em situações diferentes e apresentar novas evidências de aprendizagem.`;
     }).join(' ')
     : '';
 
-  return { hab, recup, part, obs: '', proposta };
+  return { hab, recup, part: part.join(' '), obs: '', proposta };
 }
 
 // Valor de cada campo: o que o professor salvou ou o rascunho.

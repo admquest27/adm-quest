@@ -100,30 +100,6 @@ export const CAMPOS_FEEDBACK = [
   { id: 'proposta', rotulo: 'Se a menção for ND, proposta para evidenciar a evolução no próximo bimestre' },
 ];
 
-// Frases padrão da coordenação (aba TEXTOS da planilha), com a menção que cada uma sugere.
-export const FRASES = {
-  avaliacao: {
-    todas: 'Realizou as atividades avaliativas previstas e atingiu os objetivos propostos.',
-    parteAtingiu: 'Realizou parte das atividades avaliativas e atingiu os objetivos propostos.',
-    todasParcial: 'Realizou as atividades avaliativas e atingiu parcialmente os objetivos propostos.',
-    parteParcial: 'Realizou parte das atividades avaliativas e atingiu parcialmente os objetivos propostos.',
-    nenhuma: 'Não realizou as atividades avaliativas previstas.',
-    todasNao: 'Realizou as atividades avaliativas mas não atingiu os objetivos propostos.',
-    parteNao: 'Realizou parte das atividades avaliativas e não atingiu os objetivos propostos.',
-  },
-  recuperacao: {
-    A: 'Realizou a recuperação proposta e atingiu os objetivos que antes não tinham sido alcançados.',
-    PA: 'Realizou a recuperação proposta e atingiu parcialmente os objetivos.',
-    NA: 'Realizou a recuperação proposta, entretanto, continuou sem atingir os objetivos.',
-    nao: 'Não realizou a recuperação proposta.',
-  },
-  participacao: {
-    A: 'Participa adequadamente das atividades propostas e colabora com o bom andamento da aula.',
-    PA: 'Participa adequadamente das atividades propostas, mas precisa se atentar às regras estabelecidas para o bom andamento da aula.',
-    NA: 'Não participa adequadamente e precisa se atentar às regras estabelecidas para o bom andamento da aula.',
-  },
-};
-
 // Letras de coluna do Excel (0 -> A, 26 -> AA).
 export function coluna(i) {
   let s = '';
@@ -143,3 +119,29 @@ export function colunasPlanilha() {
   cols.push({ tipo: 'final' });
   return cols;
 }
+
+// Nome curto de cada habilidade, para os textos de feedback ("demonstrando domínio de ...").
+export const TEMAS = {
+  EMT1ADM101: 'análise de dados e instrumentos de pesquisa',
+  EMT1ADM102: 'planos de ação',
+  EMT1ADM103: 'teorias da administração',
+  EMT1ADM104: 'cultura organizacional',
+  EMT1ADM105: 'ferramentas de gestão',
+  EMT1ADM201: 'divulgação de vagas e triagem de currículos',
+  EMT1ADM202: 'organização do recrutamento e da seleção',
+  EMT1ADM203: 'documentos do recrutamento e da seleção',
+  EMT1ADM301: 'organização de treinamentos',
+  EMT1ADM302: 'registro de treinamento e avaliação de desempenho',
+  EMT1ADM303: 'planos de cargos e salários',
+  EMT1ADM304: 'documentos de gestão de pessoas',
+  EMT1ADM401: 'ações de qualidade de vida e segurança',
+  EMT1ADM402: 'documentação de acidentes de trabalho',
+  EMT1ADM403: 'eventos de qualidade de vida e segurança',
+  EMT1ADM501: 'prontuário do colaborador',
+  EMT1ADM502: 'processo demissional',
+  EMT1ADM601: 'cadastro de colaboradores',
+  EMT1ADM602: 'documentos da folha de pagamento',
+  EMT1ADM603: 'cálculos da folha de pagamento',
+  EMT1ADM701: 'documentos e planilhas no computador',
+  EMT1ADM702: 'organização de documentos',
+};

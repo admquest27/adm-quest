@@ -687,3 +687,17 @@ dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
 .fc-nav { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
 .fc-nav select { flex: 1; min-width: 0; }
 .fc-paragrafo { background: var(--campo); border-radius: 10px; padding: 10px 12px; line-height: 1.45; }
+/* ---------- PCTD na Agenda ---------- */
+.pc-semanas { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.pc-semana { border: 1px solid var(--borda); border-radius: 10px; background: var(--cartao); overflow: hidden; }
+.pc-semana.aberta { border-color: var(--ok); }
+.pc-sem-topo { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; width: 100%; text-align: left; background: var(--campo); border: 0; padding: 8px 10px; cursor: pointer; color: inherit; font: inherit; }
+.pc-resumo { flex-basis: 100%; font-size: 0.85rem; color: var(--suave); }
+.pc-ver { display: block; margin: 0; padding: 6px 10px 10px; font-size: 0.88rem; }
+.pc-ver dt, .pc-ver dd { display: block; width: auto; float: none; grid-column: auto; }
+.pc-ver dt { font-weight: 700; margin-top: 6px; color: var(--suave); font-size: 0.8rem; }
+.pc-ver dd { margin: 2px 0 0; line-height: 1.4; }
+.pc-semana .form { padding: 8px 10px 10px; }
+.pc-avs { padding-left: 1.3em; margin: 0 0 8px; display: grid; gap: 6px; font-size: 0.9rem; }
+.pc-mud { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
+.fc-outro-bim { border-top: 1px dashed var(--borda); margin-top: 8px; }

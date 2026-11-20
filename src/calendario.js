@@ -212,7 +212,7 @@ function chipsDoDia(p, st, d, max = 3) {
 }
 
 // ---------- peças da tela ----------
-function seletorBimestre(p) {
+export function seletorBimestre(p) {
   return `<div class="marcas">${p.cal.bimestres.map((b) => `<button class="mini ${b.id === p.b.id ? 'ok cheio' : ''}" data-acao="cal-bim" data-id="${b.id}">${esc(b.nome)}</button>`).join('')}</div>
     <p class="nota">${formatar(p.b.inicio)} a ${formatar(p.b.fim)} · fechamento ${formatar(p.b.fechamento)} · as tarefas terminam até ${formatar(p.ag.limite)}</p>`;
 }

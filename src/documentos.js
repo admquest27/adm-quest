@@ -86,7 +86,9 @@ const ONDE = { din: 'na sala', cons: 'no laboratório', antes: 'preparação', f
 
 // Uma linha por semana do bimestre, como um cronograma.
 // p: plano da Agenda (planejar); roteiro(f, tipo): blocos da aula; marcas: atitudes do jogo.
-export function semanasDoBimestre({ p, roteiro, marcas, professores, habsDoBim }) {
+// Os campos editados pelo professor (editadas[n][campo]) substituem os automáticos.
+export const CAMPOS_SEMANA = [['hab', 'Habilidade (verbo)'], ['oque', 'O quê? Recorte da habilidade e saberes'], ['como', 'Como? Descrição das etapas'], ['aval', 'Avaliação (instrumentos)'], ['atit', 'Atitudes e Valores esperados']];
+export function semanasDoBimestre({ p, roteiro, marcas, habsDoBim, editadas = {} }) {
   const b = p.b;
   const linhas = [];
   let n = 0;
@@ -94,18 +96,23 @@ export function semanasDoBimestre({ p, roteiro, marcas, professores, habsDoBim }
     const sex = addDias(seg, 4);
     n += 1;
     const dias = [...p.dias.values()].filter((d) => d.data >= seg && d.data <= sex).sort((a, z) => a.data.localeCompare(z.data));
-    const habs = new Set(); const oque = []; const como = []; const aval = []; const atit = new Set();
+    const habs = new Set(); const oque = []; const como = []; const aval = []; const atit = new Set(); const resumo = [];
     for (const d of dias) {
       const quando = `${DIA[diaSemana(d.data)] ?? ''} ${dm(d.data)}`;
-      if (d.semAula) { if ([p.diaDin ?? 2, p.diaCons ?? 1].includes(diaSemana(d.data))) como.push(`${quando}: sem aula, ${semPonto(d.semAula)}.`); continue; }
+      if (d.semAula) {
+        if ([p.diaDin ?? 2, p.diaCons ?? 1].includes(diaSemana(d.data))) { resumo.push(`sem aula ${dm(d.data)}`); como.push(`${quando}: sem aula, ${semPonto(d.semAula)}.`); }
+        continue;
+      }
       for (const it of d.itens) {
         const f = it.faseId ? p.todas.find((x) => x.id === it.faseId) : null;
         if (it.tipo === 'recup') {
+          resumo.push(it.parte === 'seg' ? 'recuperação' : 'fechamento do mundo');
           como.push(`${quando}: ${it.parte === 'seg' ? 'Semana de recuperação: Missões Pessoais (recuperação individual ou missão bônus) e registro dos resultados.' : 'Fechamento do mundo: últimas entregas da recuperação e encerramento do bimestre.'}`);
           if (it.parte === 'seg') aval.push('Recuperação: Missão Pessoal individual, com o critério A da habilidade.');
           continue;
         }
         if (!f) continue;
+        resumo.push(`${f.codigo} ${{ din: 'dinâmica', cons: 'consolidação', antes: 'preparação', folga: 'coringa' }[it.tipo] ?? it.tipo}`);
         if (it.tipo === 'din' || it.tipo === 'cons') {
           for (const h of f.habilidades ?? []) if (habsDoBim.includes(h)) habs.add(h);
           for (const m of marcasDaFase(f, marcas)) atit.add(`${m.nome}: ${m.positivas.slice(0, 2).map((t) => t.charAt(0).toLowerCase() + t.slice(1)).join('; ')}.`);
@@ -129,15 +136,16 @@ export function semanasDoBimestre({ p, roteiro, marcas, professores, habsDoBim }
       }
     }
     if (!dias.length) como.push('Sem aula de FTP planejada nesta semana.');
-    linhas.push([
-      `Semana ${n}\n${dm(seg)} a ${dm(sex)}`,
-      professores ?? '',
-      [...habs].sort().map((h) => `${curto(h)}: ${verboDe(h)}`).join('\n'),
-      oque.join('\n'),
-      como.join('\n'),
-      aval.join('\n') || 'Formativa: registros de atitude e participação no jogo.',
-      [...atit].join('\n'),
-    ]);
+    const auto = {
+      hab: [...habs].sort().map((h) => `${curto(h)}: ${verboDe(h)}`).join('\n'),
+      oque: oque.join('\n'),
+      como: como.join('\n'),
+      aval: aval.join('\n') || 'Formativa: registros de atitude e participação no jogo.',
+      atit: [...atit].join('\n'),
+    };
+    const ed = editadas[n] ?? {};
+    const campos = Object.fromEntries(Object.keys(auto).map((k) => [k, typeof ed[k] === 'string' ? ed[k] : auto[k]]));
+    linhas.push({ n, seg, sex, periodo: `${dm(seg)} a ${dm(sex)}`, resumo: [...new Set(resumo)].join(' · ') || 'sem aula de FTP', auto, campos, editados: Object.keys(auto).filter((k) => typeof ed[k] === 'string' && ed[k] !== auto[k]) });
   }
   return linhas;
 }
@@ -192,7 +200,7 @@ export function pctdFtp({ bim, turmaNome, ano, p, roteiro, marcas, cfg = {}, mun
     ] },
     { tipo: 'tabela', cabecalho: 1, colunas: [2.3, 2.2, 2.8, 5.4, 7, 3.2, 3.8], linhas: [
       ['Semana / Período', 'Professor', 'Habilidade (Verbo)', 'O quê? Recorte da habilidade e saberes', 'Como? Descrição das etapas', 'Avaliação (Instrumentos)', 'Atitudes e Valores esperados'],
-      ...semanasDoBimestre({ p, roteiro, marcas, professores, habsDoBim }),
+      ...semanasDoBimestre({ p, roteiro, marcas, habsDoBim, editadas: cfg.semanas }).map((w) => [`Semana ${w.n}\n${w.periodo}`, professores, w.campos.hab, w.campos.oque, w.campos.como, w.campos.aval, w.campos.atit]),
     ] },
   ];
   return blocos;
