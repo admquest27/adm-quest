@@ -14,7 +14,7 @@ import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
 import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
 import { htmlVotacaoProfessor, tratarVotacao } from './votacoes.js';
-import { htmlFechamento, tratarFechamento } from './fechamentoProfessor.js';
+import { htmlFechamento, tratarFechamento, mudarFechamento } from './fechamentoProfessor.js';
 import { fazerBackup, htmlAvisoBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './backup.js';
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
@@ -179,6 +179,8 @@ export function iniciarProfessor(user, opcoes = {}) {
     }
     const ativo = document.activeElement;
     if (st.aba === 'mais' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
+    // não redesenhar enquanto o professor escreve um feedback, uma recuperação ou os dados do PCTD
+    if (st.aba === 'fechar' && ativo?.closest?.('.fc-edita')) return;
     const faseProj = st.projetando && st.fases.find((x) => x.id === st.faseSel && x.tipo === 'chefao');
     if (faseProj) { tela(htmlProjecao(st, faseProj, turmaAtual()), 'pagina projetar'); return; }
     const pend = pendentesTotal();
@@ -538,6 +540,8 @@ export function iniciarProfessor(user, opcoes = {}) {
   app.onchange = async (e) => {
     try {
       if (await mudarConfigGrupos(e.target, st)) return;
+      const fc = await mudarFechamento(e.target, st);
+      if (fc) { if (fc === 'desenhar') desenhar(); return; }
       if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); st.faseSel = null; ligarTurma(); ligarProf(); desenhar(); }
       else if (e.target.dataset?.estado) {
         const novo = e.target.value;

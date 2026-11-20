@@ -51,10 +51,13 @@ test('recuperação e ajuste do professor', () => {
   assert.equal(c.comps.EMT1ADM1.final, 'D');
   assert.equal(c.comps.EMT1ADM7.regra, 'ED');
   assert.equal(c.comps.EMT1ADM7.final, 'D');
-  assert.equal(textoRecuperacao(c.habs, fech), 'EMT1ADM102: Refez o plano a partir da SWOT. Resultado: A.');
-  const linha = linhasParaColar(1, [{ aluno: { numeroChamada: 3, apelido: 'Ana' }, c, fech }]);
-  assert.equal(linha.split('\t').length, 11);
-  assert.ok(linha.startsWith('3\tAna\tA\tA\tA\tA\tA\tPA\tD\tD\t'));
+  assert.equal(textoRecuperacao(c.habs, fech), '102: Refez o plano a partir da SWOT. Resultado: A.');
+  // menções no formato da planilha: comp. 1 (101-105, AV, final), 2 a 6 em branco, comp. 7 (701 em branco, 702, AV, final)
+  const linha = linhasParaColar(1, [{ aluno: { numeroChamada: 3, apelido: 'Ana' }, c, campos: {} }], { comNumero: true }).split('\t');
+  assert.equal(linha.length, 2 + 7 + 5 + 6 + 5 + 4 + 5 + 4);
+  assert.deepEqual(linha.slice(0, 9), ['3', 'Ana', 'A', 'A', 'A', 'A', 'A', 'A', 'D']);
+  assert.deepEqual(linha.slice(-4), ['', 'PA', 'A', 'D']);
+  assert.ok(linha.slice(9, -4).every((v) => v === ''));
 });
 
 test('quem entrou depois só conta o que veio a partir da entrada', () => {

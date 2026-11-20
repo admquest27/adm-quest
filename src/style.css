@@ -657,4 +657,33 @@ dialog.folha { width: min(96vw, 640px); max-height: 92vh; }
 .fech-mencoes { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: 0.85rem; }
 .fech-mencoes .par { white-space: nowrap; }
 .fech-mencoes .sep { flex-basis: 100%; height: 0; }
-.chip.sem-evid { background: var(--campo); color: var(--suave); border: 1px dashed var(--borda); }
+.chip.sem-evid { background: var(--campo); color: var(--suave); border: 1px dashed var(--borda); }.chip.m-D { border-color: #1a7f4b; color: #1a7f4b; background: color-mix(in srgb, #1a7f4b 16%, var(--cartao)); font-weight: 700; }
+.chip.m-ED { border-color: #b7791f; color: #b7791f; background: color-mix(in srgb, #e0a800 22%, var(--cartao)); font-weight: 700; }
+.chip.m-ND { border-color: #b42318; color: #b42318; background: color-mix(in srgb, #b42318 16%, var(--cartao)); font-weight: 700; }
+.chip.sugerida { border-style: dashed; background: var(--cartao); }
+.fc-passos { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; position: sticky; top: 0; z-index: 2; background: var(--fundo, #fff); padding: 6px 0; }
+.fc-bloco { border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; background: var(--cartao); margin: 10px 0; }
+.fc-bloco h3 { margin-top: 0; }
+.fc-comp p { margin: 6px 0 4px; }
+.fc-habs { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 4px; font-size: 0.9rem; }
+.fc-habs .chip { min-width: 2.6em; text-align: center; }
+.fc-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--borda); border-radius: 10px; background: var(--cartao); }
+.fc-grade { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
+.fc-grade th, .fc-grade td { border-bottom: 1px solid var(--borda); padding: 5px 4px; text-align: center; white-space: nowrap; }
+.fc-grade thead th { background: var(--campo); font-weight: 700; }
+.fc-grade th.fc-g { border-left: 2px solid var(--borda); }
+.fc-grade .fc-final { background: color-mix(in srgb, var(--campo) 60%, var(--cartao)); }
+.fc-grade .fc-nome { text-align: left; position: sticky; left: 0; background: var(--cartao); max-width: 9.5em; overflow: hidden; text-overflow: ellipsis; }
+.fc-grade thead .fc-nome { background: var(--campo); }
+.fc-grade tbody tr { cursor: pointer; }
+.fc-grade tbody tr:hover td { background: var(--campo); }
+.fc-grade .chip { padding: 1px 6px; }
+.fc-grade sup { color: var(--suave); }
+.fc-legenda .chip { padding: 0 5px; }
+.fc-rec { border: 1px solid var(--borda); border-radius: 10px; padding: 8px 10px; background: var(--cartao); }
+.fc-rec-hab { border-top: 1px dashed var(--borda); margin-top: 8px; padding-top: 6px; }
+.fc-rec-hab p { margin: 4px 0; }
+.fc-rec-hab textarea, .fc-rec-hab select { width: 100%; }
+.fc-nav { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
+.fc-nav select { flex: 1; min-width: 0; }
+.fc-paragrafo { background: var(--campo); border-radius: 10px; padding: 10px 12px; line-height: 1.45; }
