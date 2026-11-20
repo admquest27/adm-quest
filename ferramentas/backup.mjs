@@ -12,7 +12,7 @@ import { randomBytes, scryptSync, createCipheriv, createDecipheriv } from 'node:
 
 const COLECOES = [
   'turmas', 'codigos', 'alunos', 'mundos', 'fases', 'fasesProfessor', 'progresso', 'avaliacoes', 'comentarios', 'anotacoes',
-  'calendario', 'planos', 'economia', 'carteiras', 'compras', 'perfis', 'grupos', 'vagas', 'votacoes', 'votos', 'chaves', 'acertos',
+  'calendario', 'planos', 'economia', 'carteiras', 'compras', 'perfis', 'grupos', 'vagas', 'votacoes', 'votos', 'chaves', 'acertos', 'fechamentos',
 ];
 const ID_E_TURMA = new Set(['turmas', 'planos']);
 const args = process.argv.slice(2);

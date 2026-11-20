@@ -25,7 +25,7 @@ export function htmlGrupos(st, { atv, cfg, faseId, ativos, titulo, mostrarConfig
     return `<li class="grupo-card">
       <div class="grupo-topo">${ehGuilda && g.escudo ? svgEscudo(g.escudo, 32) : ''}<strong>${ehGuilda ? esc(nomeGuilda(g)) : `Grupo ${i + 1}`}</strong> <span class="nota">${g.membros.length} integrante(s)</span></div>
       <div class="chips-membros">${g.membros.map((u) => `<span class="chip">${esc(apelido(st, u))} <button class="x" data-acao="gr-tirar" data-g="${esc(g.id)}" data-uid="${esc(u)}" aria-label="Tirar ${esc(apelido(st, u))} do grupo">×</button></span>`).join('')}
-        ${(g.convites ?? []).map((u) => `<span class="chip pendente">${esc(apelido(st, u))} (convidado)</span>`).join('')}</div>
+        ${(g.convites ?? []).map((u) => `<span class="chip convidado">${esc(apelido(st, u))} (convidado)</span>`).join('')}</div>
       ${ehGuilda && p ? `<div class="proposta"><span class="nota">Proposta:</span> ${svgEscudo(p.escudo, 28)} <strong>${esc(p.nome)}</strong> <span class="nota">${p.confirmacoes.length}/${g.membros.length} confirmaram${todos ? '' : ' (dá para aprovar mesmo assim)'}</span>
         <div class="linha-btn"><button class="mini ok" data-acao="gr-aprovar" data-g="${esc(g.id)}">Aprovar nome e escudo</button><button class="mini" data-acao="gr-recusar-prop" data-g="${esc(g.id)}">Recusar</button></div></div>` : ''}
       <div class="linha-btn">
@@ -176,7 +176,7 @@ function dialogoMencao(st, dlg, g, faseId) {
       <p>Vale para: ${presentes.map((u) => esc(apelido(st, u))).join(', ') || 'ninguém presente'}.</p>
       ${ausentes.length ? `<p class="nota">Fica de fora quem faltou: ${ausentes.map((u) => esc(apelido(st, u))).join(', ')}.</p>` : ''}
       ${habs.map((cod) => `<p><strong>${esc(cod)}</strong>${(f.porGrupo ?? []).includes(cod) ? ' <span class="chip">avaliada em grupo</span>' : ''}</p>
-        <div class="mencoes-botoes">${['A', 'PA', 'NA'].map((m) => `<button type="button" class="mini ${escolha[cod] === m ? `m-${m} cheio` : ''}" data-hab="${esc(cod)}" data-m="${m}">${m}</button>`).join('')}</div>`).join('')}
+        <div class="mencoes-botoes">${['A', 'PA', 'NA'].map((m) => `<button type="button" class="mini ${escolha[cod] === m ? `m-${m} sel` : ''}" data-hab="${esc(cod)}" data-m="${m}">${m}</button>`).join('')}</div>`).join('')}
       <p class="nota">Depois, dá para mudar a menção de um aluno só, pelo botão Menção dele.</p>
       <p class="erro" id="gm-msg"></p>
       <div class="linha-btn"><button class="botao" id="gm-ok" ${Object.keys(escolha).length && presentes.length ? '' : 'disabled'}>Aplicar a ${presentes.length} aluno(s)</button><button class="botao secundario" id="gm-fechar">Fechar</button></div></div>`;

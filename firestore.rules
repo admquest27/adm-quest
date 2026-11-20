@@ -401,6 +401,11 @@ service cloud.firestore {
       allow delete: if ehProfessor();
     }
 
+    // Fechamento do bimestre (menções consolidadas, ajustes, recuperação, feedback): só o professor.
+    match /fechamentos/{id} {
+      allow read, write: if ehProfessor();
+    }
+
     // Configurações do professor (data do último backup): só ele.
     match /config/{id} {
       allow read, write: if ehProfessor();

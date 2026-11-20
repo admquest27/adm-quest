@@ -14,6 +14,7 @@ import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
 import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
 import { htmlVotacaoProfessor, tratarVotacao } from './votacoes.js';
+import { htmlFechamento, tratarFechamento } from './fechamentoProfessor.js';
 import { fazerBackup, htmlAvisoBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './backup.js';
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
@@ -147,6 +148,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     dosAlunos('comentarios', (s) => { st.comentarios = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
     paradasTurma.push(onSnapshot(doc(db, 'planos', st.turma), (s) => { st.plano = s.exists() ? s.data() : null; desenhar(); }, () => {}));
     dosAlunos('anotacoes', (s) => { st.anotacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
+    dosAlunos('fechamentos', (s) => { st.fechamentos = Object.fromEntries(s.docs.map((d) => [d.id, d.data()])); desenhar(); });
     dosAlunos('votacoes', (s) => { st.votacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); });
     dosAlunos('votos', (s) => { st.votos = s.docs.map((d) => d.data()); desenhar(); });
     dosAlunos('acertos', (s) => { st.acertos = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); });
@@ -181,8 +183,8 @@ export function iniciarProfessor(user, opcoes = {}) {
     if (faseProj) { tela(htmlProjecao(st, faseProj, turmaAtual()), 'pagina projetar'); return; }
     const pend = pendentesTotal();
     const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlSecaoBackup(st.cfgBackup, st.previaBackup)}<hr>${htmlConteudo()}`;
-    const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['mais', 'Mais']];
+    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : aba === 'fechar' ? htmlFechamento(st, ativosDaTurma(), turmaAtual()) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlSecaoBackup(st.cfgBackup, st.previaBackup)}<hr>${htmlConteudo()}`;
+    const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['fechar', 'Fechar'], ['mais', 'Mais']];
     tela(
       `<header class="topo">
         <strong>ADM Quest</strong>
@@ -486,6 +488,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         falha(`Backup restaurado: ${n} documento(s).`);
         return;
       }
+      if (acao.startsWith('fc-')) { await tratarFechamento(acao, b, { st, dlg, ativos: ativosDaTurma(), turma: turmaAtual(), desenhar }); return; }
       if (acao.startsWith('vt-')) { await tratarVotacao(acao, b, st); return; }
       if (acao.startsWith('cs-')) { if ((await tratarCastelo(acao, b, st, falha)) === 'desenhar') desenhar(); return; }
       if (acao.startsWith('gr-')) { await tratarGrupos(acao, b, { st, dlg, ativos: ativosDaTurma(), falha }); return; }

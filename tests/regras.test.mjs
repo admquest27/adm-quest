@@ -520,3 +520,8 @@ test('restauração: o professor recria cadastro, progresso, compras, votos e ba
   await assertFails(getDoc(doc(aluno('ativo1'), 'config/backup')));
   await assertFails(setDoc(doc(aluno('ativo1'), 'progresso/ativo1_m1f2'), { uid: 'ativo1', turma: '1A', fase: 'm1f2', tarefas: {}, concluida: false, atualizadoEm: serverTimestamp() }));
 });
+test('fechamento: só o professor lê e escreve', async () => {
+  await assertSucceeds(setDoc(doc(prof(), 'fechamentos/1A_1_ativo1'), { turma: '1A', bim: 1, uid: 'ativo1', diretas: { EMT1ADM702: 'A' } }));
+  await assertFails(getDoc(doc(aluno('ativo1'), 'fechamentos/1A_1_ativo1')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'fechamentos/1A_1_ativo1'), { diretas: { EMT1ADM702: 'A' } }));
+});
