@@ -347,6 +347,59 @@ service cloud.firestore {
                 || !getAfter(/databases/$(database)/documents/grupos/$(resource.data.grupo)).data.membros.hasAny([request.auth.uid])));
     }
 
+    // ---------- Votações (cenário das bifurcações, nome do reino) ----------
+    // O professor abre e encerra; a turma lê. Cada aluno tem um voto por votação (id votacao_uid),
+    // que pode mudar enquanto ela está aberta. Ninguém vê o voto do colega; o resultado é publicado pelo professor.
+    match /votacoes/{vid} {
+      allow read: if ehProfessor() || (ativo() && resource.data.turma == meuAluno().turma);
+      allow write: if ehProfessor();
+    }
+
+    function votacao(vid) {
+      return get(/databases/$(database)/documents/votacoes/$(vid)).data;
+    }
+
+    match /votos/{id} {
+      allow read: if ehProfessor() || (logado() && resource.data.uid == request.auth.uid);
+      allow create, update: if ativo()
+        && request.resource.data.keys().hasOnly(['uid', 'turma', 'votacao', 'opcao', 'em'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.votacao is string
+        && id == request.resource.data.votacao + '_' + request.auth.uid
+        && request.resource.data.turma == meuAluno().turma
+        && votacao(request.resource.data.votacao).turma == meuAluno().turma
+        && votacao(request.resource.data.votacao).estado == 'aberta'
+        && votacao(request.resource.data.votacao).opcoesIds.hasAny([request.resource.data.opcao])
+        && request.resource.data.em == request.time;
+      allow delete: if ehProfessor();
+    }
+
+    // ---------- Castelo do chefão: baús com código ----------
+    // O código certo de cada baú existe só como id de documento em "chaves" (fase_bau_CODIGO), que nenhum aluno lê.
+    // A guilda abre o baú criando um "acerto"; a regra confere se a chave existe. Errar só recusa a gravação.
+    match /chaves/{id} {
+      allow read, write: if ehProfessor();
+    }
+
+    match /acertos/{id} {
+      allow read: if ehProfessor() || (ativo() && resource.data.turma == meuAluno().turma);
+      allow create: if ativo()
+        && request.resource.data.keys().hasOnly(['turma', 'fase', 'bau', 'grupo', 'codigo', 'uid', 'em'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.turma == meuAluno().turma
+        && request.resource.data.fase is string && request.resource.data.bau is string
+        && request.resource.data.grupo is string
+        && request.resource.data.codigo is string && request.resource.data.codigo.matches('^[A-Z0-9]{1,20}$')
+        && id == request.resource.data.turma + '_' + request.resource.data.fase + '_' + request.resource.data.bau + '_' + request.resource.data.grupo
+        && estadoFase(request.resource.data.turma, request.resource.data.fase) == 'aberta'
+        && get(/databases/$(database)/documents/grupos/$(request.resource.data.grupo)).data.membros.hasAny([request.auth.uid])
+        && get(/databases/$(database)/documents/grupos/$(request.resource.data.grupo)).data.turma == meuAluno().turma
+        && exists(/databases/$(database)/documents/chaves/$(request.resource.data.fase + '_' + request.resource.data.bau + '_' + request.resource.data.codigo))
+        && request.resource.data.em == request.time;
+      allow update: if false;
+      allow delete: if ehProfessor();
+    }
+
     // AdmBux: loja, conquistas e valores. O aluno ativo lê; só o professor altera.
     match /economia/{id} {
       allow read: if ehProfessor() || ativo();

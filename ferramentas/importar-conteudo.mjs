@@ -53,6 +53,12 @@ if (flag !== '--confirmar') {
 }
 
 const m = json.mundo;
+// os códigos dos baús são cadastrados pelo professor na tela: o arquivo não os conhece, então eles são mantidos
+const codigosAtuais = {};
+for (const f of json.fases) {
+  const p = (await db.collection('fasesProfessor').doc(f.id).get()).data()?.professor;
+  if (p?.codigos) codigosAtuais[f.id] = p.codigos;
+}
 const lote = db.batch();
 lote.set(db.collection('mundos').doc(mundoId), {
   nome: m.nome ?? '', ordem: m.ordem ?? 1, pergunta: m.pergunta ?? '', competencias: m.competencias ?? [],
@@ -61,7 +67,8 @@ lote.set(db.collection('mundos').doc(mundoId), {
 for (const f of json.fases) {
   // set sem merge: substitui o documento inteiro, removendo campos antigos (instrucoes, tarefas)
   lote.set(db.collection('fases').doc(f.id), { ...parteAluno(f, mundoId), atualizadoEm: FieldValue.serverTimestamp() });
-  lote.set(db.collection('fasesProfessor').doc(f.id), { mundo: mundoId, professor: f.professor ?? {}, atualizadoEm: FieldValue.serverTimestamp() });
+  const professor = { ...(f.professor ?? {}), ...(codigosAtuais[f.id] ? { codigos: codigosAtuais[f.id] } : {}) };
+  lote.set(db.collection('fasesProfessor').doc(f.id), { mundo: mundoId, professor, atualizadoEm: FieldValue.serverTimestamp() });
 }
 for (const id of sobras) { lote.delete(db.collection('fases').doc(id)); lote.delete(db.collection('fasesProfessor').doc(id)); }
 await lote.commit();

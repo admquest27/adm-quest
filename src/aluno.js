@@ -6,6 +6,9 @@ import { FANTASIAS, TONS, imgAvatar } from './avatar.js';
 import { htmlCartao } from './cartao.js';
 import { calcularCarteira, CONQUISTAS, podeComprar } from './economia.js';
 import { htmlCarteira, visual, avatarComMoldura, conquistasNovas } from './carteira.js';
+import { htmlVotacaoAluno, votar } from './votacoes.js';
+import { htmlCasteloAluno, abrirBau } from './castelo.js';
+import { htmlTutorial, htmlNovidade, jaViu, marcarVisto, TUTORIAL } from './tutorial.js';
 import { ATV_GUILDA, configDaFase, configGuilda, atividadeDaFase, grupoDe, convitesPara, svgEscudo, nomeGuilda } from './grupos.js';
 import {
   htmlFormacao, htmlGuilda, criarGrupo, aceitarConvite, recusarConvite, convidarMais, sairDoGrupo, desfazerGrupo, proporNome, confirmarProposta,
@@ -23,7 +26,8 @@ export function iniciarAluno(user, opcoes = {}) {
     dados: null, editandoAvatar: false, acesso: false, escolha: { fantasia: 'heroi', tom: 2 },
     turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
     eco: null, carteira: null, compras: null, naCarteira: false,
-    grupos: [], perfis: {}, naGuilda: false, montando: null, rascunho: null, perfilEnviado: '',
+    grupos: [], perfis: {}, naGuilda: false, montando: null, rascunho: null, perfilEnviado: '', tutorial: null,
+    votacoes: [], meusVotos: {}, acertos: [],
   };
   let paradasAtivo = [];
 
@@ -46,7 +50,7 @@ export function iniciarAluno(user, opcoes = {}) {
   function ligarDados() {
     if (paradasAtivo.length) return;
     // não redesenha enquanto o aluno digita o nome da guilda (perderia o foco)
-    const redesenha = () => { if (st.dados?.status === 'ativo' && document.activeElement?.id !== 'gd-nome') desenhar(); };
+    const redesenha = () => { if (st.dados?.status === 'ativo' && document.activeElement?.id !== 'gd-nome' && !document.activeElement?.dataset?.codigo) desenhar(); };
     const turma = st.dados.turma;
     paradasAtivo = [
       onSnapshot(doc(db, 'turmas', turma), (s) => { st.turma = s.exists() ? s.data() : null; redesenha(); }, () => {}),
@@ -76,6 +80,9 @@ export function iniciarAluno(user, opcoes = {}) {
         st.grupos = s.docs.map((d) => ({ id: d.id, ...d.data() }));
         redesenha();
       }, () => {}),
+      onSnapshot(query(collection(db, 'votacoes'), where('turma', '==', turma)), (s) => { st.votacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); redesenha(); }, () => {}),
+      onSnapshot(query(collection(db, 'votos'), where('uid', '==', alvo)), (s) => { st.meusVotos = Object.fromEntries(s.docs.map((d) => [d.data().votacao, d.data()])); redesenha(); }, () => {}),
+      onSnapshot(query(collection(db, 'acertos'), where('turma', '==', turma)), (s) => { st.acertos = s.docs.map((d) => ({ id: d.id, ...d.data() })); redesenha(); }, () => {}),
       onSnapshot(query(collection(db, 'perfis'), where('turma', '==', turma)), (s) => {
         st.perfis = Object.fromEntries(s.docs.map((d) => [d.id, d.data()]));
         redesenha();
@@ -144,6 +151,8 @@ export function iniciarAluno(user, opcoes = {}) {
     ligarDados();
     if ((!st.dados.avatar || st.editandoAvatar) && !ver) return telaAvatar();
     sincronizarPerfil();
+    if (!ver && st.tutorial === null && !jaViu(`admq-tut-${alvo}`)) st.tutorial = 0;
+    if (st.tutorial !== null) return mostrar(`<section class="cartao largo">${htmlTutorial(st.tutorial)}</section>`, 'centro alto');
     const rec = st.turma?.recursos ?? {};
     if (st.naCarteira && rec.admbux) return telaCarteira();
     if (st.naGuilda && rec.guildas) return telaGuilda();
@@ -179,6 +188,9 @@ export function iniciarAluno(user, opcoes = {}) {
     const novas = ver || !rec.admbux ? [] : conquistasNovas(alvo, c.conquistas).novas;
     const minhaGuilda = grupoDe(st.grupos, ATV_GUILDA, alvo);
     const pendentes = st.grupos.filter((g) => g.convites?.includes(alvo) && !grupoDe(st.grupos, g.atividade, alvo));
+    const novidades = ver ? '' : ['admbux', 'guildas'].filter((id) => rec[id] && !jaViu(`admq-nov-${alvo}-${id}`)).map((id) => htmlNovidade(id, { saldo: c.saldo })).join('');
+    // votações abertas e resultados de fases que ainda vão abrir
+    const votos = st.votacoes.filter((v) => v.estado === 'aberta' || (v.vencedora && (estados[v.fase] ?? 'trancada') === 'trancada')).map((v) => htmlVotacaoAluno(v, st.meusVotos[v.id], ver)).join('');
     const avisoConvite = pendentes.length ? `<p class="banner">Você tem ${pendentes.length === 1 ? 'um convite' : `${pendentes.length} convites`} para entrar num grupo. ${pendentes.map((g) => (g.atividade === ATV_GUILDA ? (rec.guildas ? 'Veja em Guilda.' : '') : `Veja na fase ${esc(st.fases.find((f) => f.id === g.atividade)?.codigo ?? '')}.`)).join(' ')}</p>` : '';
     const avisoConq = novas.length ? `<div class="conquista-nova" role="status"><span class="trofeu" aria-hidden="true">🏆</span><div><strong>Conquista desbloqueada!</strong>${novas.map((id) => `<p>${esc(conq[id]?.nome ?? id)}: ${esc(conq[id]?.texto ?? '')} (+${c.V.conquista} AdmBux)</p>`).join('')}</div><button id="ok-conquista" class="mini">Legal!</button></div>` : '';
     const recados = gerais.length ? `<h2>Recados do professor</h2><ul class="lista">${gerais.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
@@ -192,12 +204,12 @@ export function iniciarAluno(user, opcoes = {}) {
           ${rec.guildas ? `<button id="abrir-guilda" class="mini guilda-btn" aria-label="Minha guilda">${minhaGuilda?.escudo ? svgEscudo(minhaGuilda.escudo, 18) : '🛡️'} Guilda</button>` : ''}
           ${ver ? '' : '<button id="trocar" class="mini">Avatar</button>'}</div>
         </div>
-        ${avisoConvite}
+        ${novidades}${avisoConvite}${votos}
         <h2>${esc(st.mundo?.nome ?? 'Vila dos Planos')}</h2>
         <ul class="lista">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
         ${excelAbertos ? `<h2>Trilha de Excel</h2><ul class="lista">${excelAbertos}</ul>` : ''}
         ${recados}
-        ${ver ? '' : '<button id="sair" class="botao secundario">Sair</button>'}
+        ${ver ? '' : '<button id="ver-tutorial" class="link-btn">Como funciona o jogo</button><button id="sair" class="botao secundario">Sair</button>'}
       </section>`,
       'centro alto'
     );
@@ -210,8 +222,17 @@ export function iniciarAluno(user, opcoes = {}) {
     const a = st.aval[f.id];
     mostrar(htmlCartao({
       f, p: st.progresso[f.id], a, est, turma: st.turma, mundo: st.mundo, recados: st.recados, ver,
-      editavel: !ver && podeEditar(est, a), aviso: st.aviso, grupoHtml: blocoGrupo(f),
+      editavel: !ver && podeEditar(est, a), aviso: st.aviso, grupoHtml: blocoExtra(f, est) + blocoGrupo(f),
     }), 'centro alto');
+  }
+
+  // Resultado da votação do cenário e, no chefão, o castelo com os baús.
+  function blocoExtra(f, est) {
+    let html = '';
+    const v = st.votacoes.find((x) => x.fase === f.id);
+    if (v) html += htmlVotacaoAluno(v, st.meusVotos[v.id], ver);
+    if (f.tipo === 'chefao') html += htmlCasteloAluno({ f, fases: st.fases, estados: st.turma?.estadoFases, grupos: st.grupos, acertos: st.acertos, eu: alvo, ver, est });
+    return html;
   }
 
   // Bloco "Seu grupo" no cartão da fase.
@@ -384,10 +405,24 @@ export function iniciarAluno(user, opcoes = {}) {
       if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; desenhar(); return; }
       if (b.id === 'abrir-carteira') { st.naCarteira = true; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
       if (b.id === 'voltar-carteira') { st.naCarteira = false; st.aviso = ''; desenhar(); return; }
+      if (b.id === 'tut-prox') { if (st.tutorial >= TUTORIAL.length - 1) { st.tutorial = null; marcarVisto(`admq-tut-${alvo}`); } else st.tutorial += 1; desenhar(); return; }
+      if (b.id === 'tut-pular') { st.tutorial = null; marcarVisto(`admq-tut-${alvo}`); desenhar(); return; }
+      if (b.id === 'ver-tutorial') { st.tutorial = 0; desenhar(); window.scrollTo(0, 0); return; }
+      if (b.dataset.novidade) { marcarVisto(`admq-nov-${alvo}-${b.dataset.novidade}`); desenhar(); return; }
       if (b.id === 'abrir-guilda') { st.naGuilda = true; st.montando = null; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
       if (b.id === 'voltar-guilda') { st.naGuilda = false; st.montando = null; st.aviso = ''; desenhar(); return; }
       if (ver) return;
       if (b.dataset.grupo) { await acaoGrupo(b); return; }
+      if (b.dataset.votar) { const v = st.votacoes.find((x) => x.id === b.dataset.votar); if (v) await votar(v, b.dataset.op, alvo, st.dados.turma); return; }
+      if (b.dataset.abrirBau) {
+        const f = st.fases.find((x) => x.id === st.faseAberta);
+        const codigo = document.querySelector(`[data-codigo="${b.dataset.abrirBau}"]`)?.value;
+        b.disabled = true;
+        const erro = await abrirBau({ f, bau: b.dataset.abrirBau, codigo, grupo: b.dataset.g, uid: alvo, turma: st.dados.turma });
+        b.disabled = false;
+        const m = document.getElementById('msg-bau'); if (m) m.textContent = erro;
+        return;
+      }
       if (b.dataset.escudo) {
         st.rascunho = { nome: '', forma: 'classico', cor1: '#3b5bdb', cor2: '#e0a800', simbolo: '⭐', ...(st.rascunho ?? {}) };
         st.rascunho.nome = document.getElementById('gd-nome')?.value ?? st.rascunho.nome;

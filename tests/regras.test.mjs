@@ -458,3 +458,53 @@ test('guilda: um integrante propõe nome e escudo, os outros confirmam, ninguém
   await assertFails(updateDoc(doc(aluno('ativo1'), 'grupos/gg'), { nome: 'Aprovado por mim' }));
   await assertSucceeds(updateDoc(doc(prof(), 'grupos/gg'), { nome: 'Os Planejadores' }));
 });
+// ---------- Votações ----------
+const semearVotacao = (estado = 'aberta') => env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore();
+  await setDoc(doc(db, 'votacoes/1A_m1f4'), { turma: '1A', fase: 'm1f4', pergunta: 'Onde?', opcoes: [{ id: 'ilha', texto: 'Ilha' }, { id: 'marte', texto: 'Marte' }], opcoesIds: ['ilha', 'marte'], estado });
+});
+const voto = (uid, opcao, vid = '1A_m1f4') => ({ uid, turma: '1A', votacao: vid, opcao, em: serverTimestamp() });
+
+test('votação: aluno da turma vota uma vez, pode mudar enquanto aberta, não vê o voto do colega', async () => {
+  await semearVotacao();
+  await assertSucceeds(getDoc(doc(aluno('ativo1'), 'votacoes/1A_m1f4')));
+  await assertFails(getDoc(doc(aluno('outro1'), 'votacoes/1A_m1f4')));
+  await assertSucceeds(setDoc(doc(aluno('ativo1'), 'votos/1A_m1f4_ativo1'), voto('ativo1', 'ilha')));
+  await assertSucceeds(setDoc(doc(aluno('ativo1'), 'votos/1A_m1f4_ativo1'), voto('ativo1', 'marte')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'votos/1A_m1f4_ativo1'), voto('ativo1', 'lua')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'votos/1A_m1f4_outro'), voto('ativo1', 'ilha')));
+  await assertFails(setDoc(doc(aluno('outro1'), 'votos/1A_m1f4_outro1'), { ...voto('outro1', 'ilha'), turma: '1B' }));
+  await assertFails(getDoc(doc(aluno('pend1'), 'votos/1A_m1f4_ativo1')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'votacoes/1A_m1f4'), { estado: 'fechada' }, { merge: true }));
+});
+
+test('votação encerrada não aceita voto', async () => {
+  await semearVotacao('fechada');
+  await assertFails(setDoc(doc(aluno('ativo1'), 'votos/1A_m1f4_ativo1'), voto('ativo1', 'ilha')));
+});
+// ---------- Castelo: baús com código ----------
+const semearCastelo = (estado = 'aberta') => env.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore();
+  await updateDoc(doc(db, 'turmas/1A'), { 'estadoFases.m1chefao': estado });
+  await setDoc(doc(db, 'alunos/ativo2'), { turma: '1A', codigo: 'ABC12', apelido: 'Duda', status: 'ativo' });
+  await setDoc(doc(db, 'grupos/gg'), { turma: '1A', atividade: 'guilda-m1', membros: ['ativo1'], convites: [], criador: 'ativo1' });
+  await setDoc(doc(db, 'chaves/m1chefao_b1_SAL42'), { fase: 'm1chefao', bau: 'b1' });
+});
+const acerto = (uid, codigo, extra = {}) => ({ turma: '1A', fase: 'm1chefao', bau: 'b1', grupo: 'gg', codigo, uid, em: serverTimestamp(), ...extra });
+
+test('castelo: código certo abre o baú da guilda; código errado, aluno de fora ou fase fechada não', async () => {
+  await semearCastelo();
+  await assertFails(getDoc(doc(aluno('ativo1'), 'chaves/m1chefao_b1_SAL42')));
+  await assertFails(getDocs(collection(aluno('ativo1'), 'chaves')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'acertos/1A_m1chefao_b1_gg'), acerto('ativo1', 'ERRADO')));
+  await assertFails(setDoc(doc(aluno('ativo2'), 'acertos/1A_m1chefao_b1_gg'), acerto('ativo2', 'SAL42'))); // não é da guilda
+  await assertSucceeds(setDoc(doc(aluno('ativo1'), 'acertos/1A_m1chefao_b1_gg'), acerto('ativo1', 'SAL42')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'acertos/1A_m1chefao_b1_gg'), acerto('ativo1', 'SAL42'))); // não regrava
+  await assertSucceeds(getDoc(doc(aluno('ativo2'), 'acertos/1A_m1chefao_b1_gg')));
+  await assertFails(getDoc(doc(aluno('outro1'), 'acertos/1A_m1chefao_b1_gg')));
+});
+
+test('castelo fechado não aceita código', async () => {
+  await semearCastelo('trancada');
+  await assertFails(setDoc(doc(aluno('ativo1'), 'acertos/1A_m1chefao_b1_gg'), acerto('ativo1', 'SAL42')));
+});

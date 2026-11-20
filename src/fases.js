@@ -108,6 +108,10 @@ export function parteAluno(f, mundo) {
     anexaA: f.anexaA ?? '',
     // como a fase trabalha em grupo: { tipo: 'guilda' | 'fase', tamanho } (o professor ajusta por turma)
     grupo: f.grupo ?? null,
+    // bifurcação: a votação do cenário { pergunta, opcoes: [{ id, texto }] }
+    votacao: f.votacao ?? null,
+    // chefão: os baús que a guilda abre com código (os códigos ficam só com o professor)
+    baus: f.baus ?? [],
   };
 }
 

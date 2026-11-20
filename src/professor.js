@@ -13,6 +13,8 @@ import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } f
 import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
 import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
+import { htmlVotacaoProfessor, tratarVotacao } from './votacoes.js';
+import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
 import { ATV_GUILDA, configGuilda } from './grupos.js';
 import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO } from './calendario.js';
@@ -140,6 +142,9 @@ export function iniciarProfessor(user, opcoes = {}) {
     dosAlunos('comentarios', (s) => { st.comentarios = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
     paradasTurma.push(onSnapshot(doc(db, 'planos', st.turma), (s) => { st.plano = s.exists() ? s.data() : null; desenhar(); }, () => {}));
     dosAlunos('anotacoes', (s) => { st.anotacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); if (registrosAbertos()) atualizarRegistros(); });
+    dosAlunos('votacoes', (s) => { st.votacoes = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); });
+    dosAlunos('votos', (s) => { st.votos = s.docs.map((d) => d.data()); desenhar(); });
+    dosAlunos('acertos', (s) => { st.acertos = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); });
     dosAlunos('grupos', (s) => { st.grupos = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); });
   }
 
@@ -167,6 +172,8 @@ export function iniciarProfessor(user, opcoes = {}) {
     }
     const ativo = document.activeElement;
     if (st.aba === 'mais' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
+    const faseProj = st.projetando && st.fases.find((x) => x.id === st.faseSel && x.tipo === 'chefao');
+    if (faseProj) { tela(htmlProjecao(st, faseProj, turmaAtual()), 'pagina projetar'); return; }
     const pend = pendentesTotal();
     const aba = st.aba;
     const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgenda(st) : aba === 'painel' ? htmlEstatisticas(st) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlConteudo()}`;
@@ -330,6 +337,8 @@ export function iniciarProfessor(user, opcoes = {}) {
       ${f.tipo === 'chefao' ? roteiroDia('din', 'Roteiro do dia do castelo') : `${roteiroDia('din', 'Roteiro da terça (dinâmica, na sala)')}${roteiroDia('cons', 'Roteiro da segunda (laboratório)')}`}
       ${material ? `<details class="roteiro"><summary>Material do professor (só você vê)</summary>${material}</details>` : ''}
       ${htmlLiberar}
+      ${htmlVotacaoProfessor(st, f, ativosDaTurma())}
+      ${htmlCasteloProfessor(st, f, turmaDoc)}
       ${htmlGruposDaFase(st, f, turmaDoc, ativosDaTurma())}
       <p class="resumo"><strong>${r.concluidas}</strong> de <strong>${r.presentes}</strong> presentes concluíram (${pct}%)${pct >= 80 ? ' · meta de 80% atingida' : ''}<br>
         <span class="nota">${r.validadas} validada(s) · ${r.faltas} faltou · ${r.total} aluno(s) ativo(s)</span></p>
@@ -457,6 +466,8 @@ export function iniciarProfessor(user, opcoes = {}) {
         await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, alternarSegunda: (id) => alternarLiberacaoItem('seg', id), irParaFase: (id) => { st.aba = 'fases'; st.faseSel = id; guardar('aba', 'fases'); ligarProf(); desenhar(); } });
         return;
       }
+      if (acao.startsWith('vt-')) { await tratarVotacao(acao, b, st); return; }
+      if (acao.startsWith('cs-')) { if ((await tratarCastelo(acao, b, st, falha)) === 'desenhar') desenhar(); return; }
       if (acao.startsWith('gr-')) { await tratarGrupos(acao, b, { st, dlg, ativos: ativosDaTurma(), falha }); return; }
       if (acao === 'recurso') { const r = turmaAtual()?.recursos?.[b.dataset.id] === true; await updateDoc(doc(db, 'turmas', st.turma), { [`recursos.${b.dataset.id}`]: !r }); return; }
       if (acao === 'exportar-painel') { abrirExportacao(st, dlg); return; }
@@ -585,7 +596,9 @@ export function iniciarProfessor(user, opcoes = {}) {
     });
     for (const f of json.fases) {
       lote.set(doc(db, 'fases', f.id), { ...parteAluno(f, m.id), atualizadoEm: serverTimestamp() });
-      lote.set(doc(db, 'fasesProfessor', f.id), { mundo: m.id, professor: f.professor ?? {}, atualizadoEm: serverTimestamp() });
+      // os códigos dos baús cadastrados na tela são mantidos (o arquivo não os conhece)
+      const codigos = st.profTodas?.[f.id]?.codigos;
+      lote.set(doc(db, 'fasesProfessor', f.id), { mundo: m.id, professor: { ...(f.professor ?? {}), ...(codigos ? { codigos } : {}) }, atualizadoEm: serverTimestamp() });
     }
     await lote.commit();
     st.importacao = null;
