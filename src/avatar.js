@@ -62,6 +62,7 @@ function camada(arq, anim, trocas, chave) {
 }
 
 // Monta a folha de uma animação (walk: 9 quadros x 4 direções de 64 px; idle: 2 x 4; jump: 5 x 4).
+// Resolve null quando alguma peça escolhida não tem a animação.
 // Direções nas linhas: 0 cima, 1 esquerda, 2 baixo, 3 direita.
 const folhas = new Map();
 export function folha(avBruto, anim = 'walk') {
@@ -78,9 +79,10 @@ async function montar(av, anim) {
     const lista = cat.grupos[g]; const p = lista.find((x) => x.id === av[g]) ?? lista[0];
     pecas.push({ ...p, grupo: g });
   }
+  // Se alguma peça não tem esta animação (as saias não têm pulo), devolve null e quem chamou usa outra.
+  if (pecas.some((p) => !p.anims.includes(anim))) return null;
   const camadas = [];
   for (const p of pecas) {
-    if (!p.anims.includes(anim)) continue;
     const trocas = []; const ids = [];
     for (const m of p.mats) {
       const id = m === 'body' ? av.pele : m === 'hair' ? av.corCabelo : m === 'eye' ? av.olhos : corDoGrupo[p.grupo];

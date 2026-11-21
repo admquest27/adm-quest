@@ -78,8 +78,10 @@ export function animarPrevia(estado) {
     try {
       g.clearRect(0, 0, 64, 64);
       if (estado.pulo > 0) {
-        const f = await folha(av, 'jump'); const q = Math.min(4, Math.floor((24 - estado.pulo) / 5));
-        g.drawImage(f, q * 64, dir * 64, 64, 64, 0, 0, 64, 64); estado.pulo--;
+        const f = await folha(av, 'jump'); const k = 24 - estado.pulo;
+        if (f) g.drawImage(f, Math.min(4, Math.floor(k / 5)) * 64, dir * 64, 64, 64, 0, 0, 64, 64);
+        else { const w = await folha(av, 'walk'); g.drawImage(w, 0, dir * 64, 64, 64, 0, -Math.round(Math.sin((k / 24) * Math.PI) * 10), 64, 64); }
+        estado.pulo--;
       } else {
         const f = await folha(av, 'walk'); const q = reduz ? 0 : 1 + (Math.floor(t / 6) % 8);
         g.drawImage(f, q * 64, dir * 64, 64, 64, 0, 0, 64, 64);
