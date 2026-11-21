@@ -2,7 +2,8 @@ import { signOut } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { app, tela, esc, carregando } from './ui.js';
-import { FANTASIAS, TONS, imgAvatar } from './avatar.js';
+import { normalizar, paraSalvar, sortear, PADRAO } from './avatar.js';
+import { htmlCriador, animarPrevia } from './criarAvatar.js';
 import { htmlCartao } from './cartao.js';
 import { criarMapaAluno } from './mapaAluno.js';
 import { calcularCarteira, CONQUISTAS, podeComprar } from './economia.js';
@@ -24,7 +25,7 @@ export function iniciarAluno(user, opcoes = {}) {
   const ver = Boolean(opcoes.uid);
   const ref = doc(db, 'alunos', alvo);
   const st = {
-    dados: null, editandoAvatar: false, acesso: false, escolha: { fantasia: 'heroi', tom: 2 },
+    dados: null, editandoAvatar: false, acesso: false, escolha: { ...PADRAO }, abaAv: 'corpo', prevAv: { escolha: { ...PADRAO }, giro: 0, pulo: 0 }, pedidoAv: 0,
     turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
     eco: null, carteira: null, compras: null, naCarteira: false,
     grupos: [], perfis: {}, naGuilda: false, montando: null, rascunho: null, perfilEnviado: '', tutorial: null,
@@ -343,26 +344,17 @@ export function iniciarAluno(user, opcoes = {}) {
   }
 
   function telaAvatar() {
-    const mestre = st.escolha.fantasia === 'mestre';
-    mostrar(
-      `<section class="cartao largo">
-        <h1>Escolha o seu avatar</h1>
-        <div class="avatar-grande">${imgAvatar(st.escolha, 'avatar g')}</div>
-        <p class="sub">${esc(FANTASIAS.find((f) => f.id === st.escolha.fantasia)?.nome ?? '')}</p>
-        <div class="grade-avatar" role="radiogroup" aria-label="Fantasia">
-          ${FANTASIAS.map((f) => `<button type="button" class="opcao ${f.id === st.escolha.fantasia ? 'sel' : ''}" data-f="${f.id}" aria-label="${esc(f.nome)}">${imgAvatar({ fantasia: f.id, tom: st.escolha.tom }, 'avatar')}</button>`).join('')}
-        </div>
-        ${mestre ? '<p class="nota">Esta fantasia tem pele própria.</p>' : `
-        <p class="sub">Cor da pele</p>
-        <div class="tons" role="radiogroup" aria-label="Cor da pele">
-          ${TONS.map((c, i) => `<button type="button" class="tom ${i === st.escolha.tom ? 'sel' : ''}" data-t="${i}" style="background:${c}" aria-label="Tom ${i + 1}"></button>`).join('')}
-        </div>`}
-        <p class="erro" id="msg"></p>
-        <button id="salvar" class="botao">Salvar avatar</button>
-        ${st.dados.avatar ? '<button id="cancelar" class="botao secundario">Voltar</button>' : ''}
-      </section>`,
-      'centro alto'
-    );
+    st.prevAv.escolha = st.escolha;
+    const pedido = ++st.pedidoAv;
+    const rolagem = window.scrollY; const painel = document.querySelector('.av-painel')?.scrollTop ?? 0; const mesmaTela = Boolean(document.querySelector('.criador'));
+    htmlCriador({ escolha: st.escolha, aba: st.abaAv, primeiraVez: !st.dados.avatar, erro: st.aviso })
+      .then((html) => {
+        if (pedido !== st.pedidoAv) return;
+        mostrar(html, 'centro alto');
+        if (mesmaTela) { window.scrollTo(0, rolagem); const p = document.querySelector('.av-painel'); if (p) p.scrollTop = painel; }
+        animarPrevia(st.prevAv);
+      })
+      .catch(() => mostrar('<section class="cartao"><h1>Não consegui abrir a criação do avatar</h1><p>Confira a conexão e tente de novo.</p><button id="av-tentar" class="botao">Tentar de novo</button></section>', 'centro'));
   }
 
   // ---------- ações (um único ouvinte para a tela inteira) ----------
@@ -452,15 +444,19 @@ export function iniciarAluno(user, opcoes = {}) {
       if (b.id === 'ok-conquista') { conquistasNovas(alvo, carteira().conquistas).marcar(); desenhar(); return; }
       if (b.dataset.comprar) { await comprar(b.dataset.comprar); return; }
       if (b.dataset.usar) { await usar(b.dataset.usar, b.dataset.tipo); return; }
-      if (b.id === 'trocar') { st.escolha = { ...st.dados.avatar }; st.editandoAvatar = true; desenhar(); return; }
-      if (b.dataset.f) { st.escolha.fantasia = b.dataset.f; telaAvatar(); return; }
-      if (b.dataset.t) { st.escolha.tom = Number(b.dataset.t); telaAvatar(); return; }
+      if (b.id === 'trocar') { st.escolha = normalizar(st.dados.avatar); st.abaAv = 'corpo'; st.editandoAvatar = true; desenhar(); return; }
+      if (b.dataset.avC) { st.escolha = { ...st.escolha, [b.dataset.avC]: b.dataset.avV }; telaAvatar(); return; }
+      if (b.dataset.avAba) { st.abaAv = b.dataset.avAba; telaAvatar(); return; }
+      if (b.dataset.avGiro) { st.prevAv.giro += Number(b.dataset.avGiro); return; }
+      if (b.dataset.avPulo) { st.prevAv.pulo = 24; return; }
+      if (b.id === 'av-surpresa') { st.escolha = await sortear(); telaAvatar(); return; }
+      if (b.id === 'av-tentar') { telaAvatar(); return; }
       if (b.id === 'cancelar') { st.editandoAvatar = false; desenhar(); return; }
       if (b.id === 'salvar') {
         const eraEdicao = st.editandoAvatar;
         st.editandoAvatar = false;
         try {
-          await updateDoc(ref, { avatar: { fantasia: st.escolha.fantasia, tom: st.escolha.tom } });
+          await updateDoc(ref, { avatar: paraSalvar(st.escolha) });
         } catch {
           st.editandoAvatar = eraEdicao;
           aviso('Não consegui salvar agora. Tente de novo.');

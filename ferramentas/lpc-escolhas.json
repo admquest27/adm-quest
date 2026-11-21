@@ -1,0 +1,93 @@
+{
+  "_sobre": "Peças do conjunto LPC usadas no avatar. A ferramenta lpc-catalogo.mjs lê as definições do gerador LPC e copia só estas peças para public/lpc. Ids nunca mudam depois de publicados (o banco guarda os ids).",
+  "corpo": "teen",
+  "animacoes": ["walk", "idle", "jump"],
+  "fixos": {
+    "corpo": "body/body.json"
+  },
+  "grupos": {
+    "rosto": [
+      ["a", "Rosto 1", "head/heads/human/heads_human_male.json"],
+      ["b", "Rosto 2", "head/heads/human/heads_human_female.json"],
+      ["c", "Rosto 3", "head/heads/human/heads_human_male_small.json"],
+      ["d", "Rosto 4", "head/heads/human/heads_human_female_small.json"],
+      ["e", "Rosto 5", "head/heads/human/heads_human_male_plump.json"],
+      ["f", "Rosto 6", "head/heads/human/heads_human_male_gaunt.json"]
+    ],
+    "nariz": [
+      ["botao", "Arrebitado", "head/nose/head_nose_button.json"],
+      ["reto", "Reto", "head/nose/head_nose_straight.json"],
+      ["grande", "Grande", "head/nose/head_nose_big.json"]
+    ],
+    "sobrancelha": [
+      ["fina", "Finas", "head/eyebrows/eyebrows_thin.json"],
+      ["grossa", "Grossas", "head/eyebrows/eyebrows_thick.json"]
+    ],
+    "cabelo": [
+      ["afro", "Black power", "hair/afro/hair_afro.json"],
+      ["natural", "Crespo natural", "hair/afro/hair_natural.json"],
+      ["nago", "Trança nagô", "hair/afro/hair_cornrows.json"],
+      ["dreadc", "Dread curto", "hair/afro/hair_dreadlocks_short.json"],
+      ["dreadl", "Dread longo", "hair/afro/hair_dreadlocks_long.json"],
+      ["twist", "Twist", "hair/afro/hair_twists_fade.json"],
+      ["flattop", "Flat top", "hair/afro/hair_flat_top_fade.json"],
+      ["raspado", "Raspado", "hair/bald/hair_buzzcut.json"],
+      ["degrade", "Degradê", "hair/bald/hair_high_and_tight.json"],
+      ["curto", "Curto liso", "hair/short/hair_plain.json"],
+      ["repartido", "Repartido", "hair/short/hair_parted.json"],
+      ["topete", "Topete", "hair/short/hair_cowlick.json"],
+      ["espetado", "Espetado", "hair/spiky/hair_spiked.json"],
+      ["baguncado", "Bagunçado", "hair/short/hair_messy1.json"],
+      ["despenteado", "Despenteado", "hair/short/hair_bedhead.json"],
+      ["franjalado", "Franja de lado", "hair/short/hair_swoop.json"],
+      ["cortina", "Cortina", "hair/short/hair_curtains.json"],
+      ["cuia", "Cuia", "hair/short/hair_mop.json"],
+      ["idol", "Idol", "hair/short/hair_idol.json"],
+      ["joaozinho", "Joãozinho", "hair/short/hair_pixie.json"],
+      ["franja", "Franja curta", "hair/short/hair_bangsshort.json"],
+      ["cachoc", "Cacheado curto", "hair/curly/hair_curly_short.json"],
+      ["cachol", "Cacheado longo", "hair/curly/hair_curly_long.json"],
+      ["chanel", "Chanel", "hair/bob/hair_bob.json"],
+      ["chanell", "Chanel longo", "hair/bob/hair_lob.json"],
+      ["coque", "Coque com franja", "hair/braids/hair_bangs_bun.json"],
+      ["rabo", "Rabo de cavalo", "hair/braids/hair_ponytail.json"],
+      ["raboalto", "Rabo alto", "hair/braids/hair_high_ponytail.json"],
+      ["tranca", "Trança", "hair/braids/hair_braid.json"],
+      ["chiquinha", "Maria-chiquinha", "hair/pigtails/hair_pigtails.json"],
+      ["solto", "Solto", "hair/long/hair_loose.json"],
+      ["liso", "Liso longo", "hair/long/hair_long_straight.json"],
+      ["longo", "Longo", "hair/long/hair_long.json"],
+      ["ondulado", "Ondulado", "hair/long/hair_wavy.json"],
+      ["longob", "Longo bagunçado", "hair/long/hair_long_messy.json"],
+      ["xlongo", "Bem longo", "hair/xlong/hair_xlong.json"]
+    ],
+    "cima": [
+      ["camiseta", "Camiseta", "torso/shirts/shortsleeve/torso_clothes_tshirt.json"],
+      ["gola-v", "Camiseta gola V", "torso/shirts/shortsleeve/torso_clothes_tshirt_vneck.json"],
+      ["decote", "Camiseta decote", "torso/shirts/shortsleeve/torso_clothes_tshirt_scoop.json"],
+      ["botoes", "Camisa curta", "torso/shirts/shortsleeve/torso_clothes_tshirt_buttoned.json"],
+      ["polo", "Polo", "torso/shirts/shortsleeve/torso_clothes_shortsleeve_polo.json"],
+      ["manga", "Manga longa", "torso/shirts/longsleeve/torso_clothes_longsleeve.json"],
+      ["polol", "Polo manga longa", "torso/shirts/longsleeve/torso_clothes_longsleeve2_polo.json"],
+      ["cardiga", "Cardigã", "torso/shirts/longsleeve/torso_clothes_longsleeve2_cardigan.json"],
+      ["regata", "Regata", "torso/shirts/sleeveless/torso_clothes_sleeveless2.json"]
+    ],
+    "baixo": [
+      ["calca", "Calça", "legs/pants/legs_pants.json"],
+      ["larga", "Calça larga", "legs/pants/legs_pants2.json"],
+      ["dobrada", "Calça dobrada", "legs/pants/legs_cuffed.json"],
+      ["social", "Calça social", "legs/pants/legs_formal.json"],
+      ["bermuda", "Bermuda", "legs/shorts/legs_shorts.json"],
+      ["legging", "Legging", "legs/leggings/legs_leggings.json"],
+      ["saia", "Saia", "legs/skirts/legs_skirts_plain.json"],
+      ["saiareta", "Saia reta", "legs/skirts/legs_skirt_straight.json"]
+    ],
+    "pes": [
+      ["sapato", "Sapato", "feet/shoes/feet_shoes_basic.json"],
+      ["tenis", "Tênis", "feet/shoes/feet_shoes_revised.json"],
+      ["bota", "Bota", "feet/boots/feet_boots_basic.json"],
+      ["sandalia", "Sandália", "feet/feet_sandals.json"],
+      ["sapatilha", "Sapatilha", "feet/feet_slippers.json"]
+    ]
+  }
+}

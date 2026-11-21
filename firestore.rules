@@ -60,6 +60,20 @@ service cloud.firestore {
       allow write: if ehProfessor();
     }
 
+    // Avatar montado por peças: só ids curtos (o desenho é feito no aparelho).
+    function campoAv(a, k) {
+      return a[k] is string && a[k].size() >= 1 && a[k].size() <= 20;
+    }
+    function avatarValido(a) {
+      return a is map
+        && a.keys().hasOnly(['v', 'pele', 'rosto', 'nariz', 'sobrancelha', 'olhos', 'cabelo', 'corCabelo', 'cima', 'corCima', 'baixo', 'corBaixo', 'pes', 'corPes'])
+        && a.keys().hasAll(['v', 'pele', 'rosto', 'nariz', 'sobrancelha', 'olhos', 'cabelo', 'corCabelo', 'cima', 'corCima', 'baixo', 'corBaixo', 'pes', 'corPes'])
+        && a.v == 2
+        && campoAv(a, 'pele') && campoAv(a, 'rosto') && campoAv(a, 'nariz') && campoAv(a, 'sobrancelha') && campoAv(a, 'olhos')
+        && campoAv(a, 'cabelo') && campoAv(a, 'corCabelo') && campoAv(a, 'cima') && campoAv(a, 'corCima')
+        && campoAv(a, 'baixo') && campoAv(a, 'corBaixo') && campoAv(a, 'pes') && campoAv(a, 'corPes');
+    }
+
     // Cadastro do aluno.
     match /alunos/{uid} {
       allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
@@ -88,13 +102,7 @@ service cloud.firestore {
             && resource.data.status == 'ativo'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['avatar', 'ultimoAcesso'])
             && (!('avatar' in request.resource.data.diff(resource.data).affectedKeys())
-                || (request.resource.data.avatar is map
-                    && request.resource.data.avatar.keys().hasOnly(['fantasia', 'tom'])
-                    && request.resource.data.avatar.fantasia is string
-                    && request.resource.data.avatar.fantasia.size() <= 20
-                    && request.resource.data.avatar.tom is int
-                    && request.resource.data.avatar.tom >= 0
-                    && request.resource.data.avatar.tom <= 5))
+                || avatarValido(request.resource.data.avatar))
             && (!('ultimoAcesso' in request.resource.data.diff(resource.data).affectedKeys())
                 || request.resource.data.ultimoAcesso == request.time));
 

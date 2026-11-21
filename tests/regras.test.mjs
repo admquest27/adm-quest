@@ -94,21 +94,25 @@ test('aluno lê só a turma em que está cadastrado', async () => {
   await assertFails(updateDoc(doc(aluno('ativo1'), 'turmas/1A'), { aberta: false }));
 });
 
+const AV = { v: 2, pele: 'olive', rosto: 'a', nariz: 'botao', sobrancelha: 'fina', olhos: 'brown', cabelo: 'curto', corCabelo: 'dark_brown', cima: 'camiseta', corCima: 'blue', baixo: 'calca', corBaixo: 'navy', pes: 'tenis', corPes: 'white' };
 test('aluno ativo altera só o avatar e o último acesso', async () => {
   const ref = doc(aluno('ativo1'), 'alunos/ativo1');
-  await assertSucceeds(updateDoc(ref, { avatar: { fantasia: 'heroi', tom: 2 } }));
+  await assertSucceeds(updateDoc(ref, { avatar: AV }));
   await assertSucceeds(updateDoc(ref, { ultimoAcesso: serverTimestamp() }));
   await assertFails(updateDoc(ref, { apelido: 'Outro' }));
   await assertFails(updateDoc(ref, { status: 'ativo', numeroChamada: 5 }));
   await assertFails(updateDoc(ref, { turma: '1B' }));
-  await assertFails(updateDoc(ref, { avatar: { fantasia: 'heroi', tom: 9 } }));
-  await assertFails(updateDoc(ref, { avatar: { fantasia: 'heroi', tom: 1, extra: true } }));
+  await assertFails(updateDoc(ref, { avatar: { fantasia: 'heroi', tom: 2 } }));
+  await assertFails(updateDoc(ref, { avatar: { ...AV, extra: 'x' } }));
+  await assertFails(updateDoc(ref, { avatar: { ...AV, cabelo: 'x'.repeat(21) } }));
+  await assertFails(updateDoc(ref, { avatar: { ...AV, pele: 3 } }));
+  const { corPes, ...faltando } = AV; await assertFails(updateDoc(ref, { avatar: faltando }));
 });
 
 test('aluno pendente não consegue se aprovar nem mexer no avatar', async () => {
   const ref = doc(aluno('pend1'), 'alunos/pend1');
   await assertFails(updateDoc(ref, { status: 'ativo' }));
-  await assertFails(updateDoc(ref, { avatar: { fantasia: 'heroi', tom: 1 } }));
+  await assertFails(updateDoc(ref, { avatar: AV }));
 });
 
 test('aluno não lê chamadas nem escreve nelas', async () => {
