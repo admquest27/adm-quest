@@ -53,7 +53,7 @@ const enfeite = (peca, x, y) => {
 };
 export const ENFEITES = [
   // Vila
-  ['casaLaranja', 8, 13], ['casaBege', 16, 13], ['casaLaranja2', 8, 19], ['loja', 14, 20], ['templo', 1, 9],
+  ['casaLaranja', 8, 13], ['casaBege', 16, 13], ['casaLaranja2', 8, 21], ['loja', 14, 20], ['templo', 1, 9],
   ['arvoreRedonda', 2, 12], ['arvoreClara', 12, 11], ['arvoreRosa', 20, 14], ['arvoreRedonda', 24, 9], ['arvoreClara', 24, 16],
   // deserto
   ['palmeira', 4, 4], ['palmeira', 11, 4], ['palmeira', 6, 8], ['palmeira', 12, 8],

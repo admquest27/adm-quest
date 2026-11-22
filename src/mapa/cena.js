@@ -57,12 +57,16 @@ class MapaCena extends Phaser.Scene {
     for (const n of Object.values(EMOTES)) this.load.image(`emote${n}`, `${b}emote/emote${n}.png`);
     const lpc = this.o.urls.lpc ?? b.replace(/na\/$/, 'lpc/');
     this.load.atlas('lpc', lpc + 'atlas.png', lpc + 'atlas.json');
+    this.load.spritesheet('galinhaL', lpc + 'bichos/galinha.png', { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet('gatoL', lpc + 'bichos/gato.png', { frameWidth: 32, frameHeight: 32 });
   }
 
   // Construção LPC com o pé no meio da base do retângulo da planta (x, y, w, h em peças)
   imagemLPC(x, y, w, h, quadro) {
     const by = (y + h) * P;
-    return this.add.image(x * P + (w * P) / 2, by, 'lpc', quadro).setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
+    const img = this.add.image(x * P + (w * P) / 2, by, 'lpc', quadro).setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
+    if (img.displayHeight > 40) (this.predios ??= []).push({ img, b: img.getBounds() });
+    return img;
   }
   portaLPC(img, def) { return [img.x - img.displayWidth / 2 + def.porta[0] * Q_ESCALA, img.y - img.displayHeight + def.porta[1] * Q_ESCALA]; }
 
@@ -135,6 +139,7 @@ class MapaCena extends Phaser.Scene {
       const lpcP = LPC_PECAS[e.peca];
       if (lpcP) {
         const img = this.imagemLPC(e.x, e.y, e.w, e.h, lpcP.quadro);
+        (this.telhados ??= []).push(img.getBounds());
         const [px] = this.portaLPC(img, lpcP);
         const i = nCasa++;
         this.interativos.push({ tipo: 'casa', id: i, nome: this.o.textos?.casas?.[i]?.nome, area: img.getBounds(), alvo: [Math.floor(px / P), e.y + e.h] });
@@ -195,6 +200,8 @@ class MapaCena extends Phaser.Scene {
     const a = (key, folha, frames, rate, repeat = -1) => { if (!this.anims.exists(key)) this.anims.create({ key, frames: this.anims.generateFrameNumbers(folha, { frames }), frameRate: rate, repeat }); };
     a('flor', 'flor', [0, 1, 2, 3], 4); a('ondas', 'ondas', [0, 1, 2, 3], 5); a('moinho', 'moinho', [0, 1, 2, 3], 8);
     a('bandeiraVermelha', 'bandeiraVermelha', [0, 1, 2, 3], 7); a('bandeiraBranca', 'bandeiraBranca', [0, 1, 2, 3], 7); a('bandeiraAmarela', 'bandeiraAmarela', [0, 1, 2, 3], 7);
+    // galinhas LPC (andando de lado; a cena espelha para o outro lado)
+    if (this.textures.exists('galinhaL')) { a('galinhaBranca', 'galinhaL', [4, 5, 6, 7], 8); a('galinhaMarrom', 'galinhaL', [4, 5, 6, 7], 8); }
     a('galinhaBranca', 'galinhaBranca', [0, 1], 6); a('galinhaMarrom', 'galinhaMarrom', [0, 1], 6); a('gato', 'gato', [0, 1], 2); a('sapo', 'sapo', [0, 1], 3); a('peixe', 'peixe', [0, 1], 6);
     for (const quem of Object.keys(PESSOAS)) for (const [dir, col] of Object.entries(DIRECOES)) a(`${quem}-${dir}`, quem, Array.from({ length: LINHAS[quem] ?? 4 }, (_, l) => l * 4 + col), LINHAS[quem] ? 4 : 8);
   }
@@ -394,7 +401,9 @@ class MapaCena extends Phaser.Scene {
       if (this.cameras.main.worldView.contains(o.img.x, o.img.y - 8)) this.brilhar(o.img.x + Phaser.Math.Between(-6, 6), o.img.y - o.img.displayHeight + Phaser.Math.Between(0, 8));
     } });
     const m = this.objetos.moinho.img; this.add.sprite(m.x, m.y - 26, 'moinho').setScale(0.5).setDepth(m.depth + 1).play('moinho');
-    const imp = this.objetos.impressora.img; this.add.sprite(imp.x, imp.y - 9, 'gato').setOrigin(0.5, 1).setDepth(imp.depth + 1).play('gato');
+    const imp = this.objetos.impressora.img;
+    if (this.textures.exists('gatoL')) { const gato = this.add.sprite(imp.x, imp.y - 7, 'gatoL', 7).setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(imp.depth + 1); this.tweens.add({ targets: gato, scaleY: Q_ESCALA * 1.06, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }); }
+    else this.add.sprite(imp.x, imp.y - 9, 'gato').setOrigin(0.5, 1).setDepth(imp.depth + 1).play('gato');
     const esc = this.objetos.escola.img; this.antena = this.add.image(esc.x + 21, esc.y - esc.height + 6, 'antena-0').setOrigin(0.5, 1).setDepth(esc.depth + 1);
     const cafe = this.objetos.porta.img;
     this.time.addEvent({ delay: 650, loop: true, callback: () => {
@@ -606,6 +615,12 @@ class MapaCena extends Phaser.Scene {
     }
   }
 
+  // Prédio alto fica transparente quando o avatar passa atrás dele
+  verAtras() {
+    const { x, y } = this.av;
+    for (const p of this.predios ?? []) { const atras = x > p.b.left + 3 && x < p.b.right - 3 && y < p.b.bottom - 6 && y > p.b.top + 4; const a = atras ? 0.45 : 1; if (p.img.alpha !== a) p.img.setAlpha(a); }
+  }
+
   quadroParado(g) { return g.lpc ? LINHA_LPC[g.dir] * 9 : DIRECOES[g.dir]; }
 
   moverGente(time, dt) {
@@ -642,14 +657,22 @@ class MapaCena extends Phaser.Scene {
     const gal = planta.PERSONAGENS.galinhas; const pom = planta.PERSONAGENS.pombo;
     const nova = (tipo, area, chave) => {
       const x = (area.x + Math.random() * area.w) * P; const y = (area.y + Math.random() * area.h) * P;
-      const spr = this.add.sprite(x, y, chave ?? `${tipo}-0`, 0).setOrigin(0.5, 0.85);
-      const b = { tipo, chave, spr, area, alvo: null, pausa: Math.random() * 2000, toque: 0 }; this.bichos.push(b); return b;
+      const spr = this.galinhaSprite(x, y, chave) ?? this.add.sprite(x, y, chave ?? `${tipo}-0`, 0).setOrigin(0.5, 0.85);
+      const b = { tipo, chave, spr, area, alvo: null, pausa: Math.random() * 2000, toque: 0, e: spr.scaleX }; this.bichos.push(b); return b;
     };
     for (let i = 0; i < gal.quantas; i++) nova('galinha', gal.area, i % 2 ? 'galinhaMarrom' : 'galinhaBranca');
     nova('pombo', pom.area);
     const [sx, sy] = centro([4, 21]); this.sapo = this.add.sprite(sx, sy, 'sapo', 0).setDepth(100 + sy).play('sapo');
     this.sapo.casa = [sx, sy];
     this.time.addEvent({ delay: 7000, loop: true, callback: () => { if (this.sapo.mergulhou) return; if (Phaser.Math.Distance.Between(this.sapo.x, this.sapo.y, this.av.x, this.av.y) < 120) croac(); this.pulinhoSapo(); } });
+  }
+
+  // Galinha LPC (32 px, desenhada na metade); a marrom é a mesma com tom de terra
+  galinhaSprite(x, y, chave) {
+    if (!chave?.startsWith('galinha') || !this.textures.exists('galinhaL')) return null;
+    const s = this.add.sprite(x, y, 'galinhaL', 4).setOrigin(0.5, 0.9).setScale(Q_ESCALA);
+    if (chave === 'galinhaMarrom') s.setTint(0xd9a066);
+    return s;
   }
 
   pulinhoSapo(alto = 5) {
@@ -697,7 +720,7 @@ class MapaCena extends Phaser.Scene {
         if (time < b.pausa) {
           // parada: a galinha cisca de vez em quando
           if (b.tipo === 'galinha') {
-            s.anims.stop(); s.setScale(1);
+            s.anims.stop(); s.setScale(b.e ?? 1);
             if (!b.cisca && Math.random() < 0.012) { b.cisca = true; this.tweens.add({ targets: s, angle: s.flipX ? 35 : -35, y: s.y + 1, duration: 70, yoyo: true, repeat: 2, onComplete: () => { b.cisca = false; s.setAngle(0); const p = this.add.rectangle(s.x + (s.flipX ? 5 : -5), s.y, 1, 1, 0x7b4a32).setDepth(s.depth); this.tweens.add({ targets: p, y: p.y - 3, alpha: 0, duration: 300, onComplete: () => p.destroy() }); } }); }
             else if (Math.random() < 0.002) { s.setFlipX(!s.flipX); }
             else if (Math.random() < 0.0008 && this.cameras.main.worldView.contains(s.x, s.y)) { cocorico(); this.emote(s, 'pontos', 900); }
@@ -713,12 +736,12 @@ class MapaCena extends Phaser.Scene {
       const [tx, ty] = b.alvo; const dx = tx - s.x; const dy = ty - s.y; const d = Math.hypot(dx, dy); const v = (b.fuga ? 70 : b.tipo === 'pombo' ? 14 : 18) * dt / 1000;
       if (d < 1) { b.alvo = null; b.fuga = false; b.pausa = time + 500 + Math.random() * 2600; continue; }
       s.x += (dx / d) * v; s.y += (dy / d) * v; s.setDepth(100 + s.y);
-      if (b.tipo === 'galinha') { s.setFlipX(dx > 0); s.play(b.chave, true); s.setAngle(Math.sin(time / (b.fuga ? 40 : 90)) * (b.fuga ? 10 : 5)); if (b.fuga) s.setScale(1, 1 + Math.abs(Math.sin(time / 50)) * 0.15); else s.setScale(1); } else { s.setFlipX(dx < 0); s.setTexture(`pombo-${Math.floor(time / 180) % 2}`); }
+      if (b.tipo === 'galinha') { s.setFlipX(dx > 0); s.play(b.chave, true); s.setAngle(Math.sin(time / (b.fuga ? 40 : 90)) * (b.fuga ? 10 : 5)); if (b.fuga) s.setScale(b.e ?? 1, (b.e ?? 1) * (1 + Math.abs(Math.sin(time / 50)) * 0.15)); else s.setScale(b.e ?? 1); } else { s.setFlipX(dx < 0); s.setTexture(`pombo-${Math.floor(time / 180) % 2}`); }
       // esbarrar nas galinhas: ela pula, bate as asas, solta penas e foge
       if (b.tipo === 'galinha' && this.av.rota.length && Phaser.Math.Distance.Between(s.x, s.y, this.av.x, this.av.y) < 10 && time > b.toque) {
         b.toque = time + 1200; this.esbarroes += 1; cocorico();
         b.alvo = [s.x + (s.x - this.av.x) * 4, s.y + (s.y - this.av.y) * 4]; b.fuga = true;
-        this.tweens.add({ targets: s, y: s.y - 7, scaleY: 1.15, duration: 120, yoyo: true });
+        this.tweens.add({ targets: s, y: s.y - 7, scaleY: s.scaleY * 1.15, duration: 120, yoyo: true });
         for (let i = 0; i < 3; i++) { const pena = this.add.rectangle(s.x, s.y - 6, 2, 1, 0xffffff).setDepth(950); this.tweens.add({ targets: pena, x: pena.x + Phaser.Math.Between(-10, 10), y: pena.y + Phaser.Math.Between(-10, 4), angle: 180, alpha: 0, duration: 700, onComplete: () => pena.destroy() }); }
         if (this.esbarroes === planta.PERSONAGENS.galinhas.esbarroes) this.bando();
       }
@@ -729,8 +752,9 @@ class MapaCena extends Phaser.Scene {
     const vista = this.cameras.main.worldView; cocorico();
     for (let i = 0; i < 10; i++) {
       const chave = i % 2 ? 'galinhaMarrom' : 'galinhaBranca';
-      const spr = this.add.sprite(vista.left - 10 - i * 9, this.av.y + Phaser.Math.Between(-30, 30), chave).setOrigin(0.5, 0.85);
-      const b = { tipo: 'galinha', chave, spr, area: planta.PERSONAGENS.galinhas.area, persegue: true };
+      const gx = vista.left - 10 - i * 9; const gy = this.av.y + Phaser.Math.Between(-30, 30);
+      const spr = this.galinhaSprite(gx, gy, chave) ?? this.add.sprite(gx, gy, chave).setOrigin(0.5, 0.85);
+      const b = { tipo: 'galinha', chave, spr, area: planta.PERSONAGENS.galinhas.area, persegue: true, e: spr.scaleX };
       this.bichos.push(b);
       this.time.delayedCall(5000, () => { b.persegue = false; this.tweens.add({ targets: spr, alpha: 0, duration: 600, onComplete: () => { spr.destroy(); this.bichos = this.bichos.filter((x) => x !== b); } }); });
     }
@@ -749,7 +773,8 @@ class MapaCena extends Phaser.Scene {
   // fumaça nas chaminés, sombras de nuvens e borboletas
   criarClima() {
     const f1 = planta.FASES[0];
-    const chamines = [[f1.x * P + 38, f1.y * P + 4], ...planta.ENFEITES.filter((e) => e.peca.startsWith('casa')).map((e) => [e.x * P + e.w * P * 0.78, e.y * P + 4])];
+    // fumaça saindo do alto dos telhados de palha (ou das chaminés das casas antigas)
+    const chamines = this.telhados?.length ? this.telhados.map((b) => [b.centerX + 9, b.top + 7]) : [[f1.x * P + 38, f1.y * P + 4], ...planta.ENFEITES.filter((e) => e.peca.startsWith('casa')).map((e) => [e.x * P + e.w * P * 0.78, e.y * P + 4])];
     this.time.addEvent({ delay: 900, loop: true, callback: () => {
       if (this.cfg.menosMovimento) return;
       for (const [x, y] of chamines) { const p = this.add.circle(x, y, 2.5, 0xeeeeee, 0.7).setDepth(990); this.tweens.add({ targets: p, x: x + 6, y: y - 18, scale: 2, alpha: 0, duration: 2200, onComplete: () => p.destroy() }); }
@@ -969,6 +994,7 @@ class MapaCena extends Phaser.Scene {
       this.nuvens.forEach((n, i) => { n.x += (6 + i * 2) * dt / 1000; if (n.x > this.t.W * P + 100) n.x = -100; });
       this.borboletas.forEach((b, i) => { b.x += Math.sin(time / 600 + i) * 0.4; b.y += Math.cos(time / 300 + i * 2) * 0.3; b.setScale(1, Math.floor(time / 120 + i) % 2 ? 1 : 0.4); });
     }
+    this.verAtras();
     this.atualizarSeta();
     this.atualizarAlcance();
     this.imersao(time);
