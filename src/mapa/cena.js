@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import * as planta from './vila.js';
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
 import { todasAsTexturas, iconesBarra } from './texturas.js';
-import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS, AGUA, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
+import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
 import { desenharChao, desenharEstrada, pecasDaEstrada } from './chao.js';
 import { MORADORES } from './moradores.js';
 import { folha } from '../avatar.js';
@@ -106,7 +106,7 @@ class MapaCena extends Phaser.Scene {
     this.textures.addCanvas('chaoLPC', chao.canvas);
     this.add.image(0, 0, 'chaoLPC').setOrigin(0).setScale(Q_ESCALA).setDepth(0);
     const pt = planta.PONTE;
-    for (let x = pt.x0; x <= pt.x1; x++) this.add.image(x * P + P / 2, pt.y * P + P / 2, 'agua', AGUA.ponte).setDepth(1);
+    this.add.image((planta.RIO.x + planta.RIO.w / 2) * P, pt.y * P + P / 2, 'lpc', 'ponte-arco').setScale(Q_ESCALA).setDepth(1);
 
     this.interativos = [];
     this.anima();
@@ -297,7 +297,7 @@ class MapaCena extends Phaser.Scene {
     const fx = (id) => this.fases[id];
     const arv = fx('m1f6'); const ba = arv.img.getBounds(); this.add.image(ba.centerX, ba.top + 4, 'organograma').setOrigin(0.5, 0).setDepth(arv.img.depth + 1).setScale(0.75);
     const torre = fx('m1f7'); const bt = torre.img.getBounds(); const pl = this.add.image(bt.right - 8, bt.bottom + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y);
-    const portal = fx('m1f4'); this.add.sprite(portal.img.x + 24, portal.img.y - 2, 'bandeiraAmarela').setOrigin(0.5, 1).setDepth(portal.img.depth + 1).play('bandeiraAmarela');
+    const portal = fx('m1f4'); const bp = portal.img.getBounds(); this.add.sprite(bp.centerX, bp.top - 2, 'bandeiraAmarela').setOrigin(0.5, 1).setDepth(portal.img.depth + 1).play('bandeiraAmarela');
     const camp = fx('m1f5'); const bc = camp.img.getBounds(); const fog = this.add.sprite(bc.left - 6, bc.bottom - 2, 'lpc', 'fogueira-0').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + bc.bottom);
     let qf = 0; this.time.addEvent({ delay: 120, loop: true, callback: () => { qf = (qf + 1) % 5; fog.setFrame('fogueira-' + qf); } });
     this.add.image(bc.left - 20, bc.bottom + 2, 'acampamento', 'toras').setDepth(100 + bc.bottom + 2);
@@ -404,7 +404,7 @@ class MapaCena extends Phaser.Scene {
     const imp = this.objetos.impressora.img;
     if (this.textures.exists('gatoL')) { const gato = this.add.sprite(imp.x, imp.y - 7, 'gatoL', 7).setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(imp.depth + 1); this.tweens.add({ targets: gato, scaleY: Q_ESCALA * 1.06, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }); }
     else this.add.sprite(imp.x, imp.y - 9, 'gato').setOrigin(0.5, 1).setDepth(imp.depth + 1).play('gato');
-    const esc = this.objetos.escola.img; this.antena = this.add.image(esc.x + 21, esc.y - esc.height + 6, 'antena-0').setOrigin(0.5, 1).setDepth(esc.depth + 1);
+    const esc = this.objetos.escola.img; const be = esc.getBounds(); this.antena = this.add.image(be.centerX + 8, be.top + 6, 'antena-0').setOrigin(0.5, 1).setDepth(esc.depth + 1);
     const cafe = this.objetos.porta.img;
     this.time.addEvent({ delay: 650, loop: true, callback: () => {
       if (this.cfg.menosMovimento || !this.cameras.main.worldView.contains(cafe.x, cafe.y - 10)) return;

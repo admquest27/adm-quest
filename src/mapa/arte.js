@@ -80,6 +80,7 @@ export const LPC_PECAS = {
   lojaVerde: { quadro: 'casa-palha-reta', porta: [81, 189] },
   barraca: { quadro: 'tenda', porta: [60, 158] },
   arvoreGrande: { quadro: 'cerejeira', porta: [64, 112] },
+  portal: { quadro: 'portao-ferro', porta: [48, 94] },
 };
 
 // Enfeites da planta trocados por peças LPC (com mais de uma opção, o sorteio fixo pela posição escolhe).
@@ -89,4 +90,4 @@ export const LPC_ENFEITES = {
   arbusto1: ['arbusto-1'], arbusto2: ['arbusto-2'], arbusto3: ['arbusto-3'], arbusto4: ['arbusto-4'], mato: ['mato'], trigo: ['trigo'],
 };
 // Objetos desenhados para o jogo que já têm versão LPC.
-export const LPC_OBJETOS = { cacto: 'cacto', lapide: 'lapide' };
+export const LPC_OBJETOS = { cacto: 'cacto', lapide: 'lapide', escola: 'casa-pedra' };
