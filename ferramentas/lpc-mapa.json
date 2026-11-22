@@ -1,164 +1,842 @@
 {
-  "_sobre": "Peças LPC usadas no mapa da Vila: [folha, x, y, largura, altura] em pixels. Blocos de terreno (96x192) seguem o formato de autotile do LPC. Créditos em public/mapa/lpc/creditos.json.",
-  "largura": 2048,
-  "folhas": {
-    "base": "lpc-atlas/base_out_atlas.png",
-    "build": "lpc-atlas/build_atlas_0.png",
-    "ter": "lpc-tiles/Terrain and Outside.png",
-    "obj": "lpc-tiles/Outside Objects.png",
-    "deco": "lpc-tiles/decorations-medieval.png",
-    "plantas": "lpc-tiles/plants.png",
-    "deserto": "lpc-tiles/beach-desert.png",
-    "conif": "lpc-tiles/conifers.png"
-  },
-  "pecas": {
-    "t-grama": [
-      "base",
-      672,
-      0,
-      96,
-      192
+ "_sobre": "Peças LPC usadas no mapa da Vila: [folha, x, y, largura, altura] em pixels. Blocos de terreno (96x192) seguem o formato de autotile do LPC. Créditos em public/mapa/lpc/creditos.json.",
+ "largura": 2048,
+ "folhas": {
+  "base": "lpc-atlas/base_out_atlas.png",
+  "build": "lpc-atlas/build_atlas_0.png",
+  "ter": "lpc-tiles/Terrain and Outside.png",
+  "obj": "lpc-tiles/Outside Objects.png",
+  "deco": "lpc-tiles/decorations-medieval.png",
+  "plantas": "lpc-tiles/plants.png",
+  "deserto": "lpc-tiles/beach-desert.png",
+  "conif": "lpc-tiles/conifers.png",
+  "palha": "lpc-extra/thatched-roof.png",
+  "chale": "lpc-extra/cottage.png",
+  "portas": "lpc-extra/doors.png",
+  "janelas": "lpc-extra/windows.png",
+  "adobe": "lpc-tiles/Extensions/adobe.png"
+ },
+ "pecas": {
+  "t-grama": [
+   "base",
+   672,
+   0,
+   96,
+   192
+  ],
+  "t-agua": [
+   "base",
+   672,
+   352,
+   96,
+   192
+  ],
+  "t-terra": [
+   "base",
+   480,
+   0,
+   96,
+   192
+  ],
+  "t-areia": [
+   "ter",
+   576,
+   192,
+   96,
+   192
+  ],
+  "grama-flor": [
+   "ter",
+   96,
+   352,
+   96,
+   32
+  ],
+  "copa-1": [
+   "base",
+   768,
+   384,
+   96,
+   96
+  ],
+  "copa-2": [
+   "base",
+   864,
+   384,
+   96,
+   96
+  ],
+  "copa-3": [
+   "obj",
+   192,
+   0,
+   96,
+   80
+  ],
+  "copa-4": [
+   "obj",
+   288,
+   0,
+   96,
+   80
+  ],
+  "copa-outono": [
+   "obj",
+   192,
+   224,
+   96,
+   88
+  ],
+  "tronco-1": [
+   "base",
+   800,
+   608,
+   96,
+   72
+  ],
+  "tronco-2": [
+   "base",
+   896,
+   608,
+   96,
+   72
+  ],
+  "tronco-3": [
+   "obj",
+   0,
+   448,
+   96,
+   80
+  ],
+  "pinho-1": [
+   "base",
+   768,
+   480,
+   96,
+   96
+  ],
+  "pinho-2": [
+   "base",
+   864,
+   496,
+   96,
+   96
+  ],
+  "pinho-3": [
+   "obj",
+   192,
+   96,
+   96,
+   112
+  ],
+  "pinho-alto": [
+   "conif",
+   288,
+   0,
+   96,
+   160
+  ],
+  "pinho-fino": [
+   "conif",
+   96,
+   96,
+   64,
+   96
+  ],
+  "pinho-grande": [
+   "conif",
+   640,
+   0,
+   128,
+   192
+  ],
+  "cerejeira": [
+   "obj",
+   384,
+   128,
+   128,
+   112
+  ],
+  "arvore-seca": [
+   "obj",
+   384,
+   256,
+   128,
+   96
+  ],
+  "janela-acesa": [
+   "janelas",
+   96,
+   120,
+   32,
+   46
+  ],
+  "janela-apagada": [
+   "janelas",
+   96,
+   24,
+   32,
+   46
+  ],
+  "floreira": [
+   "janelas",
+   448,
+   64,
+   32,
+   22
+  ],
+  "tenda": [
+   "deco",
+   392,
+   1728,
+   120,
+   160
+  ],
+  "fogueira-0": [
+   "deco",
+   256,
+   1504,
+   32,
+   64
+  ],
+  "fogueira-1": [
+   "deco",
+   288,
+   1504,
+   32,
+   64
+  ],
+  "fogueira-2": [
+   "deco",
+   320,
+   1504,
+   32,
+   64
+  ],
+  "fogueira-3": [
+   "deco",
+   352,
+   1504,
+   32,
+   64
+  ],
+  "fogueira-4": [
+   "deco",
+   384,
+   1504,
+   32,
+   64
+  ],
+  "fonte-0": [
+   "deco",
+   0,
+   512,
+   64,
+   64
+  ],
+  "fonte-1": [
+   "deco",
+   64,
+   512,
+   64,
+   64
+  ],
+  "fonte-2": [
+   "deco",
+   128,
+   512,
+   64,
+   64
+  ],
+  "poco": [
+   "deco",
+   448,
+   416,
+   64,
+   96
+  ],
+  "placa": [
+   "deco",
+   192,
+   128,
+   64,
+   40
+  ],
+  "espantalho": [
+   "deco",
+   320,
+   128,
+   32,
+   64
+  ],
+  "feno": [
+   "deco",
+   64,
+   640,
+   64,
+   64
+  ],
+  "lapide": [
+   "deco",
+   32,
+   64,
+   32,
+   32
+  ],
+  "galpao": [
+   "deco",
+   352,
+   352,
+   64,
+   96
+  ],
+  "palmeira-1": [
+   "deserto",
+   0,
+   256,
+   96,
+   128
+  ],
+  "palmeira-2": [
+   "deserto",
+   96,
+   256,
+   96,
+   128
+  ],
+  "palmeira-3": [
+   "deserto",
+   192,
+   256,
+   96,
+   128
+  ],
+  "palmeira-4": [
+   "deserto",
+   288,
+   256,
+   96,
+   128
+  ],
+  "cacto": [
+   "deserto",
+   64,
+   128,
+   32,
+   64
+  ],
+  "cacto-grande": [
+   "deserto",
+   352,
+   128,
+   64,
+   128
+  ],
+  "cacto-bola": [
+   "deserto",
+   128,
+   128,
+   64,
+   64
+  ],
+  "flor-amarela": [
+   "plantas",
+   128,
+   160,
+   32,
+   32
+  ],
+  "flor-vermelha": [
+   "plantas",
+   160,
+   160,
+   32,
+   32
+  ],
+  "flor-branca": [
+   "plantas",
+   32,
+   160,
+   32,
+   32
+  ],
+  "flor-azul": [
+   "plantas",
+   64,
+   160,
+   32,
+   32
+  ],
+  "flor-laranja": [
+   "plantas",
+   0,
+   288,
+   32,
+   32
+  ],
+  "arbusto-1": [
+   "plantas",
+   192,
+   704,
+   64,
+   48
+  ],
+  "arbusto-2": [
+   "plantas",
+   256,
+   704,
+   64,
+   48
+  ],
+  "arbusto-3": [
+   "plantas",
+   320,
+   704,
+   64,
+   48
+  ],
+  "arbusto-4": [
+   "plantas",
+   192,
+   768,
+   64,
+   48
+  ],
+  "mato": [
+   "plantas",
+   0,
+   320,
+   32,
+   32
+  ],
+  "trigo": [
+   "obj",
+   736,
+   256,
+   32,
+   64
+  ]
+ },
+ "compostos": {
+  "casa-palha-bege": {
+   "w": 114,
+   "h": 191,
+   "camadas": [
+    [
+     "chale",
+     0,
+     0,
+     96,
+     96,
+     9,
+     95
     ],
-    "t-agua": [
-      "base",
-      672,
-      352,
-      96,
-      192
+    [
+     "palha",
+     88,
+     0,
+     114,
+     105,
+     0,
+     0
     ],
-    "t-terra": [
-      "base",
-      480,
-      0,
-      96,
-      192
+    [
+     "portas",
+     16,
+     0,
+     32,
+     48,
+     65,
+     141
     ],
-    "t-areia": [
-      "ter",
-      576,
-      192,
-      96,
-      192
-    ],
-    "grama-flor": [
-      "ter",
-      96,
-      352,
-      96,
-      32
-    ],
-    "copa-1": [
-      "base",
-      768,
-      384,
-      96,
-      96
-    ],
-    "copa-2": [
-      "base",
-      864,
-      384,
-      96,
-      96
-    ],
-    "copa-3": [
-      "obj",
-      192,
-      0,
-      96,
-      80
-    ],
-    "copa-4": [
-      "obj",
-      288,
-      0,
-      96,
-      80
-    ],
-    "copa-outono": [
-      "obj",
-      192,
-      224,
-      96,
-      88
-    ],
-    "tronco-1": [
-      "base",
-      800,
-      608,
-      96,
-      72
-    ],
-    "tronco-2": [
-      "base",
-      896,
-      608,
-      96,
-      72
-    ],
-    "tronco-3": [
-      "obj",
-      0,
-      448,
-      96,
-      80
-    ],
-    "pinho-1": [
-      "base",
-      768,
-      480,
-      96,
-      96
-    ],
-    "pinho-2": [
-      "base",
-      864,
-      496,
-      96,
-      96
-    ],
-    "pinho-3": [
-      "obj",
-      192,
-      96,
-      96,
-      112
-    ],
-    "pinho-alto": [
-      "conif",
-      288,
-      0,
-      96,
-      160
-    ],
-    "pinho-fino": [
-      "conif",
-      96,
-      96,
-      64,
-      96
-    ],
-    "pinho-grande": [
-      "conif",
-      640,
-      0,
-      128,
-      192
-    ],
-    "cerejeira": [
-      "obj",
-      384,
-      128,
-      128,
-      112
-    ],
-    "arvore-seca": [
-      "obj",
-      384,
-      256,
-      128,
-      96
+    [
+     "janelas",
+     96,
+     24,
+     32,
+     46,
+     21,
+     121
     ]
+   ]
   },
-  "compostos": {}
+  "casa-palha-pedra": {
+   "w": 114,
+   "h": 191,
+   "camadas": [
+    [
+     "chale",
+     0,
+     256,
+     96,
+     96,
+     9,
+     95
+    ],
+    [
+     "palha",
+     88,
+     224,
+     114,
+     105,
+     0,
+     0
+    ],
+    [
+     "portas",
+     80,
+     0,
+     32,
+     48,
+     65,
+     141
+    ],
+    [
+     "janelas",
+     96,
+     24,
+     32,
+     46,
+     21,
+     121
+    ]
+   ]
+  },
+  "casa-palha-clara": {
+   "w": 114,
+   "h": 191,
+   "camadas": [
+    [
+     "chale",
+     0,
+     128,
+     96,
+     96,
+     9,
+     95
+    ],
+    [
+     "palha",
+     88,
+     0,
+     114,
+     105,
+     0,
+     0
+    ],
+    [
+     "portas",
+     272,
+     0,
+     32,
+     48,
+     65,
+     141
+    ],
+    [
+     "janelas",
+     160,
+     16,
+     32,
+     32,
+     21,
+     121
+    ]
+   ]
+  },
+  "casa-tijolo": {
+   "w": 96,
+   "h": 224,
+   "camadas": [
+    [
+     "build",
+     0,
+     384,
+     96,
+     128,
+     0,
+     0
+    ],
+    [
+     "build",
+     0,
+     288,
+     96,
+     96,
+     0,
+     128
+    ],
+    [
+     "build",
+     96,
+     288,
+     32,
+     48,
+     54,
+     170
+    ],
+    [
+     "build",
+     224,
+     288,
+     32,
+     32,
+     10,
+     150
+    ]
+   ]
+  },
+  "casa-pedra": {
+   "w": 96,
+   "h": 224,
+   "camadas": [
+    [
+     "build",
+     288,
+     384,
+     96,
+     128,
+     0,
+     0
+    ],
+    [
+     "build",
+     0,
+     64,
+     96,
+     96,
+     0,
+     128
+    ],
+    [
+     "build",
+     160,
+     288,
+     32,
+     48,
+     12,
+     170
+    ],
+    [
+     "build",
+     224,
+     288,
+     32,
+     32,
+     54,
+     150
+    ]
+   ]
+  },
+  "casa-palha-diag": {
+   "w": 114,
+   "h": 191,
+   "camadas": [
+    [
+     "chale",
+     96,
+     0,
+     96,
+     96,
+     9,
+     95
+    ],
+    [
+     "palha",
+     88,
+     0,
+     114,
+     105,
+     0,
+     0
+    ],
+    [
+     "portas",
+     144,
+     0,
+     32,
+     48,
+     65,
+     141
+    ],
+    [
+     "janelas",
+     96,
+     24,
+     32,
+     46,
+     21,
+     121
+    ]
+   ]
+  },
+  "casa-palha-pedra2": {
+   "w": 114,
+   "h": 191,
+   "camadas": [
+    [
+     "chale",
+     96,
+     256,
+     96,
+     96,
+     9,
+     95
+    ],
+    [
+     "palha",
+     88,
+     0,
+     114,
+     105,
+     0,
+     0
+    ],
+    [
+     "portas",
+     208,
+     0,
+     32,
+     48,
+     65,
+     141
+    ],
+    [
+     "janelas",
+     96,
+     24,
+     32,
+     46,
+     21,
+     121
+    ]
+   ]
+  },
+  "casa-palha-clara2": {
+   "w": 114,
+   "h": 191,
+   "camadas": [
+    [
+     "chale",
+     96,
+     128,
+     96,
+     96,
+     9,
+     95
+    ],
+    [
+     "palha",
+     88,
+     224,
+     114,
+     105,
+     0,
+     0
+    ],
+    [
+     "portas",
+     336,
+     0,
+     32,
+     48,
+     65,
+     141
+    ],
+    [
+     "janelas",
+     160,
+     16,
+     32,
+     32,
+     21,
+     121
+    ]
+   ]
+  },
+  "casa-palha-reta": {
+   "w": 114,
+   "h": 191,
+   "camadas": [
+    [
+     "chale",
+     288,
+     0,
+     96,
+     96,
+     9,
+     95
+    ],
+    [
+     "palha",
+     88,
+     224,
+     114,
+     105,
+     0,
+     0
+    ],
+    [
+     "portas",
+     16,
+     0,
+     32,
+     48,
+     65,
+     141
+    ],
+    [
+     "janelas",
+     96,
+     24,
+     32,
+     46,
+     21,
+     121
+    ]
+   ]
+  },
+  "casa-adobe": {
+   "w": 96,
+   "h": 160,
+   "camadas": [
+    [
+     "adobe",
+     0,
+     0,
+     96,
+     160,
+     0,
+     0
+    ],
+    [
+     "adobe",
+     96,
+     112,
+     32,
+     48,
+     32,
+     112
+    ],
+    [
+     "adobe",
+     96,
+     36,
+     32,
+     28,
+     62,
+     92
+    ],
+    [
+     "adobe",
+     96,
+     36,
+     32,
+     28,
+     2,
+     92
+    ]
+   ]
+  }
+ }
 }

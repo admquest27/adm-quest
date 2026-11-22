@@ -4,8 +4,10 @@ import Phaser from 'phaser';
 import * as planta from './vila.js';
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
 import { todasAsTexturas, iconesBarra } from './texturas.js';
-import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS, AGUA } from './arte.js';
+import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS, AGUA, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
 import { desenharChao, desenharEstrada, pecasDaEstrada } from './chao.js';
+import { MORADORES } from './moradores.js';
+import { folha } from '../avatar.js';
 import { emCanvas } from '../pixel/formas.js';
 import { desenhaPose } from '../pixel/rosalina.js';
 import {
@@ -56,6 +58,13 @@ class MapaCena extends Phaser.Scene {
     const lpc = this.o.urls.lpc ?? b.replace(/na\/$/, 'lpc/');
     this.load.atlas('lpc', lpc + 'atlas.png', lpc + 'atlas.json');
   }
+
+  // Construção LPC com o pé no meio da base do retângulo da planta (x, y, w, h em peças)
+  imagemLPC(x, y, w, h, quadro) {
+    const by = (y + h) * P;
+    return this.add.image(x * P + (w * P) / 2, by, 'lpc', quadro).setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
+  }
+  portaLPC(img, def) { return [img.x - img.displayWidth / 2 + def.porta[0] * Q_ESCALA, img.y - img.displayHeight + def.porta[1] * Q_ESCALA]; }
 
   // Posição de cada peça no atlas LPC (para o chão, que é montado num canvas)
   quadrosLPC() {
@@ -121,6 +130,16 @@ class MapaCena extends Phaser.Scene {
     const ARVORES = { arvoreRedonda: 'copa', arvoreClara: 'copa', arvoreRosa: 'outono', pinheiro: 'pinho' };
     for (const e of planta.ENFEITES) {
       if (ARVORES[e.peca]) { this.arvoreLPC(e.x * P + P, (e.y + e.h) * P - 2, semente2(e.x, e.y), ARVORES[e.peca]); continue; }
+      const lpcE = LPC_ENFEITES[e.peca];
+      if (lpcE) { const q = lpcE[Math.floor(semente2(e.x * 7, e.y * 3) * lpcE.length)]; this.imagemLPC(e.x, e.y, e.w, e.h, q).setY((e.y + e.h) * P + 1); continue; }
+      const lpcP = LPC_PECAS[e.peca];
+      if (lpcP) {
+        const img = this.imagemLPC(e.x, e.y, e.w, e.h, lpcP.quadro);
+        const [px] = this.portaLPC(img, lpcP);
+        const i = nCasa++;
+        this.interativos.push({ tipo: 'casa', id: i, nome: this.o.textos?.casas?.[i]?.nome, area: img.getBounds(), alvo: [Math.floor(px / P), e.y + e.h] });
+        continue;
+      }
       const img = base(this.add.image(e.x * P, e.y * P, RECORTES[e.peca].folha, e.peca).setOrigin(0, 0));
       const porta = RECORTES[e.peca].porta;
       if (porta) {
@@ -259,7 +278,8 @@ class MapaCena extends Phaser.Scene {
     this.fases = {};
     for (const f of planta.FASES) {
       const cx = f.x * P + (f.w * P) / 2; const by = (f.y + f.h) * P;
-      const img = f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
+      const lpcF = LPC_PECAS[f.arte];
+      const img = lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
       img.setDepth(100 + by);
       const [nx, ny] = centro(f.entrada);
       const no = this.add.image(nx, ny + 3, 'no-trancado').setDepth(3).setScale(0.7);
@@ -268,12 +288,12 @@ class MapaCena extends Phaser.Scene {
     }
     // detalhes de cada fase
     const fx = (id) => this.fases[id];
-    const arv = fx('m1f6'); this.add.image(arv.img.x + 24, arv.img.y + 4, 'organograma').setOrigin(0.5, 0).setDepth(arv.img.depth + 1).setScale(0.75);
-    const torre = fx('m1f7'); const pl = this.add.image(torre.img.x + torre.img.width - 8, torre.img.y + torre.img.height + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y);
+    const arv = fx('m1f6'); const ba = arv.img.getBounds(); this.add.image(ba.centerX, ba.top + 4, 'organograma').setOrigin(0.5, 0).setDepth(arv.img.depth + 1).setScale(0.75);
+    const torre = fx('m1f7'); const bt = torre.img.getBounds(); const pl = this.add.image(bt.right - 8, bt.bottom + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y);
     const portal = fx('m1f4'); this.add.sprite(portal.img.x + 24, portal.img.y - 2, 'bandeiraAmarela').setOrigin(0.5, 1).setDepth(portal.img.depth + 1).play('bandeiraAmarela');
-    const camp = fx('m1f5'); const fog = this.add.sprite(camp.img.x - 10, camp.img.y + 26, 'fogueira-0').setDepth(100 + camp.img.y + 30);
-    this.time.addEvent({ delay: 180, loop: true, callback: () => fog.setTexture(fog.texture.key === 'fogueira-0' ? 'fogueira-1' : 'fogueira-0') });
-    this.add.image(camp.img.x - 22, camp.img.y + 30, 'acampamento', 'toras').setDepth(100 + camp.img.y + 30);
+    const camp = fx('m1f5'); const bc = camp.img.getBounds(); const fog = this.add.sprite(bc.left - 6, bc.bottom - 2, 'lpc', 'fogueira-0').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + bc.bottom);
+    let qf = 0; this.time.addEvent({ delay: 120, loop: true, callback: () => { qf = (qf + 1) % 5; fog.setFrame('fogueira-' + qf); } });
+    this.add.image(bc.left - 20, bc.bottom + 2, 'acampamento', 'toras').setDepth(100 + bc.bottom + 2);
     const cast = fx('m1chefao');
     for (const dx of [-17, 17]) this.add.sprite(cast.img.x + dx, cast.img.y - 39, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 });
     this.aplicarEstados(this.o.estados ?? {}, this.o.concluidas ?? []);
@@ -287,20 +307,22 @@ class MapaCena extends Phaser.Scene {
       this.tweens.killTweensOf(f.no); f.no.setScale(0.7).clearTint();
       const estado = estados[id] ?? 'trancada';
       const add = (x) => { f.extras.push(x); return x; };
-      const img = f.img; const r = RECORTES[f.def.arte];
-      const topo = img.y - (img.originY === 1 ? img.height : 0); const esq = img.x - (img.originX === 0.5 ? img.width / 2 : 0);
-      const cx = esq + img.width / 2; const fundo = topo + img.height;
-      const [px, py] = r?.porta ? [esq + r.porta[0], topo + r.porta[1] + 4] : [cx, fundo - 2];
+      const img = f.img; const r = RECORTES[f.def.arte]; const lpcF = LPC_PECAS[f.def.arte];
+      const larg = img.displayWidth; const alt = img.displayHeight;
+      const topo = img.y - alt * img.originY; const esq = img.x - larg * img.originX;
+      const cx = esq + larg / 2; const fundo = topo + alt;
+      const [px, py] = lpcF ? this.portaLPC(img, lpcF).map((v, k) => v - (k ? 10 : 0)) : r?.porta ? [esq + r.porta[0], topo + r.porta[1] + 4] : [cx, fundo - 2];
       if (['trancada', 'adiada', 'cancelada'].includes(estado)) {
         f.no.setTexture('no-trancado');
         add(this.add.image(px, py, 'tabuas').setDepth(img.depth + 1));
         const cad = add(this.add.image(cx, topo - 4, 'cadeado').setDepth(img.depth + 2));
         add(this.tweens.add({ targets: cad, y: topo - 7, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
         if (estado === 'adiada') {
-          const ops = [add(this.add.sprite(cx - 26, fundo + 4, 'operario1', 0).setOrigin(0.5, 1).setDepth(fundo + 108)), add(this.add.sprite(cx + 26, fundo + 4, 'operario2', 0).setOrigin(0.5, 1).setDepth(fundo + 108))];
+          const op = (k, x) => (this.textures.exists('mor-' + k) ? this.add.sprite(x, fundo + 4, 'mor-' + k, LINHA_LPC.baixo * 9).setScale(Q_ESCALA) : this.add.sprite(x, fundo + 4, k, 0)).setOrigin(0.5, 1).setDepth(fundo + 108);
+          const ops = [add(op('operario1', cx - 26)), add(op('operario2', cx + 26))];
           add(this.time.addEvent({ delay: 2200, loop: true, callback: () => ops.forEach((o, k) => this.emote(o, (Math.floor(this.time.now / 2200) + k) % 2 ? 'sono' : 'pontos', 1600)) }));
         }
-        if (estado === 'cancelada') add(this.add.image(cx, topo + img.height / 2, 'embargo').setDepth(img.depth + 1));
+        if (estado === 'cancelada') add(this.add.image(cx, topo + alt / 2, 'embargo').setDepth(img.depth + 1));
       } else if (feitas.has(id)) {
         f.no.setTexture('no-feito');
       } else {
@@ -309,7 +331,7 @@ class MapaCena extends Phaser.Scene {
         add(this.tweens.add({ targets: anel, scaleX: 1.6, scaleY: 1.6, alpha: 0, duration: 1100, repeat: -1 }));
         const seta = add(this.add.image(f.no.x, f.no.y - 11, 'setaQuica').setDepth(960).setScale(0.8));
         add(this.tweens.add({ targets: seta, y: f.no.y - 15, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
-        add(this.time.addEvent({ delay: 1600, loop: true, callback: () => this.brilhar(cx + Phaser.Math.Between(-img.width / 2, img.width / 2), topo + Phaser.Math.Between(4, img.height - 4)) }));
+        add(this.time.addEvent({ delay: 1600, loop: true, callback: () => this.brilhar(cx + Phaser.Math.Between(-larg / 2, larg / 2), topo + Phaser.Math.Between(4, alt - 4)) }));
       }
     }
     this.estradas?.forEach((e) => { const ab = this.estradaAberta(e); e.img.setVisible(ab).setAlpha(1); e.tracos.setVisible(!ab); });
@@ -359,16 +381,17 @@ class MapaCena extends Phaser.Scene {
     for (const ob of planta.OBJETOS) {
       const w = (ob.w ?? 1) * P; const h = (ob.h ?? 1) * P;
       const rec = RECORTES[ob.arte];
-      const img = rec ? this.add.image(ob.x * P + w / 2, ob.y * P + h, rec.folha, ob.arte).setOrigin(0.5, 1) : this.add.image(ob.x * P + w / 2, ob.y * P + h, ob.arte).setOrigin(0.5, 1);
+      const lpcO = LPC_OBJETOS[ob.id];
+      const img = lpcO ? this.add.image(ob.x * P + w / 2, ob.y * P + h, 'lpc', lpcO).setOrigin(0.5, 1).setScale(Q_ESCALA) : rec ? this.add.image(ob.x * P + w / 2, ob.y * P + h, rec.folha, ob.arte).setOrigin(0.5, 1) : this.add.image(ob.x * P + w / 2, ob.y * P + h, ob.arte).setOrigin(0.5, 1);
       img.setDepth(100 + img.y);
       this.objetos[ob.id] = { def: ob, img, toques: 0 };
       const alvo = rec?.porta ? [Math.floor((img.x - img.width / 2 + rec.porta[0]) / P), ob.y + (ob.h ?? 1)] : this.alvoPerto(ob.x, ob.y, ob.w ?? 1, ob.h ?? 1, ob.alcance ?? 1);
-      this.interativos.push({ tipo: 'objeto', id: ob.id, area: new Phaser.Geom.Rectangle(img.x - img.width / 2 - 2, img.y - img.height - 2, img.width + 4, img.height + 4), alvo });
+      this.interativos.push({ tipo: 'objeto', id: ob.id, area: new Phaser.Geom.Rectangle(img.x - img.displayWidth / 2 - 2, img.y - img.displayHeight - 2, img.displayWidth + 4, img.displayHeight + 4), alvo });
     }
     this.time.addEvent({ delay: 3200, loop: true, callback: () => {
       const lista = Object.values(this.objetos).filter((o) => o.def.conversa);
       const o = lista[Math.floor(Math.random() * lista.length)]; if (!o) return;
-      if (this.cameras.main.worldView.contains(o.img.x, o.img.y - 8)) this.brilhar(o.img.x + Phaser.Math.Between(-6, 6), o.img.y - o.img.height + Phaser.Math.Between(0, 8));
+      if (this.cameras.main.worldView.contains(o.img.x, o.img.y - 8)) this.brilhar(o.img.x + Phaser.Math.Between(-6, 6), o.img.y - o.img.displayHeight + Phaser.Math.Between(0, 8));
     } });
     const m = this.objetos.moinho.img; this.add.sprite(m.x, m.y - 26, 'moinho').setScale(0.5).setDepth(m.depth + 1).play('moinho');
     const imp = this.objetos.impressora.img; this.add.sprite(imp.x, imp.y - 9, 'gato').setOrigin(0.5, 1).setDepth(imp.depth + 1).play('gato');
@@ -566,15 +589,32 @@ class MapaCena extends Phaser.Scene {
     const c = planta.PERSONAGENS.consultor; pessoa('consultor', c.pos, c.area, 'consultor');
     const b = planta.PERSONAGENS.barao; pessoa('barao', b.pos, b.area, 'barao');
     for (const a of planta.PERSONAGENS.aldeoes) pessoa(a.quem, [a.area.x + 1, a.area.y + 1], a.area, a.quem);
+    this.trocarGente();
   }
+
+  // Troca os moradores antigos pelos montados em LPC assim que as folhas ficam prontas
+  async trocarGente() {
+    for (const quem of Object.keys(MORADORES)) {
+      const f = await folha(MORADORES[quem], 'walk').catch(() => null);
+      if (!f || !this.sys?.textures) return;
+      const k = 'mor-' + quem;
+      if (!this.textures.exists(k)) {
+        this.textures.addSpriteSheet(k, f, { frameWidth: 64, frameHeight: 64 });
+        for (const [dir, lin] of Object.entries(LINHA_LPC)) this.anims.create({ key: k + '-' + dir, frames: this.anims.generateFrameNumbers(k, { start: lin * 9 + 1, end: lin * 9 + 8 }), frameRate: 9, repeat: -1 });
+      }
+      for (const g of this.gente.filter((x) => x.quem === quem)) { g.chave = k; g.lpc = true; g.spr.setTexture(k, LINHA_LPC[g.dir] * 9).setScale(Q_ESCALA).setOrigin(0.5, 0.88); g.sombra.setSize(12, 4); }
+    }
+  }
+
+  quadroParado(g) { return g.lpc ? LINHA_LPC[g.dir] * 9 : DIRECOES[g.dir]; }
 
   moverGente(time, dt) {
     for (const g of this.gente) {
       const s = g.spr; g.sombra.setPosition(s.x, s.y + 4).setVisible(s.visible);
       if (g.fugindo) { s.x += 70 * dt / 1000; s.play(`${g.chave}-dir`, true); s.setDepth(100 + s.y); if (s.x > this.t.W * P + 20) { s.setVisible(false); g.fugindo = false; g.foi = true; } continue; }
-      if (g.foi || g.parado) { s.anims.stop(); s.setFrame(DIRECOES[g.dir]); continue; }
+      if (g.foi || g.parado) { s.anims.stop(); s.setFrame(this.quadroParado(g)); continue; }
       if (!g.alvo) {
-        if (time < g.pausa) { s.anims.stop(); s.setFrame(DIRECOES[g.dir]); continue; }
+        if (time < g.pausa) { s.anims.stop(); s.setFrame(this.quadroParado(g)); continue; }
         g.alvo = [(g.area.x + Math.random() * g.area.w) * P, (g.area.y + Math.random() * g.area.h) * P];
       }
       const [tx, ty] = g.alvo; const dx = tx - s.x; const dy = ty - s.y; const d = Math.hypot(dx, dy); const v = 22 * dt / 1000;
@@ -591,7 +631,7 @@ class MapaCena extends Phaser.Scene {
     g.parado = true;
     const dx = this.av.x - g.spr.x; const dy = this.av.y - g.spr.y;
     g.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'dir' : 'esq') : (dy > 0 ? 'baixo' : 'cima');
-    g.spr.anims.stop(); g.spr.setFrame(DIRECOES[g.dir]);
+    g.spr.anims.stop(); g.spr.setFrame(this.quadroParado(g));
     if (g.quem === 'barao') this.emote(g.spr, 'bravo');
     this.o.aoConversar?.(g.fala, () => { g.parado = false; g.pausa = this.time.now + 1500; });
   }
@@ -805,8 +845,9 @@ class MapaCena extends Phaser.Scene {
   }
 
   danca() {
-    const c = this.add.sprite(this.av.x + 18, this.av.y, 'consultor', 0).setOrigin(0.5, 0.8).setDepth(800);
-    const ev = this.time.addEvent({ delay: 160, loop: true, callback: () => { c.setFrame(Phaser.Math.Between(0, 3)); c.setFlipX(!c.flipX); } });
+    const lpcC = this.textures.exists('mor-consultor');
+    const c = (lpcC ? this.add.sprite(this.av.x + 18, this.av.y, 'mor-consultor', 18).setScale(Q_ESCALA).setOrigin(0.5, 0.88) : this.add.sprite(this.av.x + 18, this.av.y, 'consultor', 0).setOrigin(0.5, 0.8)).setDepth(800);
+    const ev = this.time.addEvent({ delay: 160, loop: true, callback: () => { c.setFrame(lpcC ? Phaser.Math.Between(0, 3) * 9 + Phaser.Math.Between(1, 8) : Phaser.Math.Between(0, 3)); c.setFlipX(!c.flipX); } });
     this.time.delayedCall(2600, () => { ev.remove(); this.achar('konami'); this.tweens.add({ targets: c, alpha: 0, duration: 500, onComplete: () => c.destroy() }); });
   }
 

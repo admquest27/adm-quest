@@ -1521,5 +1521,78 @@
    "http://opengameart.org/content/lpc-clothing-updates",
    "https://opengameart.org/content/lpc-expanded-socks-shoes"
   ]
+ },
+ {
+  "arquivo": "hat/formal/tophat",
+  "autores": [
+   "bluecarrot16"
+  ],
+  "licencas": [
+   "CC-BY-SA 3.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/lpc-gentleman",
+   "https://opengameart.org/content/lpc-expanded-hats-facial-helmets"
+  ]
+ },
+ {
+  "arquivo": "hat/formal/bowler",
+  "autores": [
+   "bluecarrot16"
+  ],
+  "licencas": [
+   "CC-BY-SA 3.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/lpc-gentleman",
+   "https://opengameart.org/content/lpc-expanded-hats-facial-helmets"
+  ]
+ },
+ {
+  "arquivo": "facial/glasses/glasses",
+  "autores": [
+   "ElizaWy"
+  ],
+  "licencas": [
+   "OGA-BY 3.0"
+  ],
+  "links": [
+   "https://github.com/ElizaWy/LPC/tree/main/Characters/Head%20Accessories",
+   "https://opengameart.org/content/lpc-expanded-sit-run-jump-more"
+  ]
+ },
+ {
+  "arquivo": "facial/glasses/round",
+  "autores": [
+   "bluecarrot16",
+   "Thane Brimhall (pennomi)",
+   "laetissima"
+  ],
+  "licencas": [
+   "CC-BY-SA 3.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/clothing-facial-features-and-ui-elements",
+   "https://opengameart.org/content/lpc-gentleman"
+  ]
+ },
+ {
+  "arquivo": "facial/glasses/sunglasses",
+  "autores": [
+   "Michael Whitlock (bigbeargames)",
+   "Thane Brimhall (pennomi)",
+   "laetissima"
+  ],
+  "licencas": [
+   "CC-BY-SA 3.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/lpc-base-character-expressions",
+   "https://opengameart.org/content/lpc-expanded-hats-facial-helmets"
+  ]
  }
 ]

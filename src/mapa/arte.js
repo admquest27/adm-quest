@@ -66,3 +66,27 @@ export const CHAO = {
 export const AGUA = { bloco: { x: 0, y: 6 }, miolo: A(1, 7), ponte: A(5, 13) };
 export const idChao = C;
 export const idAgua = A;
+
+// Peças LPC (atlas "lpc", 32 px por peça da planta) que substituem as antigas, pelo mesmo nome da planta.
+// porta: centro de baixo da porta em pixels da arte, a partir do canto de cima do quadro.
+export const LPC_PECAS = {
+  casaLaranja: { quadro: 'casa-palha-bege', porta: [81, 189] },
+  casaBege: { quadro: 'casa-palha-clara', porta: [81, 189] },
+  casaLaranja2: { quadro: 'casa-palha-pedra', porta: [81, 189] },
+  loja: { quadro: 'casa-palha-clara2', porta: [81, 189] },
+  templo: { quadro: 'casa-palha-diag', porta: [81, 189] },
+  casaPartida: { quadro: 'casa-palha-pedra2', porta: [81, 189] },
+  casaPedra: { quadro: 'casa-adobe', porta: [48, 160] },
+  lojaVerde: { quadro: 'casa-palha-reta', porta: [81, 189] },
+  barraca: { quadro: 'tenda', porta: [60, 158] },
+  arvoreGrande: { quadro: 'cerejeira', porta: [64, 112] },
+};
+
+// Enfeites da planta trocados por peças LPC (com mais de uma opção, o sorteio fixo pela posição escolhe).
+export const LPC_ENFEITES = {
+  palmeira: ['palmeira-1', 'palmeira-2', 'palmeira-3', 'palmeira-4'],
+  florAmarela: ['flor-amarela'], florVermelha: ['flor-vermelha'], florBranca: ['flor-branca'], florLaranja: ['flor-laranja'],
+  arbusto1: ['arbusto-1'], arbusto2: ['arbusto-2'], arbusto3: ['arbusto-3'], arbusto4: ['arbusto-4'], mato: ['mato'], trigo: ['trigo'],
+};
+// Objetos desenhados para o jogo que já têm versão LPC.
+export const LPC_OBJETOS = { cacto: 'cacto', lapide: 'lapide' };

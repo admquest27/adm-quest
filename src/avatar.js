@@ -13,13 +13,15 @@ export const CORES_ROUPA = [['white', 'Branco'], ['gray', 'Cinza'], ['charcoal',
 // Campos guardados no banco, na ordem. Mudar aqui exige mudar as regras do Firestore.
 export const CAMPOS = ['pele', 'rosto', 'nariz', 'sobrancelha', 'olhos', 'cabelo', 'corCabelo', 'cima', 'corCima', 'baixo', 'corBaixo', 'pes', 'corPes'];
 export const PADRAO = { v: 2, pele: 'olive', rosto: 'a', nariz: 'botao', sobrancelha: 'fina', olhos: 'brown', cabelo: 'curto', corCabelo: 'dark_brown', cima: 'camiseta', corCima: 'blue', baixo: 'calca', corBaixo: 'navy', pes: 'tenis', corPes: 'white' };
+// Peças extras (chapéu e óculos): usadas pelos moradores do mapa e, depois, pela loja. Ainda não vão para o banco.
+export const EXTRAS = ['chapeu', 'oculos'];
 const TOM_ANTIGO = ['light', 'amber', 'olive', 'taupe', 'bronze', 'brown'];
 
 export function normalizar(av) {
   if (!av || typeof av !== 'object') return { ...PADRAO };
   if (av.v !== 2) return { ...PADRAO, pele: TOM_ANTIGO[av.tom] ?? PADRAO.pele };
   const r = { ...PADRAO };
-  for (const c of CAMPOS) if (typeof av[c] === 'string' && av[c]) r[c] = av[c];
+  for (const c of [...CAMPOS, ...EXTRAS]) if (typeof av[c] === 'string' && av[c]) r[c] = av[c];
   return r;
 }
 // Só os campos que vão para o banco.
@@ -79,6 +81,7 @@ async function montar(av, anim) {
     const lista = cat.grupos[g]; const p = lista.find((x) => x.id === av[g]) ?? lista[0];
     pecas.push({ ...p, grupo: g });
   }
+  for (const g of EXTRAS) { const p = av[g] && cat.grupos[g]?.find((x) => x.id === av[g]); if (p) pecas.push({ ...p, grupo: g }); }
   // Se alguma peça não tem esta animação (as saias não têm pulo), devolve null e quem chamou usa outra.
   if (pecas.some((p) => !p.anims.includes(anim))) return null;
   const camadas = [];
