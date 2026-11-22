@@ -1,0 +1,1451 @@
+ADM Quest: créditos da arte do mapa (Liberated Pixel Cup e compatíveis)
+=======================================================================
+
+LPC Base Assets: Lanea Zimmerman (Sharm), Daniel Armstrong (HughSpectrum) e outros. CC-BY-SA 3.0 / GPL 3.0.
+https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+
+[LPC] Cats and Dogs: bluecarrot16. CC-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0.
+http://opengameart.org/content/lpc-cats-and-dogs
+
+LPC style farm animals: Daniel Eddeland (daneeklu). GPL 2.0+ / CC-BY 3.0.
+https://opengameart.org/content/lpc-style-farm-animals
+
+LPC Chicken Rework: criado por Daniel Eddeland (daneeklu). CC-BY 3.0 / GPL 2.0.
+https://opengameart.org/node/83296
+
+
+
+
+----- Attribution.txt -----
+Cottage:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"LPC Thatched-roof Cottage" by bluecarrot16. 
+License: CC-BY-SA 3.0 / GPL 3.0+ 
+
+Based on: 
+"LPC Base Assets" by Lanea Zimmerman (AKA Sharm) and Daniel Armstrong (AKA HughSpectrum). 
+License: CC-BY-SA 3.0 / GPL 3.0+. 
+http://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles 
+
+"LPC art entry" by Casper Nilsson. License: 
+CC-BY-SA 3.0 / GPL 3.0+. 
+http://opengameart.org/content/lpc-cnilsson
+
+
+
+
+
+Doors / Windows:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"LPC Windows & Doors" by bluecarrot16, Lanea Zimmerman (AKA Sharm) and Daniel Armstrong (AKA HughSpectrum), Casper Nilsson, Anamaris and Krusmira. 
+License: CC-BY-SA 3.0 / GPL 3.0+. 
+https://opengameart.org/content/lpc-windows-doors 
+
+Based on: "LPC Base Assets" by Lanea Zimmerman (AKA Sharm) and Daniel Armstrong (AKA HughSpectrum). 
+License: CC-BY-SA 3.0 / GPL 3.0+. 
+http://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles 
+
+"LPC art entry" by Casper Nilsson. 
+License: CC-BY-SA 3.0 / GPL 3.0+. 
+http://opengameart.org/content/lpc-cnilsson 
+
+"Steampun-a-fy (with concept art)" by Anamaris and Krusmira 
+License: CC-BY-SA 3.0 / GPL 3.0+. 
+http://opengameart.org/content/steampun-a-fy-with-concept-art
+
+
+Conifers:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"Conifer Trees
+
+"[LPC] Conifer Trees Pack" by bluecarrot16, b_o, Lanea Zimmerman (Sharm), Johann Charlot, Yar, Jetrel, Zabin, Hyptosis, Surt, and KnoblePersona
+
+CC-BY-SA 3.0 / GPL 2.0 / GPL 3.0
+
+
+
+Pine Tree Tiles
+b_o
+CC-BY-SA 3.0 / GPL 2.0
+
+https://opengameart.org/content/pine-tree-tiles
+
+
+
+Liberated Pixel Cup (LPC) Base Assets 
+Lanea Zimmerman (Sharm)
+
+CC-BY-SA 3.0 / CC-BY 3.0 / GPL 3.0
+
+https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+
+Shoot'em up graphic kit
+
+Johann Charlot
+
+CC-BY-SA 3.0 / GPL 3.0
+
+https://opengameart.org/content/shootem-up-graphic-kit
+
+
+Isometric 64x64 Outside Tileset
+Yar
+
+CC-BY 3.0
+https://opengameart.org/content/isometric-64x64-outside-tileset
+
+Lots of trees and plants from OGA (DB32) tilesets pack 1
+
+Jetrel, Zabin, Hyptosis, Surt
+
+CC0
+
+https://opengameart.org/content/lots-of-trees-and-plants-from-oga-db32-tilesets-pack-1
+
+
+Pine Tree Pack
+KnoblePersona
+
+CC-BY 3.0
+
+https://opengameart.org/content/pine-tree-pack
+
+
+
+
+
+
+
+
+
+
+
+Colonial:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+"[LPC] Colonial Buildings" by bluecarrot16, Lanea Zimmerman (Sharm), Wolthera van Hövell tot Westerflier (TheraHedwig), and Guido Bos
+
+Liberated Pixel Cup (LPC) 
+
+Base Assets 
+Lanea Zimmerman (Sharm)
+
+CC-BY-SA 3.0 / CC-BY 3.0 / GPL 3.0
+
+https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+
+
+
+LPC compatible Ancient Greek Architecture
+
+CC-BY-SA 3.0 / GPL 3.0
+
+Wolthera van Hövell tot Westerflier (TheraHedwig)
+
+https://opengameart.org/content/lpc-compatible-ancient-greek-architecture
+
+
+
+[LPC] Guido Bos entries cut up
+
+Guido Bos
+
+CC-BY-SA 3.0 / GPL 3.0
+
+https://opengameart.org/content/lpc-guido-bos-entries-cut-up
+
+----- CREDITS-beach-desert.txt -----
+## Beach / Desert
+
+"[LPC] Beach/Desert" by bluecarrot16, Guillaume Lecollinet, Johann Charlot, cynicmusic, Surt, vk, Yar, Michele Bucelli (Buch), Richard Kettering (Jetrel), Zachariah Husiar (Zabin), Hyptosis, Lanea Zimmerman (Sharm), Frode Lindeijer (Modanung).
+CC-BY-SA 3.0
+
+BrowserQuest Sprites and Tiles
+Guillaume Lecollinet
+CC-BY-SA 3.0
+http://opengameart.org/content/browserquest-sprites-and-tiles
+
+Shoot'em up graphic kit
+Johann Charlot
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/shootem-up-graphic-kit
+
+Pixelsphere 32x32 Tileset + Grass + Trees
+cynicmusic
+CC0
+http://opengameart.org/content/pixelsphere-32x32-tileset-grass-trees
+
+trees
+Surt, vk
+CC0
+https://opengameart.org/content/trees-1
+
+Isometric 64x64 Outside Tileset
+Yar
+CC-BY 3.0
+https://opengameart.org/content/isometric-64x64-outside-tileset
+
+Tuxemon tileset
+Michele Bucelli (Buch)
+CC-BY-SA 3.0
+https://opengameart.org/content/tuxemon-tileset
+
+Lots of trees and plants from OGA (DB32) tilesets pack 1
+Richard Kettering (Jetrel), Zachariah Husiar (Zabin), Hyptosis, Surt
+CC0
+https://opengameart.org/content/lots-of-trees-and-plants-from-oga-db32-tilesets-pack-1
+
+Bone Planet
+Hyptosis
+CC0
+https://opengameart.org/content/bone-planet
+
+Whispers of Avalon: Desert Tileset
+Leonard Pabin, Ali-G
+CC-BY 3.0 / GPL 3.0 / GPL 2.0
+https://opengameart.org/content/whispers-of-avalon-desert-tileset
+
+[LPC] Arabic Elements
+Lanea Zimmerman (Sharm), William Thompson
+CC-BY 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0 
+https://opengameart.org/content/lpc-arabic-elements
+
+Lots of free 2d tiles and sprites by Hyptosis
+Hyptosis, Zachariah Husiar (Zabin)
+CC-BY 3.0
+https://opengameart.org/content/lots-of-free-2d-tiles-and-sprites-by-hyptosis
+
+The Mana World, Evol Online accessories
+Evol Online <http://evolonline.org>
+graphics/tilesets/accessory.png
+Alige, Coolkid782, Hal9000, Len, Reid
+CC BY-SA 3.0 <https://github.com/themanaworld/client-data/blob/6272ecd9ac8fa2b3bfd529697180c4ef731b9a32/LICENSE>
+https://github.com/themanaworld/client-data/blob/6f7a0784ad2a992c3d7e026b5df05bdef11fc292/graphics/tilesets/accessory.png
+
+The Mana World, Evol Online Palm trees
+Evol Online <http://evolonline.org>
+graphics/tilesets/tree-x3x4.png
+Frode Lindeijer (Modanung) (big palm tree), and Leonard Pabin (small palm tree)
+CC-BY 3.0 / GPL 3.0 / GPL 2.0 <https://github.com/themanaworld/client-data/blob/8a466c26e3c551d6057b20ebfe3ebceda7988b18/LICENSE#L446>
+https://faq.tuxfamily.org/Game:EvolOnline/En
+https://github.com/themanaworld/client-data/blob/8a466c26e3c551d6057b20ebfe3ebceda7988b18/graphics/tilesets/tree-x3x4.png
+
+ZRPG Beach
+Zachariah Husiar (Zabin), Richard Kettering (Jetrel), Lanea Zimmerman (Sharm), Hyptosis, Frode Lindeijer (Modanung), Leonard Pabin, and others
+https://opengameart.org/content/zrpg-beach
+
+TMW Cactus
+Frode Lindeijer (Modanung)
+CC-BY-SA.3.0 / GPLv2 (see also <https://opengameart.org/comment/65559#comment-65559>)
+http://pixeljoint.com/pixelart/13549.htm
+
+----- CREDITS-conifers.txt -----
+## Conifer Trees
+
+"[LPC] Conifer Trees Pack" by bluecarrot16, b_o, Lanea Zimmerman (Sharm), Johann Charlot, Yar, Jetrel, Zabin, Hyptosis, Surt, and KnoblePersona
+CC-BY-SA 3.0 / GPL 2.0 / GPL 3.0
+
+Pine Tree Tiles
+b_o
+CC-BY-SA 3.0 / GPL 2.0
+https://opengameart.org/content/pine-tree-tiles
+
+Liberated Pixel Cup (LPC) Base Assets 
+Lanea Zimmerman (Sharm)
+CC-BY-SA 3.0 / CC-BY 3.0 / GPL 3.0
+https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+
+Shoot'em up graphic kit
+Johann Charlot
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/shootem-up-graphic-kit
+
+Isometric 64x64 Outside Tileset
+Yar
+CC-BY 3.0
+https://opengameart.org/content/isometric-64x64-outside-tileset
+
+Lots of trees and plants from OGA (DB32) tilesets pack 1
+Jetrel, Zabin, Hyptosis, Surt
+CC0
+https://opengameart.org/content/lots-of-trees-and-plants-from-oga-db32-tilesets-pack-1
+
+Pine Tree Pack
+KnoblePersona
+CC-BY 3.0
+https://opengameart.org/content/pine-tree-pack
+
+
+
+
+
+
+
+
+
+
+----- CREDITS-decorations-medieval.txt -----
+ ## Medieval
+
+[LPC] Hanging signs
+Reemax
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-hanging-signs
+
+Liberated Pixel Cup (LPC) Base Assets
+Lanea Zimmerman (Sharm)
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+
+[LPC] City outside
+Reemax (Tuomo Untinen), Xenodora, Sharm, Johann C, Johannes Sjölund
+CC-BY-SA 3.0 / GPL 3.0 / GPL 2.0
+https://opengameart.org/content/lpc-city-outside
+
+[LPC] Cavern and ruin tiles
+CC-BY-SA 3.0 / GPL 3.0 / GPL 2.0
+Reemax, Sharm, Hyptosis, Johann C, HughSpectrum, Redshrike, William.Thompsonj, wulax, 
+https://opengameart.org/node/33913
+
+Statues & Fountains Collection
+Casper Nilsson, Daniel Cook, Rayane Félix (RayaneFLX), Wolthera van Hövell tot Westerflier (TheraHedwig), Hyptosis, mold, Zachariah Husiar (Zabin), & Clint Bellanger
+CC-BY-SA 3.0
+https://opengameart.org/content/statues-fountains-collection
+
+LPC C.Nilsson
+Casper Nilsson
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-cnilsson
+
+LPC Style Well
+CC-BY 3.0 / GPL 3.0
+Xenodora, Sharm
+https://opengameart.org/content/lpc-style-well
+
+RPG item set
+Jetrel
+CC0
+https://opengameart.org/content/rpg-item-set
+
+[LPC] Guido Bos entries cut up
+Guido Bos
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-guido-bos-entries-cut-up
+
+LPC Sign Post
+Nemisys
+CC-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0
+https://opengameart.org/content/lpc-sign-post
+
+[LPC] Signposts, graves, line cloths and scare crow
+Reemax
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-signposts-graves-line-cloths-and-scare-crow
+
+[LPC] Hanging signs
+Reemax
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-hanging-signs
+
+Hyptosis
+Mage City Arcanos
+CC0
+https://opengameart.org/content/mage-city-arcanos
+
+[LPC] Street Lamp
+Curt
+CC-BY 3.0
+https://opengameart.org/content/lpc-street-lamp
+
+[LPC] Misc
+Lanea Zimmerman (Sharm), William.Thompsonj
+CC-BY 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0
+https://opengameart.org/content/lpc-misc
+
+RPG Tiles: Cobble stone paths & town objects
+https://opengameart.org/content/rpg-tiles-cobble-stone-paths-town-objects
+Zabin, Daneeklu, Jetrel, Hyptosis, Redshrike, Bertram. 
+CC-BY-SA 3.0
+
+[LPC] Farming tilesets, magic animations and UI elements
+https://opengameart.org/content/lpc-farming-tilesets-magic-animations-and-ui-elements
+Daniel Eddeland (daneeklu)
+CC-BY-SA 3.0 / GPL 3.0
+
+RPG item set
+Jetrel
+CC0
+https://opengameart.org/content/rpg-item-set
+
+RPG Indoor Tileset: Expansion 1
+Redshrike
+CC-BY 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0
+https://opengameart.org/content/rpg-indoor-tileset-expansion-1
+
+[LPC] Dungeon Elements
+Lanea Zimmerman (Sharm), William.Thompsonj
+CC-BY 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0
+https://opengameart.org/content/lpc-dungeon-elements
+
+----- CREDITS-plants.txt -----
+## Flowers / Plants / Fungi / Wood
+
+"[LPC] Flowers / Plants / Fungi / Wood," by bluecarrot16, Guido Bos, Ivan Voirol (Silver IV), SpiderDave, William.Thompsonj, Yar, Stephen Challener and the Open Surge team (http://opensnc.sourceforge.net), Gaurav Munjal, Johann Charlot, Casper Nilsson, Jetrel, Zabin, Hyptosis, Surt, Lanea Zimmerman, George Bailey, ansimuz, Buch, and the Open Pixel Project contributors (OpenPixelProject.com). 
+CC-BY-SA 3.0. 
+
+Based on: 
+
+[LPC] Guido Bos entries cut up
+Guido Bos
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-guido-bos-entries-cut-up
+
+Basic map 32x32 by Silver IV
+Ivan Voirol (Silver IV)
+CC-BY 3.0 / GPL 3.0 / GPL 2.0
+https://opengameart.org/content/basic-map-32x32-by-silver-iv
+
+Flowers
+SpiderDave
+CC0
+https://opengameart.org/content/flowers
+
+[LPC] Leaf Recolor
+William.Thompsonj
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-leaf-recolor
+
+Isometric 64x64 Outside Tileset
+Yar
+CC-BY 3.0
+https://opengameart.org/content/isometric-64x64-outside-tileset
+
+32x32 (and 16x16) RPG Tiles--Forest and some Interior Tiles
+Stephen Challener and the Open Surge team (http://opensnc.sourceforge.net)commissioned by Gaurav Munjal
+CC-BY 3.0
+https://opengameart.org/content/32x32-and-16x16-rpg-tiles-forest-and-some-interior-tiles
+
+Lots of Hyptosis' tiles organized!
+Hyptosis
+CC-BY 3.0
+https://opengameart.org/content/lots-of-hyptosis-tiles-organized
+
+Generic Platformer Tiles
+surt
+CC0
+http://opengameart.org/content/generic-platformer-tiles
+
+old frogatto tile art
+Guido Bos
+CC0
+https://opengameart.org/content/old-frogatto-tile-art
+
+LPC: Interior Castle Tiles
+Lanea Zimmerman
+CC-BY-3.0 / GPL 3.0
+http://opengameart.org/content/lpc-interior-castle-tiles
+
+RPG item set
+Jetrel
+CC0
+https://opengameart.org/content/rpg-item-set
+
+Shoot'em up graphic kit
+Johann Charlot
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/shootem-up-graphic-kit
+
+LPC C.Nilsson
+Casper Nilsson
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-cnilsson
+
+Lots of trees and plants from OGA (DB32) tilesets pack 1
+Jetrel, Zabin, Hyptosis, Surt
+CC0
+https://opengameart.org/content/lots-of-trees-and-plants-from-oga-db32-tilesets-pack-1
+
+Trees & Bushes
+ansimuz
+CC0
+https://opengameart.org/content/trees-bushes
+
+Outdoor tiles, again
+Buch <https://opengameart.org/users/buch>
+CC-BY 2.0
+https://opengameart.org/content/outdoor-tiles-again
+
+16x16 Game Assets
+George Bailey
+CC-BY 4.0
+https://opengameart.org/content/16x16-game-assets
+
+Tuxemon tileset
+Buch
+CC-BY-SA 3.0
+https://opengameart.org/content/tuxemon-tileset
+
+Orthographic outdoor tiles
+Buch
+CC0
+https://opengameart.org/content/orthographic-outdoor-tiles
+
+OPP2017 - Jungle and temple set
+OpenPixelProject.com
+CC0
+https://opengameart.org/content/opp2017-jungle-and-temple-set
+
+
+----- CREDITS-terrain-v7.txt -----
+"[LPC] Terrains" by bluecarrot16, Lanea Zimmerman (Sharm), Daniel Eddeland (Daneeklu), Richard Kettering (Jetrel), Zachariah Husiar (Zabin), Hyptosis, Casper Nilsson, Buko Studios, Nushio, ZaPaper, billknye, William Thompson, caeles, Redshrike, Bertram, and Rayane Félix (RayaneFLX)
+
+Liberated Pixel Cup (LPC) Base Assets (sprites & map tiles)
+Lanea Zimmerman (Sharm)
+CC-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+
+[LPC] Farming tilesets, magic animations and UI elements
+Daniel Eddeland (Daneeklu)
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-farming-tilesets-magic-animations-and-ui-elements
+
+ZRPG Tiles
+Richard Kettering (Jetrel), Zachariah Husiar (Zabin), Hyptosis, Lanea Zimmerman (Sharm), and Open Pixel Project.
+CC-BY-SA 3.0+
+https://opengameart.org/content/zrpg-tiles
+
+LPC C.Nilsson
+Casper Nilsson
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-cnilsson
+
+Frozen Lake [LPC]
+Buko Studios (http://www.buko-studios.com/) Commissioned by PlayCraft: (www.playcraftapp.com)
+CC-BY 3.0
+https://opengameart.org/content/frozen-lake-lpc
+
+
+LPC Animated Water and waterfalls
+ZaPaper
+CC-BY-SA 3.0
+https://opengameart.org/content/lpc-animated-water-and-waterfalls
+
+LPC More Water Transitions
+billknye
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-more-water-transitions
+
+[LPC] Sand+Rock Alt Colors
+William.Thompsonj, Daniel Eddeland
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-sandrock-alt-colors
+
+[LPC] Colorful Sand + Deep Water!
+Nushio
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-colorful-sand-deep-water
+
+LPC terrain extension
+caeles
+CC-BY-SA 3.0 / GPL 3.0
+https://opengameart.org/content/lpc-terrain-extension
+
+RPG Tiles: Cobble stone paths & town objects
+Zachariah Husiar (Zabin), Daniel Eddeland (Daneeklu), Richard Kettering (Jetrel), Hyptosis, Redshrike, Bertram
+CC-BY-SA 3.0
+https://opengameart.org/content/rpg-tiles-cobble-stone-paths-town-objects
+
+RPG Terrains
+Rayane Félix (RayaneFLX)
+CC-BY-SA 3.0
+https://opengameart.org/content/rpg-terrains
+
+----- Attribution.txt -----
+License
+-------
+
+CC-BY-SA 3.0:
+ - http://creativecommons.org/licenses/by-sa/3.0/
+ - See the file: cc-by-sa-3.0.txt
+GNU GPL 3.0:
+ - http://www.gnu.org/licenses/gpl-3.0.html
+ - See the file: gpl-3.0.txt
+
+Note the file is based on the LCP contest readme so don't expect the exact little pieces used like the base one.
+*Additional license information.
+
+Assets from:
+
+LPC participants:
+----------------
+
+Casper Nilsson
+	*GNU GPL 3.0 or later
+	email: casper.nilsson@gmail.com
+	Freenode: CasperN
+	OpenGameArt.org: C.Nilsson
+	
+ - LPC C.Nilsson (2D art)
+
+Daniel Eddeland 
+	*GNU GPL 3.0 or later
+ - Tilesets of plants, props, food and environments, suitable for farming / fishing sims and other games. 
+ - Includes wheat, grass, sand tilesets, fence tilesets and plants such as corn and tomato. 
+
+
+Johann CHARLOT 
+	*GNU LGPL Version 3. 
+	*Later versions are permitted.
+	Homepage  http://poufpoufproduction.fr
+	Email     johannc@poufpoufproduction.fr
+	
+ - Shoot'em up graphic kit
+
+Skyler Robert Colladay 
+
+ - FeralFantom's Entry (2D art)
+
+BASE assets:
+------------
+
+Lanea Zimmerman (AKA Sharm)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - barrel.png
+ - brackish.png
+ - buckets.png
+ - bridges.png
+ - cabinets.png
+ - cement.png
+ - cementstair.png
+ - chests.png
+ - country.png
+ - cup.png
+ - dirt2.png
+ - dirt.png
+ - dungeon.png
+ - grassalt.png
+ - grass.png
+ - holek.png
+ - holemid.png
+ - hole.png
+ - house.png
+ - inside.png
+ - kitchen.png
+ - lava.png
+ - lavarock.png
+ - mountains.png
+ - rock.png
+ - shadow.png
+ - signs.png
+ - stairs.png
+ - treetop.png
+ - trunk.png
+ - waterfall.png
+ - watergrass.png
+ - water.png
+ - princess.png and princess.xcf
+
+
+Stephen Challener (AKA Redshrike)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - female_walkcycle.png
+ - female_hurt.png
+ - female_slash.png
+ - female_spellcast.png
+ - male_walkcycle.png
+ - male_hurt.png
+ - male_slash.png
+ - male_spellcast.png
+ - male_pants.png
+ - male_hurt_pants.png
+ - male_fall_down_pants.png
+ - male_slash_pants.png
+
+
+Charles Sanchez (AKA CharlesGabriel)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - bat.png
+ - bee.png
+ - big_worm.png
+ - eyeball.png
+ - ghost.png
+ - man_eater_flower.png
+ - pumpking.png
+ - slime.png
+ - small_worm.png
+ - snake.png
+
+
+Manuel Riecke (AKA MrBeast)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - hairfemale.png and hairfemale.xcf
+ - hairmale.png and hairmale.xcf
+ - soldier.png
+ - soldier_altcolor.png
+
+
+Daniel Armstrong (AKA HughSpectrum)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Castle work:
+
+ - castlewalls.png
+ - castlefloors.png
+ - castle_outside.png
+ - castlefloors_outside.png
+ - castle_lightsources.png
+
+
+
+
+----- Attribution2.txt -----
+License
+-------
+
+CC-BY-SA 3.0:
+ - http://creativecommons.org/licenses/by-sa/3.0/
+ - See the file: cc-by-sa-3.0.txt
+GNU GPL 3.0:
+ - http://www.gnu.org/licenses/gpl-3.0.html
+ - See the file: gpl-3.0.txt
+
+Note only some files from the entries are selected.
+*Additional license information.
+
+Assets from:
+
+LPC participants:
+----------------
+
+Barbara Rivera
+ 
+ - tree,tombstone
+
+Casper Nilsson
+	*GNU GPL 3.0 or later
+	email: casper.nilsson@gmail.com
+	Freenode: CasperN
+	OpenGameArt.org: C.Nilsson
+	
+ - LPC C.Nilsson (2D art)
+ 
+Chris Phillips
+
+ - tree
+
+Daniel Eddeland 
+	*GNU GPL 3.0 or later
+	
+ - Tilesets of plants, props, food and environments, suitable for farming / fishing sims and other games. 
+ - Includes wheat, grass, sand tilesets, fence tilesets and plants such as corn and tomato. 
+ - Also includes village/marketplace objects like sacks, food, some smithing equipment, tables and stalls.
+
+
+Anamaris and Krusmira (aka? Emilio J Sanchez)
+
+ - Sierra__Steampun-a-fy (with concept art)
+ 
+Jonas Klinger 
+
+ - Skorpio's SciFi Sprite Pack
+ 
+Joshua Taylor
+
+ - Fruit and Veggie Inventory
+ 
+Leo Villeveygoux
+
+ - Limestone Wall
+
+Mark Weyer 
+
+ - signpost+shadow
+ 
+Matthew Nash
+
+ - Public Toilet Tileset
+ 
+Skyler Robert Colladay
+
+ - FeralFantom's Entry
+
+
+BASE assets:
+------------
+
+Lanea Zimmerman (AKA Sharm)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - barrel.png
+ - brackish.png
+ - buckets.png
+ - bridges.png
+ - cabinets.png
+ - cement.png
+ - cementstair.png
+ - chests.png
+ - country.png
+ - cup.png
+ - dirt2.png
+ - dirt.png
+ - dungeon.png
+ - grassalt.png
+ - grass.png
+ - holek.png
+ - holemid.png
+ - hole.png
+ - house.png
+ - inside.png
+ - kitchen.png
+ - lava.png
+ - lavarock.png
+ - mountains.png
+ - rock.png
+ - shadow.png
+ - signs.png
+ - stairs.png
+ - treetop.png
+ - trunk.png
+ - waterfall.png
+ - watergrass.png
+ - water.png
+ - princess.png and princess.xcf
+
+
+Stephen Challener (AKA Redshrike)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - female_walkcycle.png
+ - female_hurt.png
+ - female_slash.png
+ - female_spellcast.png
+ - male_walkcycle.png
+ - male_hurt.png
+ - male_slash.png
+ - male_spellcast.png
+ - male_pants.png
+ - male_hurt_pants.png
+ - male_fall_down_pants.png
+ - male_slash_pants.png
+
+
+Charles Sanchez (AKA CharlesGabriel)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - bat.png
+ - bee.png
+ - big_worm.png
+ - eyeball.png
+ - ghost.png
+ - man_eater_flower.png
+ - pumpking.png
+ - slime.png
+ - small_worm.png
+ - snake.png
+
+
+Manuel Riecke (AKA MrBeast)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - hairfemale.png and hairfemale.xcf
+ - hairmale.png and hairmale.xcf
+ - soldier.png
+ - soldier_altcolor.png
+
+
+Daniel Armstrong (AKA HughSpectrum)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Castle work:
+
+ - castlewalls.png
+ - castlefloors.png
+ - castle_outside.png
+ - castlefloors_outside.png
+ - castle_lightsources.png
+
+
+
+
+----- Credits.txt -----
+Dungeon portions:
+Please link to the OpenGameArt.org page where this came from (if reasonable), attribute Sharm as graphic artist, and William Thompson as contributor (since he did pay out of the goodness of my heart to have this set made after all...)
+http://opengameart.org/content/lpc-dungeon-elements
+
+//////////*********************\\\\\\\\\\\\\\\\\\\\
+
+LPC leaf recolors:
+License
+-------
+CC-BY-SA 3.0:
+- http://creativecommons.org/licenses/by-sa/3.0/
+GNU GPL 3.0:
+- http://www.gnu.org/licenses/gpl-3.0.html
+
+If you need to figure out exactly who made what please see the Liberated Pixel Cup entries.
+
+Liberated Pixel Cup Assets:
+http://opengameart.org/lpc-art-entries
+
+LPC participants:
+----------------
+Johann CHARLOT
+	Homepage  http://poufpoufproduction.fr
+	Email     johannc@poufpoufproduction.fr
+- Shoot'em up graphic kit
+
+Recolored Leaves
+
+William Thompson
+	Email: william.thompsonj@gmail.com
+	OpenGameArt.org: williamthompsonj
+
+
+
+//////////*********************\\\\\\\\\\\\\\\\\\\\
+
+city_inside.png
+= Red carpets =
+* From LPC base tileset by Daniel Armstrong (AKA HughSpectrum)
+= Beds =
+* Based on bed from LPC base tileset by Lanea Zimmerman (AKA Sharm)
+= Wooden big table =
+* Based on table from LPC base tileset by Lanea Zimmerman (AKA Sharm)
+= Cloth big table =
+* By Tuomo Untinen
+= Brazier =
+* By Tuomo Untinen
+= Throne =
+* By Tuomo Untinen
+= Doors =
+* Based on door by Guido Bos
+= Cupboard, small table and table with mirror =
+* Cupboard based on LPC base tileset by Lanea Zimmerman (AKA Sharm)
+* Tables are from Castle_2.png by Lanea Zimmerman (AKA Sharm)
+* Mirror by Tuomo Untinen
+= Red banners, paintings and old papers =
+* By Tuomo Untinen
+= Small footchair =
+* By Tuomo Untinen
+= Double bed =
+* By Tuomo Untinen
+= Plants in pots =
+* By Tuomo Untinen
+= Gray bright windows =
+* By Tuomo Untinen
+= Short column and statue =
+* By Tuomo Untinen
+= Stone sign =
+* By Tuomo Untinen
+= Horse head =
+* By Tuomo Untinen
+= Grand piano =
+* By Tuomo Untinen
+= Cobblestone floor =
+* By Tuomo Untinen
+= Cellwall and door =
+* By Tuomo Untinen
+= Yellow stone floor =
+* Based from LPC base tileset by Daniel Armstrong (AKA HughSpectrum)
+= Gray wall topping  =
+* Tuomo Untinen
+= Vases with cover =
+* Based LPC base tiles by Lanea Zimmerman (AKA Sharm)
+* Modifications by Tuomo Untinen
+= Fireplace =
+* By Lanea Zimmerman
+
+
+
+//////////*********************\\\\\\\\\\\\\\\\\\\\
+
+Daneeklu submissions:
+
+Farming tilesets, magic animations and UI elements
+--------------------------
+LPC submission by Daniel Eddeland
+
+The submission contains:
+*Tilesets of plants, props, food and environments, suitable for farming / fishing sims and other games. Includes wheat, grass, sand tilesets, fence tilesets and plants such as corn and tomato. Also includes village/marketplace objects like sacks, food, some smithing equipment, tables and stalls.
+*Animations for magic attacks and shields: Fire Lion, Ice shield, Torrentacle (water tentacle), Snakebite and Turtle shell.
+*Some UI elements of scrolls and wooden blocks.
+*A sword with animation, and a 3-frame "grab" animation, in the "character" directory.
+
+The art is dual licensed under the following licenses.
+*CC-BY-SA 3.0
+*GNU GPL 3.0 or later
+ 
+http://creativecommons.org/licenses/by-sa/3.0/
+http://www.gnu.org/licenses/gpl-3.0.html
+
+Please attribute creator as Daniel Eddeland.
+Please include a link to opengameart.org as well (preferably to the submission for this art package) if you use the art.
+
+
+
+Some of the art in this archive are based on base assets for the LPC competition. At the time of writing
+those base assets can be found at:
+http://lpc.opengameart.org/static/lpc-style-guide/assets.html
+
+
+
+
+
+//////////*********************\\\\\\\\\\\\\\\\\\\\
+
+LPC house interior:
+
+= Wooden floor(CC-BY-SA) =
+ * Horizontal wooden floor by Lanea Zimmerman (AKA Sharm)
+ * Horizontal wooden floor with hole by Lanea Zimmerman (AKA Sharm) and Tuomo Untinen
+ * Vertical wooden floor by Tuomo Untinen
+ * Vertical wooden floor with hole by Tuomo Untinen
+= Wooden wall topping (CC-BY-SA) =
+ * Tuomo Untinen
+= Pile of barrels =
+ * Based LPC base tiles by Lanea Zimmerman (AKA Sharm)
+= Decorational stuff (CC-BY-SA) =
+ * Green bottle
+ * Wine glass and bottle
+ * Hanging sacks
+ * Wall mounted rope and ropes
+ * Wall mounted swords
+ * Wall mounted kite shield
+ * Wall hole
+ By Tuomo Untinen
+ * Small sack from LPC farming tileset by Daniel Eddeland (http://opengameart.org/content/lpc- farming-tilesets-magic-animations-and-ui-elements) 
+ * Purple bottles and gray lantern from Hyptosis Mage city
+ * Green and blue bottle by Tuomo Untinen
+= Wall clock (CC-BY-SA) =
+ * Lanea Zimmerman AKA Sharm
+ * Tuomo Untinen (Scaled down and animation)
+= Stone floor (CC-BY-SA)= 
+ * Tuomo Untinen 
+= Cobble stone floor (CC-BY-SA)= 
+ * Based on LPC base tileset by Lanea Zimmerman (AKA Sharm)
+= Cabinets and kitchen stuff including metal stove(CC-BY-SA) =
+ * Based on LPC base tileset by Lanea Zimmerman (AKA Sharm)
+ * Cutboard is made by Hyptosis
+ * Sacks based on LPC farming tileset by Daniel Eddeland (http://opengameart.org/content/lpc- farming-tilesets-magic-animations-and-ui-elements) 
+ * Spears by Tuomo Untinen
+ * Vertical chest by Tuomo Untinen based on LPC base tiles Lanea Zimmerman (AKA Sharm)
+Manuel Riecke (AKA MrBeast)
+= Skull (CC-BY-SA) =
+ * http://opengameart.org/content/lpc-dungeon-elements
+ * Graphical artist Lanea Zimmerman AKA Sharm
+ * Contributor William Thompson
+= pile sacks =
+ * LPC farming tileset by Daniel Eddeland (http://opengameart.org/content/lpc- farming-tilesets-magic-animations-and-ui-elements) 
+= Pile of papers(CC-BY-SA) = 
+ * Based on caeles papers
+= Armor shelves(CC-BY-SA) =
+ * Based on LPC base tileset by Lanea Zimmerman (AKA Sharm)
+ * Armors by: Adapted by Matthew Krohn from art created by Johannes Sjölund
+= Table lamp =
+  * Curt
+  * Sharm
+  * Hyptosis
+= Distiller =
+ * Table is from LPC base tileset by Lanea Zimmerman (AKA Sharm)
+ * Distiller by Tuomo Untinen
+= Fireplace =
+ * Tuomo Untinen
+ * Inspired by Lanea Zimmerman (AKA Sharm) Fireplace
+
+
+
+
+
+
+----- Items&Effects credits.txt -----
+items.png
+= Swords and daggers =
+* By Tuomo Untinen
+= Axes =
+* By Tuomo Untinen
+= Plate mails =
+* by Johannes Sjölund AKA Wulax
+= Helmet =
+* by Johannes Sjölund AKA Wulax
+= Bows = 
+* By Tuomo Untinen
+= Round shields =
+* by Johannes Sjölund AKA Wulax
+= Gloves =
+* by Johannes Sjölund AKA Wulax
+= Bottles =
+* by Tuomo Untinen
+= Kite shields =
+* By Tuomo Untinen
+= Pick-Axe =
+* By Tuomo Untinen
+= Spiked Gloves =
+* by Johannes Sjölund AKA Wulax
+* Modifed by Tuomo Untinen
+= Keys and pick locks =
+* By Tuomo Untinen
+= Leather armors =
+* by Johannes Sjölund AKA Wulax
+* Spikes done by Tuomo Untinen
+= Maces =
+* By Tuomo Untinen
+= Carrot =
+* By Tuomo Untinen
+= Carrot =
+* By Tuomo Untinen
+= Money bag =
+* Small sack from LPC farming tileset by Daniel Eddeland (http://opengameart.org/content/lpc-farming-tilesets-magic-animations-and-ui-elements)
+= Spears = 
+* By Tuomo Untinen
+= Salad =
+* Based on LPC base tileset by Lanea Zimmerman (AKA Sharm)
+* Modifications by Tuomo Untinen
+= Cheese =
+* By Tuomo Untinen
+= Bread, roast on plate and apple =
+* By Jetrel
+= Chainmail =
+* By Johannes Sjölund AKA Wulax
+= Crossbow =
+* By Gwes
+= Crudge Leather armor =
+* Leather armor by Johannes Sjölund AKA Wulax
+* Single bauldron by Nila122
+= Jackets =
+* Jacket by Tuomo Untinen, pennomi, laetissima and makrohn.
+* Belt by Johannes Sjölund AKA Wulax
+= Scrolls and books =
+* Modified by Tuomo Untinen originals by Gwes
+= Cabbage =
+* By Daniel Eddeland (http://opengameart.org/content/lpc-farming-tilesets-magic-animations-and-ui-elements) 
+= Witch Hat =
+* By Tuomo Untinen
+= Torch and Lantern =
+* By Tuomo Untinen
+= Staff =
+* By Tuomo Untinen
+= Amulets =
+* Ruby by Gwes
+* Modifications by Tuomo Untinen
+= Rapier =
+* By Tuomo Untinen
+= Sling =
+* By Tuomo Untinen
+= Rope =
+* By Tuomo Untinen
+= Flails =
+* By Tuomo Untinen
+= Big hammers =
+* By Tuomo Untinen
+= Cooked fish =
+* By Tuomo Untinen
+= Exploding barrel =
+* Original barrel by by Lanea Zimmerman (AKA Sharm)
+* Modified by Tuomo Untinen
+= Splint Mail =
+* Leather armor by Johannes Sjölund AKA Wulax
+* Modified by Tuomo Untinen
+= Cape =
+* By Jaidyn Reiman
+= Sawtooth blade =
+* By Gwes
+= Diamonds = 
+* By Tuomo Untinen
+= Shurikens =
+* By Tuomo Untinen
+= Rings =
+* By Tuomo Untinen
+= Leather boots =
+* By Tuomo Untinen
+= Hairpin =
+* By Tuomo Untinen
+= Toolbox =
+* By Tuomo Untinen
+= Large shields =
+* By Gwes
+= Large key =
+* By Gwes 
+= Evil magic staff =
+* By Gwes
+* Modified by Tuomo Untinen
+= Iron boots =
+* By Gwes
+= Magic swords =
+* Handle by Gwes
+* Blade by Tuomo Untinen
+= Skull key =
+* By Tuomo Untinen
+= Javelins and throwing axes =
+* By Tuomo Untinen
+= Medikit =
+* By Tuomo Untinen
+= Buckler =
+* By Gwes
+= Fishing rod =
+* By Tuomo Untinen
+= Raw fish =
+* By Tuomo Untinen
+= Troll Head =
+* Base character by Stephen Challener AKA Redshrike
+* Fangs by Tuomo Untinen
+* Elven ears by Jaidyn Reiman
+= Map =
+* By Tuomo Untinen
+= Rope ladder =
+* By Tuomo Untinen
+= Shovel =
+* By Tuomo Untinen
+= Zombie head on rope =
+* Original Zombie by ArtisticDude, modified by Tuomo Untinen
+= Master key =
+* By Tuomo Untinen
+= Magic Hatchet =
+* By Tuomo Untinen
+= Blue plant and seeds =
+* By Tuomo Untinen
+= Wooden shield =
+* By Tuomo Untinen
+= Boomerang =
+* By Tuomo Untinen
+= Skull shield =
+* By Gwes
+= Magic wand =
+* By Gwes
+= Swords with black handle =
+* Handle by Gwes
+* Blade by Tuomo Untinen
+= Mystic books =
+* By Gwes
+= Phylantery =
+* By Jetrel
+= Magic sickle =
+* By Tuomo Untinen
+= Locket =
+* By Tuomo Untinen
+= Bridge repair kit =
+* By Tuomo Untinen
+
+effects.png
+= Look cursor, cast cursor, attack cursor, use cursor and talk cursor =
+* By Tuomo Untinen
+= Speech ballons and sweat =
+* By Tuomo Untinen
+= Small magic effect, good magic effect, poison and flame spell effects =
+* By Tuomo Untinen
+= Curse fear and darkness spell effects =
+* By Tuomo Untinen
+* Skull by Johannes Sjölund
+= Electric, teleport, freezing drowning and force fist spell effects =
+* By Tuomo Untinen
+= Bright light spell effect, blood stains and blade swing effects =
+* By Tuomo Untinen
+= Ranged attack miss effect =
+* By Tuomo Untinen
+= Sleeping speech bubble =
+* By Tuomo Untinen
+= Shopkeeper's speech bubble =
+* By Tuomo Untinen
+= Teddy bear speech bubble =
+* By Tuomo Untinen
+= Eating speech bubble =
+* Original meat By Jetrel
+* Adaptation by Tuomo Untinen
+
+
+
+
+----- ReadMe-Attributions.txt -----
+These are the attirubtions/instructions for attributions from all the resources in this LPC set. Some may be duplicates...
+
+Adobe:
+Please link to the OpenGameArt.org page where this came from (if reasonable), attribute Sharm as graphic artist, and William Thompson as contributor (since he did pay out of the goodness of my heart to have this set made after all...)
+
+http://opengameart.org/content/lpc-adobe-building-set
+
+Arabic:
+
+Please link to the OpenGameArt.org page where this came from (if reasonable), attribute Sharm as graphic artist, and William Thompson as contributor (since he did pay out of the goodness of my heart to have this set made after all...)
+
+http://opengameart.org/content/lpc-arabic-elements
+
+
+Exterior/Interior(1&2)/Outside Objects/Terrain and Outside: 
+
+See: 
+Attribution/Attribution 2 (copied and pasted into the folder "attributions" from set "base_out_atas and terrain_atlas" and "build_atlas and obj_misk_atlas")
+
+See:
+Items&Effects (pased from Items and Efffects)
+
+See: Terrain2 Attribution
+
+See: Credits as copied and pasted portions from smaller sets...
+
+
+
+
+
+
+
+
+
+----- Terrain2 Attri.txt -----
+License
+-------
+
+CC-BY-SA 3.0:
+ - http://creativecommons.org/licenses/by-sa/3.0/
+ - See the file: cc-by-sa-3.0.txt
+GNU GPL 3.0:
+ - http://www.gnu.org/licenses/gpl-3.0.html
+ - See the file: gpl-3.0.txt
+
+Note the file is based on the LCP contest readme so don't expect the exact little pieces used like the base one.
+*Additional license information.
+
+Assets from:
+
+LPC contributors:
+----------------
+
+
+Matthew Nash
+ http://opengameart.org/content/misc-32x32-tiles
+ - Road
+
+Nushio
+ http://opengameart.org/content/lpc-colorful-sand-deep-water
+ - Snow and ice recolor
+ 
+William.Thompsonj
+ http://opengameart.org/content/lpc-sandrock-alt-colors
+ - Sand and dirt recolor
+ 
+Adrix89
+
+ - Recolor Nushio snow
+
+Casper Nilsson
+	*GNU GPL 3.0 or later
+	email: casper.nilsson@gmail.com
+	Freenode: CasperN
+	OpenGameArt.org: C.Nilsson
+	
+ - LPC C.Nilsson (2D art)
+
+Daniel Eddeland 
+	*GNU GPL 3.0 or later
+ - Tilesets of plants, props, food and environments, suitable for farming / fishing sims and other games. 
+ - Includes wheat, grass, sand tilesets, fence tilesets and plants such as corn and tomato. 
+
+
+Johann CHARLOT 
+	*GNU LGPL Version 3. 
+	*Later versions are permitted.
+	Homepage  http://poufpoufproduction.fr
+	Email     johannc@poufpoufproduction.fr
+	
+ - Shoot'em up graphic kit
+
+Skyler Robert Colladay 
+
+ - FeralFantom's Entry (2D art)
+
+BASE assets:
+------------
+
+Lanea Zimmerman (AKA Sharm)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - barrel.png
+ - brackish.png
+ - buckets.png
+ - bridges.png
+ - cabinets.png
+ - cement.png
+ - cementstair.png
+ - chests.png
+ - country.png
+ - cup.png
+ - dirt2.png
+ - dirt.png
+ - dungeon.png
+ - grassalt.png
+ - grass.png
+ - holek.png
+ - holemid.png
+ - hole.png
+ - house.png
+ - inside.png
+ - kitchen.png
+ - lava.png
+ - lavarock.png
+ - mountains.png
+ - rock.png
+ - shadow.png
+ - signs.png
+ - stairs.png
+ - treetop.png
+ - trunk.png
+ - waterfall.png
+ - watergrass.png
+ - water.png
+ - princess.png and princess.xcf
+
+
+Stephen Challener (AKA Redshrike)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - female_walkcycle.png
+ - female_hurt.png
+ - female_slash.png
+ - female_spellcast.png
+ - male_walkcycle.png
+ - male_hurt.png
+ - male_slash.png
+ - male_spellcast.png
+ - male_pants.png
+ - male_hurt_pants.png
+ - male_fall_down_pants.png
+ - male_slash_pants.png
+
+
+Charles Sanchez (AKA CharlesGabriel)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - bat.png
+ - bee.png
+ - big_worm.png
+ - eyeball.png
+ - ghost.png
+ - man_eater_flower.png
+ - pumpking.png
+ - slime.png
+ - small_worm.png
+ - snake.png
+
+
+Manuel Riecke (AKA MrBeast)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ - hairfemale.png and hairfemale.xcf
+ - hairmale.png and hairmale.xcf
+ - soldier.png
+ - soldier_altcolor.png
+
+
+Daniel Armstrong (AKA HughSpectrum)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Castle work:
+
+ - castlewalls.png
+ - castlefloors.png
+ - castle_outside.png
+ - castlefloors_outside.png
+ - castle_lightsources.png
+
+

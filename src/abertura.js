@@ -108,7 +108,7 @@ export function mostrarAbertura({ aoEntrar, logado = false, erro = '' } = {}) {
     if (e.target.closest('#ab-creditos')) {
       efeitoToque();
       const el = document.getElementById('ab-texto');
-      el.textContent = 'ADM Quest, criado pelo professor Silas para o Técnico em Administração do Senac Campinas, 2027. Fontes Pixelify Sans e Nunito (licença OFL). Mapa com o pacote Ninja Adventure (Pixel-boy e AAA, CC0). Avatares com a arte do Liberated Pixel Cup (LPC), licenças CC-BY-SA 3.0, GPL 3.0, OGA-BY 3.0, CC-BY e CC0. Música, sons e desenhos feitos para o jogo.';
+      el.textContent = 'ADM Quest, criado pelo professor Silas para o Técnico em Administração do Senac Campinas, 2027. Fontes Pixelify Sans e Nunito (licença OFL). Mapa e avatares com a arte do Liberated Pixel Cup (LPC) e de artistas compatíveis, como Lanea Zimmerman (Sharm), bluecarrot16, Daniel Eddeland e Casper Nilsson, licenças CC-BY-SA 3.0, GPL 3.0, OGA-BY 3.0, CC-BY e CC0 (lista completa no arquivo mapa/lpc/CREDITOS.txt do site), e algumas peças do pacote Ninja Adventure (Pixel-boy e AAA, CC0). Música, sons e desenhos feitos para o jogo.';
       fetch(import.meta.env.BASE_URL + 'lpc/creditos-avatar.json').then((r) => r.json()).then((lista) => {
         const vistos = new Map();
         for (const c of lista) for (const a of c.autores) { const n = a.trim(); if (n && !/^\?+$/.test(n) && !vistos.has(n.toLowerCase())) vistos.set(n.toLowerCase(), n); }
