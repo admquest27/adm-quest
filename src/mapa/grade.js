@@ -42,6 +42,7 @@ export function montarTerreno(planta) {
   for (const f of planta.FASES) bloquear(f.x, f.y, f.w, f.h);
   for (const e of planta.ENFEITES) if (e.bloqueia) bloquear(e.bx ?? e.x, e.by ?? e.y, e.bw ?? 1, e.bh ?? 1);
   for (const o of planta.OBJETOS) if (o.bloqueia) bloquear(o.x, o.y, o.w ?? 1, o.h ?? 1);
+  for (const [x, y] of planta.LAMPIOES ?? []) bloquear(x, y);
   return { W, H, chao, molhado, passa, agua, floresta };
 }
 

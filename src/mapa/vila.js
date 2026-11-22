@@ -105,4 +105,6 @@ export const ZONAS = [
 ];
 
 export const INICIO = [5, 17];
+// Lampiões ao lado das estradas (acendem no fim da tarde e à noite)
+export const LAMPIOES = [[12, 16], [20, 17], [25, 12], [30, 11], [37, 12], [41, 17], [45, 13], [14, 11], [11, 19], [34, 9]];
 export const SEGREDOS = ['cacto', 'galinhas', 'konami', 'lapide', 'gato', 'professores', 'pombo', 'antena', 'bau', '404'];

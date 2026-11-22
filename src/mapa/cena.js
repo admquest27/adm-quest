@@ -140,6 +140,7 @@ class MapaCena extends Phaser.Scene {
       if (lpcP) {
         const img = this.imagemLPC(e.x, e.y, e.w, e.h, lpcP.quadro);
         (this.telhados ??= []).push(img.getBounds());
+        (this.casasLPC ??= []).push({ img, quadro: lpcP.quadro });
         const [px] = this.portaLPC(img, lpcP);
         const i = nCasa++;
         this.interativos.push({ tipo: 'casa', id: i, nome: this.o.textos?.casas?.[i]?.nome, area: img.getBounds(), alvo: [Math.floor(px / P), e.y + e.h] });
@@ -288,6 +289,7 @@ class MapaCena extends Phaser.Scene {
       const lpcF = LPC_PECAS[f.arte];
       const img = lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
       img.setDepth(100 + by);
+      if (lpcF?.quadro.startsWith('casa-palha')) (this.casasLPC ??= []).push({ img, quadro: lpcF.quadro });
       const [nx, ny] = centro(f.entrada);
       const no = this.add.image(nx, ny + 3, 'no-trancado').setDepth(3).setScale(0.7);
       this.fases[f.id] = { def: f, img, no, extras: [] };
@@ -946,10 +948,66 @@ class MapaCena extends Phaser.Scene {
       }
       piado();
     } });
-    // luz conforme o horário real: tarde dourada e noite azulada
-    const h = new Date().getHours();
-    const luz = h >= 17 && h < 19 ? [0xff9a3c, 0.12] : (h >= 19 || h < 6) ? [0x1c2a6b, 0.3] : null;
-    if (luz) this.add.rectangle(0, 0, 2000, 2000, luz[0], luz[1]).setOrigin(0).setScrollFactor(0).setDepth(989);
+    this.criarLampioes();
+    this.criarLuz();
+  }
+
+  // Lampiões LPC ao lado das estradas
+  criarLampioes() {
+    this.chamas = [];
+    for (const [x, y] of planta.LAMPIOES ?? []) {
+      const by = (y + 1) * P - 2;
+      this.add.ellipse(x * P + 8, by, 6, 2, 0x000000, 0.25).setDepth(4);
+      const img = this.add.image(x * P + 8, by, 'lpc', 'lampiao').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
+      this.chamas.push([img.x, img.y - img.displayHeight + 8]);
+    }
+  }
+
+  // Luz conforme o horário real: fim de tarde dourado e noite azulada, com lampiões, janelas e fogueira acesos.
+  // Um mapa de luz (cor do ambiente mais as luzes somadas) é multiplicado sobre a cena.
+  criarLuz() {
+    const h = this.o.hora ?? new Date().getHours();
+    const modo = h >= 17 && h < 19 ? 'tarde' : (h >= 19 || h < 6) ? 'noite' : 'dia';
+    this.modoLuz = modo;
+    for (const o of this.objsLuz ?? []) o.destroy();
+    this.objsLuz = []; this.rtLuz = null;
+    for (const c of this.casasLPC ?? []) c.img.setFrame(modo !== 'dia' && this.textures.get('lpc').has(c.quadro + '-noite') ? c.quadro + '-noite' : c.quadro);
+    if (modo === 'dia') return;
+    // manchas de luz já coloridas (quente dos lampiões, das janelas e da fogueira)
+    const mancha = (k, cor) => {
+      if (this.textures.exists(k)) return;
+      const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d');
+      const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, `rgba(${cor},1)`); gr.addColorStop(0.45, `rgba(${cor},0.55)`); gr.addColorStop(1, `rgba(${cor},0)`);
+      g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+      this.textures.addCanvas(k, cv); this.textures.get(k).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    };
+    mancha('luz', '255,255,255'); mancha('luz-lampiao', '255,176,92'); mancha('luz-janela', '255,168,84'); mancha('luz-fogo', '255,140,64');
+    this.luzAmb = modo === 'tarde' ? 0xffb990 : 0x4a5590;
+    this.luzForca = modo === 'tarde' ? 0.6 : 1;
+    this.luzes = [];
+    const brilho = (x, y, k, esc, a) => this.guardaLuz(this.add.image(x, y, k)).setScale(esc).setBlendMode(Phaser.BlendModes.ADD).setAlpha(a * this.luzForca).setDepth(989);
+    for (const [x, y] of this.chamas) { this.luzes.push({ x, y: y + 18, r: 58, k: 'luz-lampiao' }); brilho(x, y + 26, 'luz-lampiao', 0.75, 0.22); this.guardaLuz(this.add.image(x, y, 'luz')).setScale(0.16).setTint(0xffd590).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.7 * this.luzForca).setDepth(990); }
+    for (const c of this.casasLPC ?? []) { const b = c.img.getBounds(); this.luzes.push({ x: b.left + 18, y: b.top + 78, r: 26, k: 'luz-janela' }); }
+    const camp = this.fases?.m1f5?.img; if (camp) { const b = camp.getBounds(); this.luzes.push({ x: b.left - 6, y: b.bottom - 8, r: 52, k: 'luz-fogo' }); brilho(b.left - 6, b.bottom - 6, 'luz-fogo', 0.7, 0.3); }
+    this.rtLuz = this.guardaLuz(this.add.renderTexture(0, 0, this.t.W * P, this.t.H * P).setOrigin(0).setDepth(988).setBlendMode(Phaser.BlendModes.MULTIPLY));
+    this.pincel = this.make.image({ key: 'luz', add: false }).setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  guardaLuz(o) { (this.objsLuz ??= []).push(o); return o; }
+  // Troca o horário com o jogo aberto (h: hora de 0 a 23)
+  trocarHora(h) { this.o.hora = h; this.criarLuz(); }
+
+  atualizarLuz(time) {
+    if (!this.rtLuz) return;
+    this.qLuz = (this.qLuz ?? 0) + 1; if (this.qLuz % 2) return;
+    const rt = this.rtLuz; const v = this.cameras.main.worldView;
+    rt.clear(); rt.fill(this.luzAmb, 1);
+    for (const l of this.luzes) {
+      if (l.x < v.left - l.r || l.x > v.right + l.r || l.y < v.top - l.r || l.y > v.bottom + l.r) continue;
+      const fl = this.cfg.menosMovimento ? 1 : 0.94 + Math.sin(time / 110 + l.x) * 0.035 + Math.random() * 0.025;
+      this.pincel.setTexture(l.k).setPosition(l.x, l.y).setScale((l.r * 2 * fl) / 128).setAlpha(this.luzForca);
+      rt.draw(this.pincel);
+    }
   }
 
   // seta na borda da tela apontando a fase aberta que falta fazer
@@ -995,6 +1053,7 @@ class MapaCena extends Phaser.Scene {
       this.borboletas.forEach((b, i) => { b.x += Math.sin(time / 600 + i) * 0.4; b.y += Math.cos(time / 300 + i * 2) * 0.3; b.setScale(1, Math.floor(time / 120 + i) % 2 ? 1 : 0.4); });
     }
     this.verAtras();
+    this.atualizarLuz(time);
     this.atualizarSeta();
     this.atualizarAlcance();
     this.imersao(time);
