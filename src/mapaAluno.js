@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc, serverTimestamp, arrayUnion } from 'firebase/fires
 import { db } from './firebase.js';
 import { situacao } from './fases.js';
 import { FALAS_PADRAO } from './pixel/rosalina.js';
+import { folha } from './avatar.js';
 
 const ler = (k, padrao) => { try { const v = localStorage.getItem(k); return v === null ? padrao : JSON.parse(v); } catch { return padrao; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* aparelho sem armazenamento */ } };
@@ -38,9 +39,10 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
   async function iniciar(st) {
     carregando = true;
     raiz.innerHTML = '<p class="mapa-carregando">Abrindo o mapa da Vila...</p>';
-    const [modulo, seg] = await Promise.all([
+    const [modulo, seg, folhaAvatar] = await Promise.all([
       import('./mapa/cena.js'),
       getDoc(doc(db, 'segredos', alvo)).catch(() => null),
+      folha(st.dados?.avatar, 'walk').catch(() => null),
     ]);
     if (destruido) return;
     raiz.innerHTML = '';
@@ -64,7 +66,8 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
     if (caiu && !viuCair && !ver) gravar(chave('castelo'), true);
     api = modulo.iniciarMapa(raiz, {
       botoesBarra: '<button class="mapa-btn" id="mapa-lista" aria-label="Voltar para a lista de fases">Fases</button>',
-      urls: { base: `${import.meta.env.BASE_URL}mapa/na/` },
+      urls: { base: `${import.meta.env.BASE_URL}mapa/na/`, lpc: `${import.meta.env.BASE_URL}mapa/lpc/` },
+      folhaAvatar,
       nomeMundo: `Mundo ${m.ordem ?? 1} · ${m.nome ?? 'Vila dos Planos'}`,
       primeiraVez,
       revelar: primeiraVez ? null : cam.revelar,

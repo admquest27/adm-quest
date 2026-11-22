@@ -4,15 +4,19 @@ import Phaser from 'phaser';
 import * as planta from './vila.js';
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
 import { todasAsTexturas, iconesBarra } from './texturas.js';
-import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS } from './arte.js';
-import { tela, el, emCanvas } from '../pixel/formas.js';
+import { FOLHAS, ANIMADOS, PESSOAS, ROSTOS, RECORTES, DIRECOES, LINHAS, AGUA } from './arte.js';
+import { desenharChao, desenharEstrada, pecasDaEstrada } from './chao.js';
+import { emCanvas } from '../pixel/formas.js';
 import { desenhaPose } from '../pixel/rosalina.js';
 import {
   tocarMusica, pararMusica, alternarSom, efeitoToque, piado, efeitoLetra, efeitoSegredo, efeitoPoof, latido, ganido, croac, cocorico,
   volumes, definirVolume, efeitoPulo, garantirSom, somLigado, estadoSom, acabouDeLiberar,
 } from '../pixel/som.js';
 
-const P = 16;
+const P = 16; // peça da planta, em unidades do mundo (a câmera aproxima 2x)
+const Q_ESCALA = 0.5; // a arte LPC tem 32 px por peça: desenhada na metade, sai com o dobro de detalhe
+const ZOOM = 2;
+const LINHA_LPC = { cima: 0, esq: 1, baixo: 2, dir: 3 }; // linhas da folha de caminhada LPC
 const centro = ([x, y]) => [x * P + P / 2, y * P + P / 2];
 const peca = (px, py) => [Math.floor(px / P), Math.floor(py / P)];
 const VEL = 64;
@@ -40,14 +44,6 @@ function pontosDe(linha) {
   }
   return pts;
 }
-function canvasEstrada(pontos) {
-  const r = tela(planta.LARG * P, planta.ALT * P);
-  for (const [x, y] of pontos) el(r, x, y, 6, 5, '#7b4a32');
-  for (const [x, y] of pontos) el(r, x, y, 5, 4, '#c98d5a');
-  for (const [x, y] of pontos) if ((Math.floor(x * 7 + y * 13)) % 19 === 0) el(r, x + 1, y, 0.9, 0.7, '#a96d43');
-  return emCanvas(r);
-}
-
 class MapaCena extends Phaser.Scene {
   constructor(opcoes) { super('mapa'); this.o = opcoes; }
 
@@ -57,6 +53,28 @@ class MapaCena extends Phaser.Scene {
     for (const [k, a] of Object.entries(ANIMADOS)) this.load.spritesheet(k, b + a.arq, { frameWidth: a.w, frameHeight: a.h });
     for (const [k, arq] of Object.entries(PESSOAS)) this.load.spritesheet(k, b + arq, { frameWidth: P, frameHeight: P });
     for (const n of Object.values(EMOTES)) this.load.image(`emote${n}`, `${b}emote/emote${n}.png`);
+    const lpc = this.o.urls.lpc ?? b.replace(/na\/$/, 'lpc/');
+    this.load.atlas('lpc', lpc + 'atlas.png', lpc + 'atlas.json');
+  }
+
+  // Posição de cada peça no atlas LPC (para o chão, que é montado num canvas)
+  quadrosLPC() {
+    const a = this.textures.get('lpc');
+    return Object.fromEntries(a.getFrameNames().map((n) => { const f = a.get(n); return [n, { frame: { x: f.cutX, y: f.cutY, w: f.cutWidth, h: f.cutHeight } }]; }));
+  }
+
+  // Árvore LPC com o pé em (px, py): copa sobre tronco, ou pinheiro inteiro. Desenhada na metade do tamanho.
+  arvoreLPC(px, py, s, tipo = null) {
+    const t = tipo ?? (s < 0.45 ? 'pinho' : s < 0.85 ? 'copa' : s < 0.93 ? 'pinhoAlto' : 'outono');
+    const dep = 100 + py;
+    if (t === 'pinho' || t === 'pinhoAlto') {
+      const nome = t === 'pinhoAlto' ? 'pinho-alto' : ['pinho-1', 'pinho-2', 'pinho-3'][Math.floor(s * 30) % 3];
+      return [this.add.image(px, py + 2, 'lpc', nome).setOrigin(0.5, 1).setScale(0.5).setDepth(dep)];
+    }
+    const v = Math.floor(s * 40) % 3;
+    const tronco = this.add.image(px, py + 4, 'lpc', ['tronco-1', 'tronco-2', 'tronco-3'][v]).setOrigin(0.5, 1).setScale(0.5).setDepth(dep);
+    const copa = this.add.image(px, py + 4 - 22, 'lpc', t === 'outono' ? 'copa-outono' : ['copa-1', 'copa-2', 'copa-3'][v]).setOrigin(0.5, 1).setScale(0.5).setDepth(dep + 0.1);
+    return [tronco, copa];
   }
 
   create() {
@@ -67,25 +85,28 @@ class MapaCena extends Phaser.Scene {
     this.recolorirConsultor();
     this.t = montarTerreno(planta);
     const { W, H } = this.t;
-    const em2D = (arr) => Array.from({ length: H }, (_, y) => arr.slice(y * W, y * W + W));
-    const mChao = this.make.tilemap({ data: em2D(this.t.chao), tileWidth: P, tileHeight: P });
-    mChao.createLayer(0, mChao.addTilesetImage('chao'), 0, 0).setDepth(0);
-    const mAgua = this.make.tilemap({ data: em2D(this.t.molhado), tileWidth: P, tileHeight: P });
-    mAgua.createLayer(0, mAgua.addTilesetImage('agua'), 0, 0).setDepth(1);
+    // chão LPC (grama, areia, água) num canvas só, desenhado na metade do tamanho; a ponte vem por cima
+    this.lpc = { img: this.textures.get('lpc').getSourceImage(), quadros: this.quadrosLPC() };
+    const naEstrada = new Set(); for (const e of planta.ESTRADAS) for (const i of pecasDaEstrada(e.pontos, W, H)) naEstrada.add(i);
+    const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada);
+    this.naAreia = chao.naAreia;
+    this.textures.addCanvas('chaoLPC', chao.canvas);
+    this.add.image(0, 0, 'chaoLPC').setOrigin(0).setScale(Q_ESCALA).setDepth(0);
+    const pt = planta.PONTE;
+    for (let x = pt.x0; x <= pt.x1; x++) this.add.image(x * P + P / 2, pt.y * P + P / 2, 'agua', AGUA.ponte).setDepth(1);
 
     this.interativos = [];
     this.anima();
-    this.criarDeserto();
     this.criarEstradas();
     const base = (img) => img.setDepth(100 + img.y + img.displayHeight * (1 - img.originY));
 
     // mata: árvores em quincôncio, com leve sorteio
     const bordas = [{ x: -5, y: -5, w: W + 10, h: 5 }, { x: -5, y: H, w: W + 10, h: 5 }, { x: -5, y: 0, w: 5, h: H }, { x: W, y: 0, w: 5, h: H }];
-    for (const a of [...planta.FLORESTA, ...bordas]) for (let y = a.y - 1; y < a.y + a.h; y += 1.4) for (let x = a.x - 0.5; x < a.x + a.w; x += 1.6) {
+    for (const a of [...planta.FLORESTA, ...bordas]) for (let y = a.y + (a.y > H / 2 ? 1.6 : -1); y < a.y + a.h + 1; y += 1.5) for (let x = a.x - 0.5; x < a.x + a.w; x += 2.1) {
       const s = semente2(Math.round(x * 3), Math.round(y * 5));
-      const px = (x + (Math.round(y / 1.4) % 2 ? 0.8 : 0) + s * 0.4) * P; const py = (y + 2) * P;
+      const px = (x + (Math.round(y / 1.5) % 2 ? 1.05 : 0) + s * 0.5) * P; const py = (y + 1) * P;
       const [tx, ty] = peca(px, py - 4); if (tx >= 0 && ty >= 0 && tx < W && ty < H && this.t.agua[ty * W + tx]) continue;
-      base(this.add.image(px, py, 'natureza', s < 0.62 ? 'pinheiro' : s < 0.86 ? 'arvoreRedonda' : 'arvoreClara').setOrigin(0.5, 1));
+      this.arvoreLPC(px, py, s);
     }
     // flores animadas e matinhos
     for (let y = 2; y < H - 3; y++) for (let x = 1; x < W - 1; x++) {
@@ -97,7 +118,9 @@ class MapaCena extends Phaser.Scene {
       else this.add.image(cx, cy, 'natureza', s < 0.05 ? 'mato' : 'arbusto2').setDepth(3).setScale(0.8);
     }
     let nCasa = 0;
+    const ARVORES = { arvoreRedonda: 'copa', arvoreClara: 'copa', arvoreRosa: 'outono', pinheiro: 'pinho' };
     for (const e of planta.ENFEITES) {
+      if (ARVORES[e.peca]) { this.arvoreLPC(e.x * P + P, (e.y + e.h) * P - 2, semente2(e.x, e.y), ARVORES[e.peca]); continue; }
       const img = base(this.add.image(e.x * P, e.y * P, RECORTES[e.peca].folha, e.peca).setOrigin(0, 0));
       const porta = RECORTES[e.peca].porta;
       if (porta) {
@@ -195,8 +218,10 @@ class MapaCena extends Phaser.Scene {
     this.todosPontos = [];
     this.estradas = planta.ESTRADAS.map((e, i) => {
       const pts = pontosDe(e.pontos); this.todosPontos.push(...pts);
-      const chave = `estrada-${i}`; this.textures.addCanvas(chave, canvasEstrada(pts));
-      const img = this.add.image(0, 0, chave).setOrigin(0).setDepth(2.5);
+      const chave = `estrada-${i}`;
+      const des = desenharEstrada(this.lpc.img, this.lpc.quadros, pecasDaEstrada(e.pontos, this.t.W, this.t.H), this.t.W);
+      this.textures.addCanvas(chave, des.canvas);
+      const img = this.add.image(des.x * P, des.y * P, chave).setOrigin(0).setScale(Q_ESCALA).setDepth(2.5);
       const tracos = this.add.group();
       pts.forEach(([x, y], k) => { if (k % 5 === 0) tracos.add(this.add.circle(x, y, 1.3, 0x7b4a32, 0.55).setDepth(2.4)); });
       return { ...e, pts, img, tracos };
@@ -414,10 +439,17 @@ class MapaCena extends Phaser.Scene {
     const { W } = this.t; const pos = this.o.posicao;
     const ini = pos && this.t.passa[pos[1] * W + pos[0]] ? pos : planta.INICIO;
     const [ax, ay] = centro(ini);
-    this.av = this.add.sprite(ax, ay, 'heroi', 0).setOrigin(0.5, 0.8);
+    // avatar do aluno montado em camadas LPC (64 px, desenhado na metade); sem ele, o herói antigo
+    if (this.o.folhaAvatar) {
+      this.textures.addSpriteSheet('heroiLPC', this.o.folhaAvatar, { frameWidth: 64, frameHeight: 64 });
+      for (const [dir, lin] of Object.entries(LINHA_LPC)) if (!this.anims.exists('heroiLPC-' + dir)) this.anims.create({ key: 'heroiLPC-' + dir, frames: this.anims.generateFrameNumbers('heroiLPC', { start: lin * 9 + 1, end: lin * 9 + 8 }), frameRate: 12, repeat: -1 });
+      this.av = this.add.sprite(ax, ay, 'heroiLPC', LINHA_LPC.baixo * 9).setScale(Q_ESCALA);
+      this.avLPC = true; this.avOY = 0.88;
+    } else { this.av = this.add.sprite(ax, ay, 'heroi', 0); this.avOY = 0.8; }
+    this.av.setOrigin(0.5, this.avOY);
     this.av.dir = 'baixo'; this.av.rota = []; this.av.acao = null;
-    this.sombra = this.add.ellipse(ax, ay + 5, 10, 4, 0x000000, 0.25).setDepth(4);
-    this.cameras.main.setBounds(0, 0, this.t.W * P, this.t.H * P).startFollow(this.av, true, 0.12, 0.12).setRoundPixels(true);
+    this.sombra = this.add.ellipse(ax, ay + 5, this.avLPC ? 12 : 10, 4, 0x000000, 0.25).setDepth(4);
+    this.cameras.main.setZoom(ZOOM).setBounds(0, 0, this.t.W * P, this.t.H * P).startFollow(this.av, true, 0.12, 0.12).setRoundPixels(true);
   }
 
   // ---------- Rosalina ----------
@@ -740,14 +772,14 @@ class MapaCena extends Phaser.Scene {
   pular() {
     const av = this.av; if (av.pulando) return;
     av.pulando = true; efeitoPulo();
-    const h = { v: 0 }; const base = av.height || 16;
-    this.tweens.add({ targets: av, scaleX: 1.2, scaleY: 0.8, duration: 60, yoyo: true });
+    const h = { v: 0 }; const base = av.displayHeight || 16; const oy = this.avOY;
+    const e0 = av.scaleX; this.tweens.add({ targets: av, scaleX: e0 * 1.2, scaleY: e0 * 0.8, duration: 60, yoyo: true });
     this.tweens.add({
       targets: h, v: 12, duration: 190, delay: 50, yoyo: true, ease: 'Quad.easeOut',
-      onUpdate: () => { av.setOrigin(0.5, 0.8 + h.v / base); this.sombra.setScale(1 - h.v / 26); },
+      onUpdate: () => { av.setOrigin(0.5, oy + h.v / base); this.sombra.setScale(1 - h.v / 26); },
       onComplete: () => {
-        av.setOrigin(0.5, 0.8); this.sombra.setScale(1); av.pulando = false;
-        this.tweens.add({ targets: av, scaleX: 1.25, scaleY: 0.75, duration: 70, yoyo: true });
+        av.setOrigin(0.5, oy); this.sombra.setScale(1); av.pulando = false;
+        this.tweens.add({ targets: av, scaleX: e0 * 1.25, scaleY: e0 * 0.75, duration: 70, yoyo: true });
         if (!this.cfg.menosMovimento) for (const lado of [-1, 1]) { const p = this.add.circle(av.x + lado * 3, av.y + 5, 1.6, 0xd8c8a0, 0.8).setDepth(4); this.tweens.add({ targets: p, x: p.x + lado * 6, y: p.y - 2, alpha: 0, scale: 1.8, duration: 350, onComplete: () => p.destroy() }); }
         this.reagirAoPulo();
       },
@@ -784,7 +816,7 @@ class MapaCena extends Phaser.Scene {
     const cam = this.cameras.main;
     this.visaoGeral = !this.visaoGeral;
     if (this.visaoGeral) { cam.stopFollow(); cam.removeBounds(); this.zoomAntes = cam.zoom; cam.zoomTo(Math.min(cam.width / (this.t.W * P), cam.height / (this.t.H * P)), 400); cam.pan(this.t.W * P / 2, this.t.H * P / 2, 400); }
-    else { cam.zoomTo(this.zoomAntes ?? 1, 300); cam.setBounds(0, 0, this.t.W * P, this.t.H * P); cam.startFollow(this.av, true, 0.12, 0.12); }
+    else { cam.zoomTo(this.zoomAntes ?? ZOOM, 300); cam.setBounds(0, 0, this.t.W * P, this.t.H * P); cam.startFollow(this.av, true, 0.12, 0.12); }
     this.o.aoVisao?.(this.visaoGeral);
   }
 
@@ -885,10 +917,10 @@ class MapaCena extends Phaser.Scene {
       const [tx, ty] = centro(av.rota[0]); const v = VEL * dt / 1000;
       const dx = tx - av.x; const dy = ty - av.y; const d = Math.hypot(dx, dy);
       if (Math.abs(dx) > Math.abs(dy)) av.dir = dx > 0 ? 'dir' : 'esq'; else if (Math.abs(dy) > 0.1) av.dir = dy > 0 ? 'baixo' : 'cima';
-      av.play(`heroi-${av.dir}`, true);
+      av.play(this.avLPC ? `heroiLPC-${av.dir}` : `heroi-${av.dir}`, true);
       if (d <= v) { av.setPosition(tx, ty); av.rota.shift(); if (!av.rota.length) { this.o.aoMover?.(peca(av.x, av.y)); if (av.acao) { const a = av.acao; av.acao = null; a(); } } }
       else { av.x += (dx / d) * v; av.y += (dy / d) * v; }
-    } else { av.anims.stop(); av.setFrame(DIRECOES[av.dir]); }
+    } else { av.anims.stop(); av.setFrame(this.avLPC ? LINHA_LPC[av.dir] * 9 : DIRECOES[av.dir]); }
     av.setDepth(100 + av.y); this.sombra.setPosition(av.x, av.y + 5);
     this.iaRosalina(time, dt); this.rosa.setDepth(100 + this.rosa.y);
     this.moverGente(time, dt); this.moverBichos(time, dt);
@@ -1134,8 +1166,8 @@ export function iniciarMapa(raiz, opcoes) {
   const medida = () => {
     const r = raiz.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
     const w = (r.width || 640) * dpr; const h = (r.height || 360) * dpr;
-    const z = Math.max(1, Math.round(h / 180));
-    return { w: Math.min(560, Math.ceil(w / z)), h: Math.ceil(h / z), zoom: z / dpr };
+    const z = Math.max(1, Math.round(h / (180 * ZOOM)));
+    return { w: Math.min(560 * ZOOM, Math.ceil(w / z)), h: Math.ceil(h / z), zoom: z / dpr };
   };
   const m0 = medida();
   const jogo = new Phaser.Game({

@@ -1,0 +1,164 @@
+{
+  "_sobre": "Peças LPC usadas no mapa da Vila: [folha, x, y, largura, altura] em pixels. Blocos de terreno (96x192) seguem o formato de autotile do LPC. Créditos em public/mapa/lpc/creditos.json.",
+  "largura": 2048,
+  "folhas": {
+    "base": "lpc-atlas/base_out_atlas.png",
+    "build": "lpc-atlas/build_atlas_0.png",
+    "ter": "lpc-tiles/Terrain and Outside.png",
+    "obj": "lpc-tiles/Outside Objects.png",
+    "deco": "lpc-tiles/decorations-medieval.png",
+    "plantas": "lpc-tiles/plants.png",
+    "deserto": "lpc-tiles/beach-desert.png",
+    "conif": "lpc-tiles/conifers.png"
+  },
+  "pecas": {
+    "t-grama": [
+      "base",
+      672,
+      0,
+      96,
+      192
+    ],
+    "t-agua": [
+      "base",
+      672,
+      352,
+      96,
+      192
+    ],
+    "t-terra": [
+      "base",
+      480,
+      0,
+      96,
+      192
+    ],
+    "t-areia": [
+      "ter",
+      576,
+      192,
+      96,
+      192
+    ],
+    "grama-flor": [
+      "ter",
+      96,
+      352,
+      96,
+      32
+    ],
+    "copa-1": [
+      "base",
+      768,
+      384,
+      96,
+      96
+    ],
+    "copa-2": [
+      "base",
+      864,
+      384,
+      96,
+      96
+    ],
+    "copa-3": [
+      "obj",
+      192,
+      0,
+      96,
+      80
+    ],
+    "copa-4": [
+      "obj",
+      288,
+      0,
+      96,
+      80
+    ],
+    "copa-outono": [
+      "obj",
+      192,
+      224,
+      96,
+      88
+    ],
+    "tronco-1": [
+      "base",
+      800,
+      608,
+      96,
+      72
+    ],
+    "tronco-2": [
+      "base",
+      896,
+      608,
+      96,
+      72
+    ],
+    "tronco-3": [
+      "obj",
+      0,
+      448,
+      96,
+      80
+    ],
+    "pinho-1": [
+      "base",
+      768,
+      480,
+      96,
+      96
+    ],
+    "pinho-2": [
+      "base",
+      864,
+      496,
+      96,
+      96
+    ],
+    "pinho-3": [
+      "obj",
+      192,
+      96,
+      96,
+      112
+    ],
+    "pinho-alto": [
+      "conif",
+      288,
+      0,
+      96,
+      160
+    ],
+    "pinho-fino": [
+      "conif",
+      96,
+      96,
+      64,
+      96
+    ],
+    "pinho-grande": [
+      "conif",
+      640,
+      0,
+      128,
+      192
+    ],
+    "cerejeira": [
+      "obj",
+      384,
+      128,
+      128,
+      112
+    ],
+    "arvore-seca": [
+      "obj",
+      384,
+      256,
+      128,
+      96
+    ]
+  },
+  "compostos": {}
+}
