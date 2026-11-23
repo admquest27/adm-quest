@@ -164,6 +164,8 @@ export const efeitoSegredo = () => seSom((a) => ['G5', 'C6', 'E6', 'G6', 'C7'].f
 export const efeitoPoof = () => seSom((a) => chiado(a.currentTime, 0.25, 0.08, { tipo: 'bandpass', corte: 900 }));
 export const efeitoPulo = () => seSom((a) => { const t = a.currentTime; const o = a.createOscillator(); const g = a.createGain(); o.type = 'square'; o.frequency.setValueAtTime(300, t); o.frequency.exponentialRampToValueAtTime(780, t + 0.12); g.gain.setValueAtTime(0.035, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16); o.connect(g).connect(gEfeitos); o.start(t); o.stop(t + 0.17); });
 export const croac = () => seSom((a) => { tom(freq('C3'), a.currentTime, 0.09, { tipo: 'square', vol: 0.05, corte: 900, comEco: false }); tom(freq('G2'), a.currentTime + 0.1, 0.12, { tipo: 'square', vol: 0.05, corte: 800, comEco: false }); });
+// mugido da vaca: dois tons graves e compridos
+export const mugido = () => seSom((a) => { tom(freq('G2'), a.currentTime, 0.4, { tipo: 'sawtooth', vol: 0.045, corte: 520, comEco: false }); tom(freq('E2'), a.currentTime + 0.32, 0.5, { tipo: 'sawtooth', vol: 0.045, corte: 420, comEco: false }); });
 export const cocorico = () => seSom((a) => ['E6', 'G6', 'E6', 'C7'].forEach((n, i) => tom(freq(n), a.currentTime + i * 0.07, 0.07, { tipo: 'square', vol: 0.025, corte: 2600, comEco: false })));
 // Para diagnóstico: estado do áudio (suspenso, rodando) e se a música está tocando.
 export const estadoSom = () => ({ estado: ac?.state ?? 'sem contexto', tocando, ligado: somLigado() });

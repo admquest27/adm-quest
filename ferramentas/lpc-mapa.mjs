@@ -28,7 +28,12 @@ const resultado = await pg.evaluate(async ({ folhas, pecas, compostos, largura }
   await Promise.all(Object.entries(folhas).map(([k, src]) => new Promise((ok, erro) => { const i = new Image(); i.onload = () => { imgs[k] = i; ok(); }; i.onerror = () => erro(new Error(k)); i.src = src; })));
   const itens = [];
   for (const [nome, [f, x, y, w, h]] of Object.entries(pecas)) itens.push({ nome, w, h, pinta: (g, dx, dy) => g.drawImage(imgs[f], x, y, w, h, dx, dy, w, h) });
-  for (const [nome, c] of Object.entries(compostos)) itens.push({ nome, w: c.w, h: c.h, pinta: (g, dx, dy) => { for (const l of c.camadas) { if (l[0] === 'cor') { g.fillStyle = l[1]; g.fillRect(dx + l[2], dy + l[3], l[4], l[5]); } else { const [f, x, y, w, h, ox, oy] = l; g.drawImage(imgs[f], x, y, w, h, dx + ox, dy + oy, w, h); } } } });
+  const pintaComposto = (c, noite) => (g, dx, dy) => { for (const l of c.camadas) { if (l[0] === 'cor') { g.fillStyle = l[1]; g.fillRect(dx + l[2], dy + l[3], l[4], l[5]); } else { const [f, x, y, w, h, ox, oy] = l; g.drawImage(imgs[f], x, y + (noite && f === 'janelas' ? 96 : 0), w, h, dx + ox, dy + oy, w, h); } } };
+  for (const [nome, c] of Object.entries(compostos)) {
+    itens.push({ nome, w: c.w, h: c.h, pinta: pintaComposto(c, false) });
+    // toda composição com janela ganha a versão de noite, com a janela acesa (fica 96 px abaixo na folha de janelas)
+    if (c.camadas.some((l) => l[0] === 'janelas') && !nome.endsWith('-noite') && !(nome + '-noite' in compostos)) itens.push({ nome: nome + '-noite', w: c.w, h: c.h, pinta: pintaComposto(c, true) });
+  }
   // empacotamento em prateleiras, das peças mais altas para as mais baixas, com 2 px de folga
   itens.sort((a, b) => b.h - a.h || b.w - a.w);
   let x = 0, y = 0, alturaLinha = 0; const frames = {};

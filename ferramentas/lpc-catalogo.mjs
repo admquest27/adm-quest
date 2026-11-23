@@ -30,7 +30,9 @@ function peca(arqDef, variante = null) {
   for (const [k, v] of Object.entries(def)) {
     if (!/^layer_\d+$/.test(k) || !v[CORPO]) continue;
     if (v.custom_animation) continue;
-    camadas.push({ z: v.zPos, dir: v[CORPO] });
+    // rostos têm o tipo de cabeça no caminho: aqui usamos o de rosto masculino (serve para os moradores)
+    // rostos têm o tipo de cabeça no caminho (como ${head}): usamos o masculino, que serve para os moradores
+    camadas.push({ z: v.zPos, dir: v[CORPO].replace('${head}', 'male') });
   }
   if (!camadas.length) throw new Error(`${arqDef} não tem versão para o corpo ${CORPO}`);
   const anims = ANIMS.filter((a) => (def.animations ?? ['walk']).includes(a));

@@ -18,7 +18,9 @@ export function dadosDoMapa(st) {
     .filter((f) => ['concluida', 'validada'].includes(situacao(f, st.progresso[f.id], st.aval[f.id], estados[f.id] ?? 'trancada')))
     .map((f) => f.id);
   const fases = Object.fromEntries(st.fases.map((f) => [f.id, { codigo: f.codigo ?? '', nome: f.nome ?? '' }]));
-  return { estados, concluidas, fases };
+  // fases extras nos terrenos vazios (o mapa põe a construção no lote que o professor escolheu)
+  const fasesExtras = st.fases.filter((f) => f.lote && !f.arquivada).map((f) => ({ id: f.id, lote: f.lote, modelo: f.modelo || 'casaAzul' }));
+  return { estados, concluidas, fases, fasesExtras };
 }
 
 // Qual caminho revelar com animação: a primeira fase aberta desde a última visita (na primeira visita, nenhuma).
@@ -33,7 +35,7 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
   const raiz = document.createElement('div');
   raiz.className = 'mapa-tela'; raiz.hidden = true;
   document.body.appendChild(raiz);
-  let api = null; let carregando = false; let destruido = false; let ultimo = '';
+  let api = null; let carregando = false; let destruido = false; let ultimo = ''; let extrasAtuais = '[]';
   const chave = (k) => `admq-mapa-${k}-${alvo}`;
 
   async function iniciar(st) {
@@ -46,7 +48,8 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
     ]);
     if (destruido) return;
     raiz.innerHTML = '';
-    const { estados, concluidas, fases } = dadosDoMapa(st);
+    const { estados, concluidas, fases, fasesExtras } = dadosDoMapa(st);
+    extrasAtuais = JSON.stringify(fasesExtras);
     const m = st.mundo ?? {};
     const tx = m.mapa ?? {};
     const textos = {
@@ -73,7 +76,7 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
       revelar: primeiraVez ? null : cam.revelar,
       casteloCaido: caiu && (viuCair || ver),
       derrotar: caiu && !viuCair && !ver,
-      estados, concluidas, fases, textos,
+      estados, concluidas, fases, fasesExtras, textos,
       posicao: ler(chave('pos'), null),
       segredosAchados: seg?.exists() ? seg.data().achados ?? [] : [],
       aoMover: (p) => { if (!ver) gravar(chave('pos'), p); },
@@ -96,7 +99,9 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
       raiz.hidden = false;
       if (!api) { if (!carregando) iniciar(st).catch(() => { carregando = false; raiz.innerHTML = '<p class="mapa-carregando">Não consegui abrir o mapa. Confira a internet e tente de novo.</p>'; }); return; }
       if (estavaEscondido) api.retomar();
-      const { estados, concluidas } = dadosDoMapa(st);
+      const { estados, concluidas, fasesExtras } = dadosDoMapa(st);
+      // terreno novo ou fase tirada do mapa: refaz o mapa inteiro (acontece raramente)
+      if (JSON.stringify(fasesExtras) !== extrasAtuais) { api.destruir(); api = null; raiz.innerHTML = ''; iniciar(st).catch(() => { carregando = false; }); return; }
       const k = JSON.stringify([estados, concluidas]);
       if (k !== ultimo) { ultimo = k; api.atualizarEstados(estados, concluidas); }
     },

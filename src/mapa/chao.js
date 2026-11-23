@@ -23,7 +23,7 @@ function autotile(g, img, b, tem, x, y, ox, oy, variante) {
 
 const quadro = (frames, nome) => frames[nome].frame;
 
-// Peças cobertas por uma estrada (polilinha em peças), um pouco grossa nas diagonais para não virar escadinha fina.
+// Peças cujo centro fica a até 1,3 peça do traçado de uma estrada (a mata e as flores não entram aí).
 export function pecasDaEstrada(pontos, W, H) {
   const marcadas = new Set();
   for (let i = 0; i < pontos.length - 1; i++) {
@@ -31,8 +31,10 @@ export function pecasDaEstrada(pontos, W, H) {
     const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 4);
     for (let k = 0; k <= n; k++) {
       const x = ax + ((bx - ax) * k) / n; const y = ay + ((by - ay) * k) / n;
-      // faixa de dois quadrados de largura, centrada no traçado (um traço fino sumia no meio do mato)
-      for (const dx of [0, 1]) for (const dy of [0, 1]) { const cx = Math.floor(x) + dx; const cy = Math.floor(y) + dy; if (cx >= 0 && cy >= 0 && cx < W && cy < H) marcadas.add(cy * W + cx); }
+      for (let cy = Math.floor(y) - 1; cy <= Math.floor(y) + 1; cy++) for (let cx = Math.floor(x) - 1; cx <= Math.floor(x) + 1; cx++) {
+        if (cx < 0 || cy < 0 || cx >= W || cy >= H) continue;
+        if (Math.hypot(cx - x, cy - y) <= 1.3) marcadas.add(cy * W + cx);
+      }
     }
   }
   return marcadas;
@@ -63,14 +65,52 @@ export function desenharChao(img, frames, t, planta, evitar = new Set()) {
   return { canvas: c, naAreia };
 }
 
-// Uma estrada de terra num canvas do tamanho só do trecho dela (economiza memória no celular).
-export function desenharEstrada(img, frames, marcadas, W) {
-  const terra = quadro(frames, 't-terra');
-  let x0 = Infinity; let y0 = Infinity; let x1 = -1; let y1 = -1;
-  for (const i of marcadas) { const x = i % W; const y = Math.floor(i / W); x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-  if (x1 < 0) return null;
-  const [c, g] = tela((x1 - x0 + 1) * Q, (y1 - y0 + 1) * Q);
-  const tem = (x, y) => marcadas.has(y * W + x);
-  for (const i of marcadas) { const x = i % W; const y = Math.floor(i / W); autotile(g, img, terra, tem, x, y, x0, y0, Math.floor(semente2(x, y) * 3)); }
+// Uma estrada de terra batida num canvas do tamanho só do trecho dela. O traçado vira uma faixa de cantos
+// arredondados (largura de pouco mais de um quadrado e meio), com a borda mais escura, tufos de grama nas beiradas
+// e pedrinhas. Onde o traçado passa por cima da água, a terra some (quem cobre ali é a ponte).
+const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
+export function desenharEstrada(pontos, t, largura = 50) {
+  const { W, H } = t; const R = largura / 2 + 2;
+  let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
+  const pts = pontos.map(([x, y]) => [(x + 0.5) * Q, (y + 0.5) * Q]);
+  for (const [x, y] of pts) { x0 = Math.min(x0, x - R); y0 = Math.min(y0, y - R); x1 = Math.max(x1, x + R); y1 = Math.max(y1, y + R); }
+  x0 = Math.max(0, Math.floor(x0 / Q) * Q - Q); y0 = Math.max(0, Math.floor(y0 / Q) * Q - Q);
+  x1 = Math.min(W * Q, Math.ceil(x1 / Q) * Q + Q); y1 = Math.min(H * Q, Math.ceil(y1 / Q) * Q + Q);
+  const w = x1 - x0; const h = y1 - y0;
+  // máscara da faixa (sem suavização: o pixel é inteiro ou não é)
+  const [, gm] = tela(w, h); gm.lineCap = 'round'; gm.lineJoin = 'round'; gm.lineWidth = largura; gm.strokeStyle = '#000';
+  gm.beginPath(); pts.forEach(([x, y], i) => (i ? gm.lineTo(x - x0, y - y0) : gm.moveTo(x - x0, y - y0))); gm.stroke();
+  const dm = gm.getImageData(0, 0, w, h).data; const dentro = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    if (dm[i * 4 + 3] < 128) continue;
+    const px = x0 + (i % w); const py = y0 + Math.floor(i / w); const tx = Math.floor(px / Q); const ty = Math.floor(py / Q);
+    if (tx >= 0 && ty >= 0 && tx < W && ty < H && t.agua[ty * W + tx]) continue; // sem terra sobre a água
+    dentro[i] = 1;
+  }
+  // distância até a borda (duas passadas)
+  const dist = new Uint8Array(w * h).fill(255);
+  for (let i = 0; i < w * h; i++) if (dentro[i]) dist[i] = 99;
+  const viz = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : dentro[y * w + x]);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (dentro[y * w + x] && (!viz(x - 1, y) || !viz(x + 1, y) || !viz(x, y - 1) || !viz(x, y + 1))) dist[y * w + x] = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (dist[i] === 255) continue; const a = Math.min(x ? dist[i - 1] + 1 : 99, y ? dist[i - w] + 1 : 99); if (a < dist[i]) dist[i] = a; }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (dist[i] === 255) continue; const a = Math.min(x < w - 1 ? dist[i + 1] + 1 : 99, y < h - 1 ? dist[i + w] + 1 : 99); if (a < dist[i]) dist[i] = a; }
+  const [c, g] = tela(w, h); const out = g.createImageData(w, h);
+  const pinta = (i, hex) => { out.data[i * 4] = parseInt(hex.slice(1, 3), 16); out.data[i * 4 + 1] = parseInt(hex.slice(3, 5), 16); out.data[i * 4 + 2] = parseInt(hex.slice(5, 7), 16); out.data[i * 4 + 3] = 255; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    if (dentro[i]) {
+      const d = dist[i]; const r = hash(x >> 1, y >> 1);
+      if (d <= 1) pinta(i, '#6f4a2a');
+      else if (d <= 3) pinta(i, r < 0.5 ? '#a4713f' : '#98693a');
+      else if (d <= 5) pinta(i, r < 0.5 ? '#c4935a' : '#bb8a52');
+      else pinta(i, r < 0.16 ? '#b98650' : r < 0.3 ? '#d3a76d' : r < 0.36 ? '#a9784a' : '#c99a5f');
+    } else if (viz(x - 1, y) || viz(x + 1, y) || viz(x, y - 1) || viz(x, y + 1) || viz(x - 1, y - 1) || viz(x + 1, y + 1)) {
+      // beirada: tufos de grama mais escuros espalhados
+      if (hash(x, y) < 0.42) pinta(i, hash(x + 3, y) < 0.5 ? '#2d6a2f' : '#3d8a38');
+    }
+  }
+  // pedrinhas e um fio de rodas no meio
+  for (let k = 0; k < (w * h) / 700; k++) { const x = Math.floor(hash(k, 1) * w); const y = Math.floor(hash(k, 2) * h); const i = y * w + x; if (dentro[i] && dist[i] > 6) { pinta(i, '#8b6a45'); if (dentro[i + 1]) pinta(i + 1, '#e0c08a'); } }
+  g.putImageData(out, 0, 0);
   return { canvas: c, x: x0, y: y0 };
 }

@@ -68,20 +68,19 @@ export const idChao = C;
 export const idAgua = A;
 
 // Peças LPC (atlas "lpc", 32 px por peça da planta) que substituem as antigas, pelo mesmo nome da planta.
-// porta: centro de baixo da porta em pixels da arte, a partir do canto de cima do quadro.
+// porta: centro de baixo da porta em pixels da arte, a partir do canto de cima do quadro. w e h: tamanho em peças.
+const CASA = (quadro, porta) => ({ quadro, porta, w: 3, h: 3 });
 export const LPC_PECAS = {
-  casaLaranja: { quadro: 'casa-palha-bege', porta: [81, 158] },
-  casaBege: { quadro: 'casa-palha-clara', porta: [81, 158] },
-  raioX: { quadro: 'casa-tijolo-baixa', porta: [79, 158] },
-  casaLaranja2: { quadro: 'casa-palha-pedra', porta: [81, 158] },
-  loja: { quadro: 'casa-palha-clara2', porta: [81, 158] },
-  templo: { quadro: 'casa-palha-diag', porta: [81, 158] },
-  casaPartida: { quadro: 'casa-palha-pedra2', porta: [81, 158] },
-  casaPedra: { quadro: 'casa-adobe', porta: [48, 160] },
-  oficina: { quadro: 'oficina', porta: [73, 106] },
-  barraca: { quadro: 'tenda', porta: [60, 158] },
-  arvoreGrande: { quadro: 'arvore-comando', porta: [96, 214] },
-  portal: { quadro: 'portao-ferro', porta: [48, 94] },
+  casaLaranja: CASA('casa-palha-bege', [81, 158]), casaBege: CASA('casa-palha-clara', [81, 158]), casaLaranja2: CASA('casa-palha-pedra', [81, 158]),
+  casaReta: CASA('casa-palha-reta', [81, 158]), casaDiag: CASA('casa-palha-diag', [81, 158]),
+  casaAzul: CASA('casa-azul', [72, 150]), casaCreme: CASA('casa-creme', [72, 150]), casaAmarela: CASA('casa-amarela', [72, 150]), casaVerde: CASA('casa-verde', [72, 150]),
+  casaPartida: CASA('casa-palha-pedra2', [81, 158]),
+  casaPedra: CASA('casa-adobe', [48, 160]),
+  raioX: CASA('casa-tijolo-baixa', [79, 158]),
+  oficina: CASA('oficina', [73, 106]),
+  barraca: CASA('tenda', [60, 158]),
+  arvoreGrande: CASA('arvore-comando', [96, 214]),
+  celeiro: { quadro: 'celeiro', porta: [96, 150], w: 6, h: 3 },
 };
 
 // Enfeites da planta trocados por peças LPC (com mais de uma opção, o sorteio fixo pela posição escolhe).
@@ -90,5 +89,15 @@ export const LPC_ENFEITES = {
   florAmarela: ['flor-amarela'], florVermelha: ['flor-vermelha'], florBranca: ['flor-branca'], florLaranja: ['flor-laranja'],
   arbusto1: ['arbusto-1'], arbusto2: ['arbusto-2'], arbusto3: ['arbusto-3'], arbusto4: ['arbusto-4'], mato: ['mato'], trigo: ['trigo'],
 };
-// Objetos desenhados para o jogo que já têm versão LPC.
-export const LPC_OBJETOS = { cacto: 'cacto', lapide: 'lapide', escola: 'casa-pedra', portao: 'portao-mundo2' };
+// Objetos (pelo id) que já têm versão LPC.
+export const LPC_OBJETOS = {
+  cacto: 'cacto', lapide: 'lapide', escola: 'casa-pedra', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
+  carroca: 'carroca', fardos: 'fardo', lenha: 'lenha-1',
+};
+
+// Construções que o professor pode escolher para uma fase extra num terreno vazio (id da planta e nome para a tela).
+export const MODELOS_FASE = [
+  ['casaAzul', 'Casa azul'], ['casaCreme', 'Casa creme'], ['casaAmarela', 'Casa amarela'], ['casaVerde', 'Casa verde'],
+  ['casaLaranja', 'Casa de palha dourada'], ['casaReta', 'Casa de palha marrom'], ['casaDiag', 'Casa de palha e pedra'],
+  ['oficina', 'Galpão de madeira'], ['barraca', 'Tenda de acampamento'], ['raioX', 'Casa de tijolo'], ['casaPedra', 'Casa de adobe'],
+];

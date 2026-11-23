@@ -1,7 +1,7 @@
 // Moradores da Vila montados com as mesmas peças LPC do avatar dos alunos.
-// O Consultor Cinzento é um sábio de barba e capa cinza com chapéu de mago; o Barão usa cartola.
+// O Consultor Cinzento é um sábio de barba e capa cinza com chapéu celeste de mago; o Barão usa cartola.
 export const MORADORES = {
-  consultor: { v: 2, pele: 'light', rosto: 'a', nariz: 'reto', sobrancelha: 'grossa', olhos: 'gray', cabelo: 'longo', corCabelo: 'gray', cima: 'manga', corCima: 'gray', baixo: 'larga', corBaixo: 'charcoal', pes: 'bota', corPes: 'brown', chapeu: 'mago', barba: 'barba', capa: 'capa', corCapa: 'gray' },
+  consultor: { v: 2, pele: 'light', rosto: 'a', nariz: 'reto', sobrancelha: 'grossa', olhos: 'gray', cabelo: 'longo', corCabelo: 'gray', cima: 'manga', corCima: 'navy', baixo: 'larga', corBaixo: 'charcoal', pes: 'bota', corPes: 'brown', chapeu: 'celeste', barba: 'barba', capa: 'capa', corCapa: 'navy' },
   barao: { v: 2, pele: 'light', rosto: 'e', nariz: 'grande', sobrancelha: 'grossa', olhos: 'gray', cabelo: 'repartido', corCabelo: 'black', cima: 'cardiga', corCima: 'maroon', baixo: 'social', corBaixo: 'black', pes: 'bota', corPes: 'black', chapeu: 'cartola' },
   senhora: { v: 2, pele: 'taupe', rosto: 'b', nariz: 'botao', sobrancelha: 'fina', olhos: 'brown', cabelo: 'coque', corCabelo: 'white', cima: 'cardiga', corCima: 'lavender', baixo: 'saia', corBaixo: 'purple', pes: 'sapatilha', corPes: 'brown', oculos: 'redondo' },
   crianca: { v: 2, pele: 'bronze', rosto: 'd', nariz: 'botao', sobrancelha: 'fina', olhos: 'black', cabelo: 'chiquinha', corCabelo: 'black', cima: 'camiseta', corCima: 'yellow', baixo: 'bermuda', corBaixo: 'blue', pes: 'tenis', corPes: 'red' },

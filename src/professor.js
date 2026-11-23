@@ -22,6 +22,7 @@ import { ATV_GUILDA, configGuilda } from './grupos.js';
 import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO, planejar, seletorBimestre } from './calendario.js';
 import { htmlPctd, tratarPctd, mudarPctd } from './pctdProfessor.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
+import { htmlTerrenos, abrirTerreno } from './terrenosProfessor.js';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const ROTULO = { pendente: 'Pendente', ativo: 'Ativo', saiu: 'Saiu', bloqueado: 'Bloqueado' };
@@ -280,12 +281,14 @@ export function iniciarProfessor(user, opcoes = {}) {
         </select>
       </li>`;
     };
-    const normais = st.fases.filter((f) => f.tipo !== 'excel');
-    const excel = st.fases.filter((f) => f.tipo === 'excel');
+    const normais = st.fases.filter((f) => f.tipo !== 'excel' && !f.arquivada);
+    const excel = st.fases.filter((f) => f.tipo === 'excel' && !f.arquivada);
     return `<h2>${esc(st.mundo?.nome ?? 'Mundo 1')}</h2>
       <p class="nota">Só você libera as fases. O aluno vê "em obra" até você abrir. Aberta: os alunos trabalham. Encerrada: ninguém edita, só quem faltou ou quem você liberar.</p>
       <ul class="lista">${normais.map(linha).join('')}</ul>
-      ${excel.length ? `<h3>Trilha de Excel</h3><p class="nota">Uma por segunda. Abra no dia, pelo roteiro da Agenda ou aqui.</p><ul class="lista">${excel.map(linha).join('')}</ul>` : ''}`;
+      ${excel.length ? `<h3>Trilha de Excel</h3><p class="nota">Uma por segunda. Abra no dia, pelo roteiro da Agenda ou aqui.</p><ul class="lista">${excel.map(linha).join('')}</ul>` : ''}
+      <hr>
+      ${htmlTerrenos(st)}`;
   }
 
   function htmlPainelFase() {
@@ -536,6 +539,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       else if (acao === 'liberar') { await alternarLiberacaoItem(b.dataset.item); }
       else if (acao === 'liberar-aluno') { await alternarLiberadoAluno(b.dataset.uid); }
       else if (acao === 'editar-fase') { abrirEdicaoFase(b.dataset.id); }
+      else if (acao === 'terreno') { abrirTerreno({ st, dlg, loteId: b.dataset.lote, faseId: b.dataset.fase }); }
       else if (acao === 'aberta') {
         const t = st.turmas.find((x) => x.id === b.dataset.id);
         const nova = !t.aberta;

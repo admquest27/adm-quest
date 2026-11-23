@@ -4,7 +4,8 @@
   "animacoes": [
     "walk",
     "idle",
-    "jump"
+    "jump",
+    "sit"
   ],
   "fixos": {
     "corpo": "body/body.json"
@@ -385,6 +386,24 @@
         "Chapéu de mago",
         "headwear/hats/magic/hat_magic_wizard.json",
         "base_gray"
+      ],
+      [
+        "celeste",
+        "Chapéu celeste",
+        "headwear/hats/magic/hat_magic_celestial.json",
+        "navy"
+      ],
+      [
+        "lua",
+        "Chapéu da lua",
+        "headwear/hats/magic/hat_magic_celestial_moon.json",
+        "navy"
+      ],
+      [
+        "luaprata",
+        "Chapéu da lua com detalhe",
+        "headwear/hats/magic/hat_magic_celestial_moon_trim.json",
+        "gray"
       ]
     ],
     "oculos": [
@@ -421,6 +440,13 @@
         "capa",
         "Capa",
         "torso/cape/cape_solid.json"
+      ]
+    ],
+    "expressao": [
+      [
+        "fechados",
+        "Olhos fechados",
+        "head/faces/face_closed.json"
       ]
     ]
   }

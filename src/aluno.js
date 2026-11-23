@@ -59,7 +59,7 @@ export function iniciarAluno(user, opcoes = {}) {
       onSnapshot(doc(db, 'turmas', turma), (s) => { st.turma = s.exists() ? s.data() : null; redesenha(); }, () => {}),
       onSnapshot(doc(db, 'mundos', MUNDO), (s) => { st.mundo = s.exists() ? s.data() : null; redesenha(); }, () => {}),
       onSnapshot(query(collection(db, 'fases'), where('mundo', '==', MUNDO)), (s) => {
-        st.fases = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.ordem - b.ordem);
+        st.fases = s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((f) => !f.arquivada).sort((a, b) => a.ordem - b.ordem);
         redesenha();
       }, () => {}),
       onSnapshot(query(collection(db, 'progresso'), where('uid', '==', alvo)), (s) => {

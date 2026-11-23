@@ -112,6 +112,10 @@ export function parteAluno(f, mundo) {
     votacao: f.votacao ?? null,
     // chefão: os baús que a guilda abre com código (os códigos ficam só com o professor)
     baus: f.baus ?? [],
+    // fase extra num terreno vazio do mapa: lote e desenho da construção; arquivada = tirada do mapa (o histórico fica)
+    lote: f.lote ?? '',
+    modelo: f.modelo ?? '',
+    arquivada: f.arquivada === true,
   };
 }
 
