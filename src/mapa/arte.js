@@ -74,8 +74,10 @@ export const LPC_PECAS = {
   casaLaranja: CASA('casa-palha-bege', [81, 158]), casaBege: CASA('casa-palha-clara', [81, 158]), casaLaranja2: CASA('casa-palha-pedra', [81, 158]),
   casaReta: CASA('casa-palha-reta', [81, 158]), casaDiag: CASA('casa-palha-diag', [81, 158]),
   casaAzul: CASA('casa-azul', [72, 150]), casaCreme: CASA('casa-creme', [72, 150]), casaAmarela: CASA('casa-amarela', [72, 150]), casaVerde: CASA('casa-verde', [72, 150]),
-  casaPartida: CASA('casa-palha-pedra2', [81, 158]),
-  casaPedra: CASA('casa-adobe', [48, 160]),
+  casaFlamV: { quadro: 'casa-flamenga-vermelha', porta: [20, 126], w: 2, h: 4 }, casaFlamC: { quadro: 'casa-flamenga-creme', porta: [44, 126], w: 2, h: 4 },
+  casaPartida: { quadro: 'casa-flamenga-vermelha', porta: [20, 126], w: 2, h: 4 },
+  casaPedra: { quadro: 'kiva', porta: [64, 96], w: 4, h: 3 },
+  castelo: { quadro: 'castelo', porta: [88, 176], w: 6, h: 5 },
   raioX: CASA('casa-tijolo-baixa', [79, 158]),
   oficina: CASA('oficina', [73, 106]),
   barraca: CASA('tenda', [60, 158]),
@@ -91,7 +93,7 @@ export const LPC_ENFEITES = {
 };
 // Objetos (pelo id) que já têm versão LPC.
 export const LPC_OBJETOS = {
-  cacto: 'cacto', lapide: 'lapide', escola: 'casa-pedra', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
+  cacto: 'cacto', lapide: 'lapide', escola: 'torre-relogio', coreto: 'coreto', impressora: 'mesa-escriba', casinha: 'casinha-cachorro', aviao: 'aviao-caido', quadro: 'quadro-swot', placa404: 'placa-404', porta: 'placa-cafe', ilha: 'ilhota', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
   carroca: 'carroca', fardos: 'fardo', lenha: 'lenha-1',
 };
 
@@ -99,5 +101,5 @@ export const LPC_OBJETOS = {
 export const MODELOS_FASE = [
   ['casaAzul', 'Casa azul'], ['casaCreme', 'Casa creme'], ['casaAmarela', 'Casa amarela'], ['casaVerde', 'Casa verde'],
   ['casaLaranja', 'Casa de palha dourada'], ['casaReta', 'Casa de palha marrom'], ['casaDiag', 'Casa de palha e pedra'],
-  ['oficina', 'Galpão de madeira'], ['barraca', 'Tenda de acampamento'], ['raioX', 'Casa de tijolo'], ['casaPedra', 'Casa de adobe'],
+  ['oficina', 'Galpão de madeira'], ['barraca', 'Tenda de acampamento'], ['raioX', 'Casa de tijolo'], ['casaPedra', 'Cabana de adobe'], ['casaFlamV', 'Casa flamenga vermelha'], ['casaFlamC', 'Casa flamenga creme'],
 ];

@@ -5,7 +5,7 @@ import * as planta from './vila.js';
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
 import { todasAsTexturas, iconesBarra } from './texturas.js';
 import { FOLHAS, ANIMADOS, PESSOAS, RECORTES, DIRECOES, LINHAS, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
-import { desenharChao, desenharEstrada, pecasDaEstrada } from './chao.js';
+import { desenharChao, desenharEstradas, pecasDaEstrada } from './chao.js';
 import { MORADORES } from './moradores.js';
 import { carregarFazenda, criarFazenda, moverFazenda, conversarVaca, criarLotes } from './fazenda.js';
 import { folha } from '../avatar.js';
@@ -72,6 +72,9 @@ class MapaCena extends Phaser.Scene {
   // Construção LPC com o pé no meio da base do retângulo da planta (x, y, w, h em peças)
   imagemLPC(x, y, w, h, quadro) {
     const by = (y + h) * P;
+    // sombra suave no chão: a construção deixa de parecer colada na grama
+    const sw = (this.textures.get('lpc').get(quadro).width * Q_ESCALA);
+    this.add.ellipse(x * P + (w * P) / 2 + 3, by - 1, sw * 0.95, 11, 0x0b1a0a, 0.3).setDepth(3.5);
     const img = this.add.image(x * P + (w * P) / 2, by, 'lpc', quadro).setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
     if (img.displayHeight > 40) (this.predios ??= []).push({ img, b: img.getBounds() });
     return img;
@@ -261,10 +264,11 @@ class MapaCena extends Phaser.Scene {
   // Estradas: as que levam a fases abertas aparecem inteiras; as outras, só tracejadas de leve.
   criarEstradas() {
     this.todosPontos = [];
+    const desenhos = desenharEstradas(planta.ESTRADAS.map((e) => e.pontos), this.t);
     this.estradas = planta.ESTRADAS.map((e, i) => {
       const pts = pontosDe(e.pontos); this.todosPontos.push(...pts);
       const chave = `estrada-${i}`;
-      const des = desenharEstrada(e.pontos, this.t);
+      const des = desenhos[i];
       this.textures.addCanvas(chave, des.canvas);
       const img = this.add.image(des.x * Q_ESCALA, des.y * Q_ESCALA, chave).setOrigin(0).setScale(Q_ESCALA).setDepth(2.5);
       const tracos = this.add.group();
@@ -324,12 +328,11 @@ class MapaCena extends Phaser.Scene {
     // detalhes de cada fase
     const fx = (id) => this.fases[id];
     const torre = fx('m1f7'); const bt = torre.img.getBounds(); const pl = this.add.image(bt.right - 8, bt.bottom + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y);
-    const portal = fx('m1f4'); const bp = portal.img.getBounds(); this.add.sprite(bp.centerX, bp.top - 2, 'bandeiraAmarela').setOrigin(0.5, 1).setDepth(portal.img.depth + 1).play('bandeiraAmarela');
     const camp = fx('m1f5'); const bc = camp.img.getBounds(); const fog = this.add.sprite(bc.left - 6, bc.bottom - 2, 'lpc', 'fogueira-0').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + bc.bottom);
     let qf = 0; this.time.addEvent({ delay: 120, loop: true, callback: () => { qf = (qf + 1) % 5; fog.setFrame('fogueira-' + qf); } });
     this.add.image(bc.left - 20, bc.bottom + 2, 'acampamento', 'toras').setDepth(100 + bc.bottom + 2);
     const cast = fx('m1chefao');
-    for (const dx of [-17, 17]) this.add.sprite(cast.img.x + dx, cast.img.y - 39, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 });
+    for (const dx of [-32, 32]) this.add.sprite(cast.img.x + dx, cast.img.y - 80, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 });
     this.aplicarEstados(this.o.estados ?? {}, this.o.concluidas ?? []);
   }
 
@@ -434,14 +437,14 @@ class MapaCena extends Phaser.Scene {
     const imp = this.objetos.impressora.img;
     if (this.textures.exists('gatoL')) { const gato = this.add.sprite(imp.x, imp.y - 7, 'gatoL', 7).setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(imp.depth + 1); this.tweens.add({ targets: gato, scaleY: Q_ESCALA * 1.06, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }); }
     else this.add.sprite(imp.x, imp.y - 9, 'gato').setOrigin(0.5, 1).setDepth(imp.depth + 1).play('gato');
-    const esc = this.objetos.escola.img; const be = esc.getBounds(); this.antena = this.add.image(be.centerX + 8, be.top + 6, 'antena-0').setOrigin(0.5, 1).setDepth(esc.depth + 1);
+    const esc = this.objetos.escola.img; const be = esc.getBounds(); this.antena = this.add.image(be.centerX, be.top + 2, 'antena-0').setOrigin(0.5, 1).setDepth(esc.depth + 1);
     const cafe = this.objetos.porta.img;
     this.time.addEvent({ delay: 650, loop: true, callback: () => {
       if (this.cfg.menosMovimento || !this.cameras.main.worldView.contains(cafe.x, cafe.y - 10)) return;
-      const v = this.add.circle(cafe.x - 1 + Phaser.Math.Between(-1, 1), cafe.y - 18, 1, 0xffffff, 0.85).setDepth(cafe.depth + 1);
+      const v = this.add.circle(cafe.x - 1 + Phaser.Math.Between(-1, 1), cafe.y - 17, 1, 0xffffff, 0.85).setDepth(cafe.depth + 1);
       this.tweens.add({ targets: v, y: v.y - 7, x: v.x + Phaser.Math.Between(-2, 2), alpha: 0, scale: 1.6, duration: 1000, onComplete: () => v.destroy() });
     } });
-    this.time.addEvent({ delay: 1400, loop: true, callback: () => { const il = this.objetos.ilha.img; il.setTexture(il.texture.key === 'ilha' ? 'ilha-brilho' : 'ilha'); } });
+    this.time.addEvent({ delay: 1400, loop: true, callback: () => { const il = this.objetos.ilha.img; il.setFrame(il.frame.name === 'ilhota' ? 'ilhota-brilho' : 'ilhota'); } });
   }
 
   alvoPerto(x, y, w, h, alcance = 1) {
@@ -845,10 +848,14 @@ class MapaCena extends Phaser.Scene {
     const dist = (spr) => Phaser.Math.Distance.Between(spr.x, spr.y, av.x, av.y);
     // primeiro o que é da fase ou do cenário (a Rosalina e os moradores não podem tomar o lugar de uma porta)
     const [ax, ay] = peca(av.x, av.y);
-    let i = null; let melhor = 9;
+    let i = null; let melhor = 99;
     for (const q of this.interativos) {
       if (q.tipo === 'objeto' && oculto(this.objetos[q.id].def.segredo)) continue;
-      const d = Math.abs(q.alvo[0] - ax) + Math.abs(q.alvo[1] - ay); if (d <= 1 && d < melhor) { melhor = d; i = q; }
+      // vale chegar pela frente, pelos lados ou pela porta: perto da peça da entrada OU encostado no desenho (até meia peça)
+      const r = q.area; const dx = Math.max(r.x - av.x, 0, av.x - (r.x + r.width)); const dy = Math.max(r.y - av.y, 0, av.y - (r.y + r.height));
+      const dc = Math.abs(q.alvo[0] - ax) + Math.abs(q.alvo[1] - ay); const dr = Math.hypot(dx, dy);
+      const d = dc <= 1 ? Math.min(dc, dr) : (dr <= 9 ? dr : 99);
+      if (d < 99 && d < melhor) { melhor = d; i = q; }
     }
     if (i) {
       const fase = i.tipo === 'fase' ? i.id : null;

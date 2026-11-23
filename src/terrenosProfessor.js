@@ -9,7 +9,7 @@ import { LOTES } from './mapa/vila.js';
 import { MODELOS_FASE } from './mapa/arte.js';
 import { MUNDO, parteAluno } from './fases.js';
 
-export const NOME_LOTE = { l1: 'Terreno 1, perto das Dunas', l2: 'Terreno 2, ao sul da Praça', l3: 'Terreno 3, logo depois da ponte', l4: 'Terreno 4, perto do Acampamento' };
+export const NOME_LOTE = { l1: 'Terreno 1, perto das Dunas', l2: 'Terreno 2, ao sul da Praça', l3: 'Terreno 3, perto do Castelo' };
 const lotes = () => LOTES.map((l) => l.id);
 const doLote = (st, id) => st.fases.find((f) => f.lote === id && !f.arquivada);
 
@@ -25,7 +25,7 @@ export function htmlTerrenos(st) {
   }).join('');
   const arq = arquivadas.length ? `<h3>Fases tiradas do mapa</h3><p class="nota">O histórico dos alunos fica guardado. Para voltar, escolha um terreno livre.</p><ul class="lista">${arquivadas.map((f) => `<li class="fase-prof"><span class="nome-fase"><span class="cod">${esc(f.codigo)}</span> <strong>${esc(f.nome)}</strong></span><button class="mini" data-acao="terreno" data-fase="${esc(f.id)}">Voltar ao mapa</button></li>`).join('')}</ul>` : '';
   return `<h2>Terrenos do mapa</h2>
-    <p class="nota">Quatro terrenos vazios esperam fases novas. Escolha o terreno e a construção, escreva a missão e pronto: a fase aparece no mapa em obras, e você libera como as outras. Depois use "Editar fase" para montar o passo a passo.</p>
+    <p class="nota">Três terrenos vazios esperam fases novas. Escolha o terreno e a construção, escreva a missão e pronto: a fase aparece no mapa em obras, e você libera como as outras. Depois use "Editar fase" para montar o passo a passo.</p>
     <ul class="lista">${linhas}</ul>${arq}`;
 }
 
@@ -33,7 +33,7 @@ export function abrirTerreno({ st, dlg, loteId = '', faseId = '' }) {
   const f = faseId ? st.fases.find((x) => x.id === faseId) : null;
   const livres = lotes().filter((id) => !doLote(st, id) || doLote(st, id)?.id === f?.id);
   const escolha = f?.lote && livres.includes(f.lote) ? f.lote : (loteId && livres.includes(loteId) ? loteId : (livres[0] ?? ''));
-  if (!escolha) { dlg.innerHTML = '<form method="dialog" class="form"><h2>Sem terreno livre</h2><p class="nota">Os quatro terrenos já têm fase. Tire uma do mapa para liberar um terreno.</p><button class="botao">Entendi</button></form>'; dlg.showModal(); return; }
+  if (!escolha) { dlg.innerHTML = '<form method="dialog" class="form"><h2>Sem terreno livre</h2><p class="nota">Os três terrenos já têm fase. Tire uma do mapa para liberar um terreno.</p><button class="botao">Entendi</button></form>'; dlg.showModal(); return; }
   const proxima = Math.max(0, ...st.fases.map((x) => x.ordem ?? 0)) + 1;
   const numero = st.fases.filter((x) => x.extra).length + 1;
   dlg.innerHTML = `<form class="form editor" id="form-terreno">

@@ -69,48 +69,61 @@ export function desenharChao(img, frames, t, planta, evitar = new Set()) {
 // arredondados (largura de pouco mais de um quadrado e meio), com a borda mais escura, tufos de grama nas beiradas
 // e pedrinhas. Onde o traçado passa por cima da água, a terra some (quem cobre ali é a ponte).
 const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
-export function desenharEstrada(pontos, t, largura = 50) {
-  const { W, H } = t; const R = largura / 2 + 2;
-  let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
-  const pts = pontos.map(([x, y]) => [(x + 0.5) * Q, (y + 0.5) * Q]);
-  for (const [x, y] of pts) { x0 = Math.min(x0, x - R); y0 = Math.min(y0, y - R); x1 = Math.max(x1, x + R); y1 = Math.max(y1, y + R); }
-  x0 = Math.max(0, Math.floor(x0 / Q) * Q - Q); y0 = Math.max(0, Math.floor(y0 / Q) * Q - Q);
-  x1 = Math.min(W * Q, Math.ceil(x1 / Q) * Q + Q); y1 = Math.min(H * Q, Math.ceil(y1 / Q) * Q + Q);
-  const w = x1 - x0; const h = y1 - y0;
-  // máscara da faixa (sem suavização: o pixel é inteiro ou não é)
-  const [, gm] = tela(w, h); gm.lineCap = 'round'; gm.lineJoin = 'round'; gm.lineWidth = largura; gm.strokeStyle = '#000';
-  gm.beginPath(); pts.forEach(([x, y], i) => (i ? gm.lineTo(x - x0, y - y0) : gm.moveTo(x - x0, y - y0))); gm.stroke();
-  const dm = gm.getImageData(0, 0, w, h).data; const dentro = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) {
-    if (dm[i * 4 + 3] < 128) continue;
-    const px = x0 + (i % w); const py = y0 + Math.floor(i / w); const tx = Math.floor(px / Q); const ty = Math.floor(py / Q);
-    if (tx >= 0 && ty >= 0 && tx < W && ty < H && t.agua[ty * W + tx]) continue; // sem terra sobre a água
-    dentro[i] = 1;
-  }
-  // distância até a borda (duas passadas)
-  const dist = new Uint8Array(w * h).fill(255);
-  for (let i = 0; i < w * h; i++) if (dentro[i]) dist[i] = 99;
-  const viz = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : dentro[y * w + x]);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (dentro[y * w + x] && (!viz(x - 1, y) || !viz(x + 1, y) || !viz(x, y - 1) || !viz(x, y + 1))) dist[y * w + x] = 0;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (dist[i] === 255) continue; const a = Math.min(x ? dist[i - 1] + 1 : 99, y ? dist[i - w] + 1 : 99); if (a < dist[i]) dist[i] = a; }
-  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (dist[i] === 255) continue; const a = Math.min(x < w - 1 ? dist[i + 1] + 1 : 99, y < h - 1 ? dist[i + w] + 1 : 99); if (a < dist[i]) dist[i] = a; }
-  const [c, g] = tela(w, h); const out = g.createImageData(w, h);
-  const pinta = (i, hex) => { out.data[i * 4] = parseInt(hex.slice(1, 3), 16); out.data[i * 4 + 1] = parseInt(hex.slice(3, 5), 16); out.data[i * 4 + 2] = parseInt(hex.slice(5, 7), 16); out.data[i * 4 + 3] = 255; };
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x;
-    if (dentro[i]) {
-      const d = dist[i]; const r = hash(x >> 1, y >> 1);
-      if (d <= 1) pinta(i, '#6f4a2a');
-      else if (d <= 3) pinta(i, r < 0.5 ? '#a4713f' : '#98693a');
-      else if (d <= 5) pinta(i, r < 0.5 ? '#c4935a' : '#bb8a52');
-      else pinta(i, r < 0.16 ? '#b98650' : r < 0.3 ? '#d3a76d' : r < 0.36 ? '#a9784a' : '#c99a5f');
-    } else if (viz(x - 1, y) || viz(x + 1, y) || viz(x, y - 1) || viz(x, y + 1) || viz(x - 1, y - 1) || viz(x + 1, y + 1)) {
-      // beirada: tufos de grama mais escuros espalhados
-      if (hash(x, y) < 0.42) pinta(i, hash(x + 3, y) < 0.5 ? '#2d6a2f' : '#3d8a38');
+export function desenharEstradas(segmentos, t, largura = 46) {
+  const { W, H } = t; const PW = W * Q; const PH = H * Q; const N = PW * PH;
+  const dono = new Int8Array(N).fill(-1);
+  segmentos.forEach((pontos, n) => {
+    const pts = pontos.map(([x, y]) => [(x + 0.5) * Q, (y + 0.5) * Q]);
+    const R = largura / 2 + 2; const bx0 = Math.max(0, Math.floor(Math.min(...pts.map((q) => q[0])) - R)); const by0 = Math.max(0, Math.floor(Math.min(...pts.map((q) => q[1])) - R));
+    const bx1 = Math.min(PW, Math.ceil(Math.max(...pts.map((q) => q[0])) + R)); const by1 = Math.min(PH, Math.ceil(Math.max(...pts.map((q) => q[1])) + R));
+    const bw = bx1 - bx0; const bh = by1 - by0; const [, gm] = tela(bw, bh); gm.fillStyle = '#000';
+    // refaz o traçado em passos de 3 px, com a largura variando de leve (estrada de verdade não é um tubo)
+    let k = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, ay] = pts[i]; const [bx, by] = pts[i + 1]; const m = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 3));
+      for (let q = 0; q < m; q++, k++) {
+        const r = (largura / 2) * (0.9 + 0.1 * Math.sin(k * 0.045 + n * 2.1) + 0.06 * Math.sin(k * 0.13 + n));
+        gm.beginPath(); gm.arc(ax + ((bx - ax) * q) / m - bx0, ay + ((by - ay) * q) / m - by0, r, 0, Math.PI * 2); gm.fill();
+      }
     }
+    const d = gm.getImageData(0, 0, bw, bh).data;
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      if (d[(y * bw + x) * 4 + 3] < 128) continue;
+      const i = (by0 + y) * PW + bx0 + x; if (dono[i] >= 0) continue;
+      if (t.agua[Math.floor((by0 + y) / Q) * W + Math.floor((bx0 + x) / Q)]) continue;
+      dono[i] = n;
+    }
+  });
+  const dist = new Uint8Array(N).fill(255);
+  for (let i = 0; i < N; i++) if (dono[i] >= 0) dist[i] = 99;
+  const viz = (x, y) => (x < 0 || y < 0 || x >= PW || y >= PH ? -1 : dono[y * PW + x]);
+  for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) if (dono[y * PW + x] >= 0 && (viz(x - 1, y) < 0 || viz(x + 1, y) < 0 || viz(x, y - 1) < 0 || viz(x, y + 1) < 0)) dist[y * PW + x] = 0;
+  for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) { const i = y * PW + x; if (dist[i] === 255) continue; const a = Math.min(x ? dist[i - 1] + 1 : 99, y ? dist[i - PW] + 1 : 99); if (a < dist[i]) dist[i] = a; }
+  for (let y = PH - 1; y >= 0; y--) for (let x = PW - 1; x >= 0; x--) { const i = y * PW + x; if (dist[i] === 255) continue; const a = Math.min(x < PW - 1 ? dist[i + 1] + 1 : 99, y < PH - 1 ? dist[i + PW] + 1 : 99); if (a < dist[i]) dist[i] = a; }
+  const cores = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  const box = segmentos.map(() => [PW, PH, -1, -1]); const cor = new Array(N); const dn = new Int8Array(N).fill(-1);
+  for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) {
+    const i = y * PW + x; let c = null; let o = dono[i];
+    if (o >= 0) {
+      const dd = dist[i]; const r = hash(x >> 1, y >> 1);
+      // luz vinda de cima: a borda de cima é mais clara, a de baixo mais escura
+      const claro = viz(x, y - 3) < 0;
+      c = dd <= 1 ? (claro ? '#8a6038' : '#5e3d22') : dd <= 3 ? (claro ? '#bb8a52' : (r < 0.5 ? '#9a6b3b' : '#8f6335')) : dd <= 6 ? (r < 0.5 ? '#c4935a' : '#bb8a52') : (r < 0.14 ? '#b98650' : r < 0.28 ? '#d6ab72' : r < 0.34 ? '#a9784a' : '#c99a5f');
+    } else {
+      o = Math.max(viz(x - 1, y), viz(x + 1, y), viz(x, y - 1), viz(x, y + 1));
+      if (o >= 0 && hash(x, y) < 0.45) c = hash(x + 3, y) < 0.5 ? '#2d6a2f' : '#3d8a38';
+    }
+    if (c) { cor[i] = cores(c); dn[i] = o; const b = box[o]; b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y); }
   }
-  // pedrinhas e um fio de rodas no meio
-  for (let k = 0; k < (w * h) / 700; k++) { const x = Math.floor(hash(k, 1) * w); const y = Math.floor(hash(k, 2) * h); const i = y * w + x; if (dentro[i] && dist[i] > 6) { pinta(i, '#8b6a45'); if (dentro[i + 1]) pinta(i + 1, '#e0c08a'); } }
-  g.putImageData(out, 0, 0);
-  return { canvas: c, x: x0, y: y0 };
+  // pedrinhas soltas
+  for (let k = 0; k < N / 900; k++) { const x = Math.floor(hash(k, 1) * PW); const y = Math.floor(hash(k, 2) * PH); const i = y * PW + x; if (dono[i] >= 0 && dist[i] > 7 && dono[i + 1] >= 0) { cor[i] = cores('#8b6a45'); cor[i + 1] = cores('#e6c995'); } }
+  return segmentos.map((_, n) => {
+    const [bx0, by0, bx1, by1] = box[n]; if (bx1 < 0) return null;
+    const w = bx1 - bx0 + 1; const h = by1 - by0 + 1; const [c, g] = tela(w, h); const out = g.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (by0 + y) * PW + bx0 + x; if (!cor[i] || dn[i] !== n) continue; const p = (y * w + x) * 4; [out.data[p], out.data[p + 1], out.data[p + 2]] = cor[i]; out.data[p + 3] = 255;
+    }
+    g.putImageData(out, 0, 0);
+    return { canvas: c, x: bx0, y: by0 };
+  });
 }
