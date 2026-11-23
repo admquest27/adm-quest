@@ -332,13 +332,25 @@ class MapaCena extends Phaser.Scene {
     let qf = 0; this.time.addEvent({ delay: 120, loop: true, callback: () => { qf = (qf + 1) % 5; fog.setFrame('fogueira-' + qf); } });
     this.add.image(bc.left - 20, bc.bottom + 2, 'acampamento', 'toras').setDepth(100 + bc.bottom + 2);
     const cast = fx('m1chefao');
-    for (const dx of [-32, 32]) this.add.sprite(cast.img.x + dx, cast.img.y - 80, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 });
+    this.bandeirasCastelo = [-32, 32].map((dx) => this.add.sprite(cast.img.x + dx, cast.img.y - 80, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 }));
     this.aplicarEstados(this.o.estados ?? {}, this.o.concluidas ?? []);
+  }
+
+  // Com o chefão vencido o castelo vira ruína: o arco continua de pé e dá para atravessar até o portão
+  ruirCastelo(ruina) {
+    const cf = this.fases?.m1chefao; if (!cf || this.castelaRuina === ruina) return;
+    this.castelaRuina = ruina;
+    cf.img.setFrame(ruina ? 'castelo-ruinas' : 'castelo');
+    this.bandeirasCastelo?.forEach((b) => b.setVisible(!ruina));
+    const pr = this.predios?.find((p) => p.img === cf.img); if (pr) pr.off = ruina;
+    const d = cf.def; const { W, passa } = this.t;
+    for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) passa[y * W + x] = ruina ? 1 : 0;
   }
 
   aplicarEstados(estados, concluidas) {
     this.o.estados = estados; this.o.concluidas = concluidas;
     const feitas = new Set(concluidas);
+    this.ruirCastelo(feitas.has('m1chefao'));
     for (const [id, f] of Object.entries(this.fases)) {
       f.extras.forEach((e) => e.destroy()); f.extras = [];
       this.tweens.killTweensOf(f.no); f.no.setScale(0.7).clearTint();
@@ -663,7 +675,7 @@ class MapaCena extends Phaser.Scene {
   // Prédio alto fica transparente quando o avatar passa atrás dele
   verAtras() {
     const { x, y } = this.av;
-    for (const p of this.predios ?? []) { const atras = x > p.b.left + 3 && x < p.b.right - 3 && y < p.b.bottom - 6 && y > p.b.top + 4; const a = atras ? 0.45 : 1; if (p.img.alpha !== a) p.img.setAlpha(a); }
+    for (const p of this.predios ?? []) { const atras = !p.off && x > p.b.left + 3 && x < p.b.right - 3 && y < p.b.bottom - 6 && y > p.b.top + 4; const a = atras ? 0.45 : 1; if (p.img.alpha !== a) p.img.setAlpha(a); }
   }
 
   movendoAv() { return this.av.rota.length > 0 || Boolean(this.av.livre); }
@@ -1011,21 +1023,21 @@ class MapaCena extends Phaser.Scene {
   criarLampioes() {
     this.chamas = []; const { W, H, passa } = this.t; const usados = [];
     const livre = (x, y) => x > 1 && y > 1 && x < W - 2 && y < H - 2 && passa[y * W + x] && !this.naEstradaSet.has(y * W + x) && !this.t.agua[y * W + x] && !usados.some(([ux, uy]) => Math.hypot(ux - x, uy - y) < 6);
+    // anda pela estrada e põe um poste a cada 8 peças e meia, ora de um lado, ora do outro, em chão livre
     let lado = 1;
     for (const e of planta.ESTRADAS) {
-      let falta = 5;
-      for (let i = 0; i < e.pontos.length - 1; i++) {
-        const [ax, ay] = e.pontos[i]; const [bx, by] = e.pontos[i + 1]; const comp = Math.hypot(bx - ax, by - ay); if (!comp) continue;
-        const nx = -(by - ay) / comp; const ny = (bx - ax) / comp;
-        for (let d = falta; d < comp; d += 9) {
-          const px = ax + ((bx - ax) * d) / comp; const py = ay + ((by - ay) * d) / comp;
-          const x = Math.round(px + nx * 2.6 * lado); const y = Math.round(py + ny * 2.6 * lado);
-          if (livre(x, y)) { usados.push([x, y]); lado = -lado; }
-          falta = d + 9 - comp;
+      let acum = 3;
+      for (let k = 1; k < e.pontos.length; k++) {
+        const [ax, ay] = e.pontos[k - 1]; const [bx, by] = e.pontos[k]; const d = Math.hypot(bx - ax, by - ay); if (!d) continue;
+        acum += d; if (acum < 8.5) continue;
+        const nx = -(by - ay) / d; const ny = (bx - ax) / d;
+        achou: for (const s of [lado, -lado]) for (const off of [2.3, 3.1, 3.9]) {
+          const x = Math.round(bx + nx * off * s); const y = Math.round(by + ny * off * s);
+          if (livre(x, y)) { usados.push([x, y]); lado = -s; acum = 0; break achou; }
         }
-        falta = Math.max(0, falta);
       }
     }
+    for (const [x, y] of planta.POSTES ?? []) if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && passa[y * W + x] && !this.t.agua[y * W + x]) usados.push([x, y]);
     for (const [x, y] of usados) {
       const by = (y + 1) * P - 2; passa[y * W + x] = 0;
       this.add.ellipse(x * P + 8, by, 6, 2, 0x000000, 0.25).setDepth(4);

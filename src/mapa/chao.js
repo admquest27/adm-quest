@@ -40,6 +40,28 @@ export function pecasDaEstrada(pontos, W, H) {
   return marcadas;
 }
 
+// Uma peça de calçada de pedra (paralelepípedos em fileiras desencontradas) com beirada escura onde a praça acaba
+function calcada(g, tx, ty, viz) {
+  const x0 = tx * Q; const y0 = ty * Q;
+  g.fillStyle = '#5f5b6e'; g.fillRect(x0, y0, Q, Q);
+  const tons = [['#a8a5b3', '#c3c0cd', '#85828f'], ['#9b98a8', '#b6b3c2', '#7a7786'], ['#b0adb8', '#cac7d3', '#8c8996'], ['#a29faf', '#bdbacb', '#807d8d']];
+  for (let fila = 0; fila < 4; fila++) {
+    let x = -((fila % 2) * 6 + Math.floor(semente2(tx * 3 + fila, ty) * 4)); let k = 0;
+    while (x < Q) {
+      const w = 10 + Math.floor(semente2(tx * 7 + fila * 5 + k, ty * 3 + 1) * 7); const [base, luz, sombra] = tons[Math.floor(semente2(tx + k * 11, ty * 5 + fila) * 4)];
+      const ax = Math.max(0, x + 1); const bx = Math.min(Q, x + w); const y = fila * 8;
+      if (bx > ax) { g.fillStyle = base; g.fillRect(x0 + ax, y0 + y + 1, bx - ax, 6); g.fillStyle = luz; g.fillRect(x0 + ax, y0 + y + 1, bx - ax, 1); g.fillStyle = sombra; g.fillRect(x0 + ax, y0 + y + 6, bx - ax, 1); }
+      x += w + 1; k++;
+    }
+  }
+  // beirada: sombra escura e um fio de terra onde vizinho não é calçada
+  g.fillStyle = '#4a4658';
+  if (!viz(0, -1)) g.fillRect(x0, y0, Q, 2);
+  if (!viz(0, 1)) g.fillRect(x0, y0 + Q - 2, Q, 2);
+  if (!viz(-1, 0)) g.fillRect(x0, y0, 2, Q);
+  if (!viz(1, 0)) g.fillRect(x0 + Q - 2, y0, 2, Q);
+}
+
 // Chão inteiro: grama (com flores de vez em quando), areia do deserto e água de rio e lagos.
 export function desenharChao(img, frames, t, planta, evitar = new Set()) {
   const { W, H } = t; const [c, g] = tela(W * Q, H * Q);
@@ -51,14 +73,20 @@ export function desenharChao(img, frames, t, planta, evitar = new Set()) {
     const a = Math.atan2(y + 0.5 - d.cy, x + 0.5 - d.cx); const r = 1 + 0.1 * Math.sin(a * 3 + 0.6) + 0.06 * Math.sin(a * 7 + 1.3);
     if (((x + 0.5 - d.cx) / (d.rx * r)) ** 2 + ((y + 0.5 - d.cy) / (d.ry * r)) ** 2 < 1) naAreia[y * W + x] = 1;
   }
+  const pr = planta.PRACA; const naPraca = new Uint8Array(W * H);
+  if (pr) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const a = Math.atan2(y + 0.5 - pr.cy, x + 0.5 - pr.cx); const r = 1 + 0.07 * Math.sin(a * 3 + 1) + 0.05 * Math.sin(a * 5 + 2);
+    if (((x + 0.5 - pr.cx) / (pr.rx * r)) ** 2 + ((y + 0.5 - pr.cy) / (pr.ry * r)) ** 2 < 1 && !t.agua[y * W + x]) naPraca[y * W + x] = 1;
+  }
   const dentro = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
   const temAgua = (x, y) => (dentro(x, y) ? t.agua[y * W + x] === 1 : true);
   const temAreia = (x, y) => (dentro(x, y) ? naAreia[y * W + x] === 1 : false);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const s = semente2(x * 5 + 3, y * 9 + 1);
     const i = y * W + x;
-    if (s < 0.05 && !evitar.has(i) && !t.floresta[i]) g.drawImage(img, flor.x + 32 * Math.floor(s * 60 % 3), flor.y, 32, 32, x * Q, y * Q, 32, 32);
+    if (s < 0.05 && !evitar.has(i) && !t.floresta[i] && !naPraca[i]) g.drawImage(img, flor.x + 32 * Math.floor(s * 60 % 3), flor.y, 32, 32, x * Q, y * Q, 32, 32);
     else g.drawImage(img, grama.x + 32 * Math.floor(s * 3), grama.y + 160, 32, 32, x * Q, y * Q, 32, 32);
+    if (naPraca[i]) calcada(g, x, y, (dx, dy) => (dentro(x + dx, y + dy) ? naPraca[(y + dy) * W + x + dx] === 1 : false));
     if (naAreia[i]) autotile(g, img, areia, temAreia, x, y, 0, 0, Math.floor(s * 7) % 2);
     if (t.agua[i]) autotile(g, img, agua, temAgua, x, y, 0, 0, Math.floor(s * 11) % 3);
   }

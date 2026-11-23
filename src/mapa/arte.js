@@ -75,7 +75,10 @@ export const LPC_PECAS = {
   casaReta: CASA('casa-palha-reta', [81, 158]), casaDiag: CASA('casa-palha-diag', [81, 158]),
   casaAzul: CASA('casa-azul', [72, 150]), casaCreme: CASA('casa-creme', [72, 150]), casaAmarela: CASA('casa-amarela', [72, 150]), casaVerde: CASA('casa-verde', [72, 150]),
   casaFlamV: { quadro: 'casa-flamenga-vermelha', porta: [20, 126], w: 2, h: 4 }, casaFlamC: { quadro: 'casa-flamenga-creme', porta: [44, 126], w: 2, h: 4 },
-  casaPartida: { quadro: 'casa-flamenga-vermelha', porta: [20, 126], w: 2, h: 4 },
+  casaPartida: { quadro: 'estalagem', porta: [72, 200], w: 3, h: 6 },
+  sobradoAzul: { quadro: 'sobrado-azul', porta: [72, 200], w: 3, h: 6 }, padaria: { quadro: 'padaria', porta: [72, 156], w: 6, h: 5 },
+  chaleAlto: { quadro: 'chale-alto', porta: [81, 207], w: 4, h: 6 }, casaVaranda: { quadro: 'casa-varanda', porta: [80, 152], w: 4, h: 5 },
+  torreCasa: { quadro: 'casa-torre', porta: [32, 216], w: 2, h: 7 },
   casaPedra: { quadro: 'kiva', porta: [64, 96], w: 4, h: 3 },
   castelo: { quadro: 'castelo', porta: [88, 176], w: 6, h: 5 },
   raioX: CASA('casa-tijolo-baixa', [79, 158]),
@@ -93,7 +96,7 @@ export const LPC_ENFEITES = {
 };
 // Objetos (pelo id) que já têm versão LPC.
 export const LPC_OBJETOS = {
-  cacto: 'cacto', lapide: 'lapide', escola: 'torre-relogio', coreto: 'coreto', impressora: 'mesa-escriba', casinha: 'casinha-cachorro', aviao: 'aviao-caido', quadro: 'quadro-swot', placa404: 'placa-404', porta: 'placa-cafe', ilha: 'ilhota', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
+  cacto: 'cacto', lapide: 'lapide', escola: 'torre-relogio', feira: 'feira', coreto: 'coreto', impressora: 'mesa-escriba', casinha: 'casinha-cachorro', aviao: 'aviao-caido', quadro: 'quadro-swot', placa404: 'placa-404', porta: 'placa-cafe', ilha: 'ilhota', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
   carroca: 'carroca', fardos: 'fardo', lenha: 'lenha-1',
 };
 
@@ -101,5 +104,5 @@ export const LPC_OBJETOS = {
 export const MODELOS_FASE = [
   ['casaAzul', 'Casa azul'], ['casaCreme', 'Casa creme'], ['casaAmarela', 'Casa amarela'], ['casaVerde', 'Casa verde'],
   ['casaLaranja', 'Casa de palha dourada'], ['casaReta', 'Casa de palha marrom'], ['casaDiag', 'Casa de palha e pedra'],
-  ['oficina', 'Galpão de madeira'], ['barraca', 'Tenda de acampamento'], ['raioX', 'Casa de tijolo'], ['casaPedra', 'Cabana de adobe'], ['casaFlamV', 'Casa flamenga vermelha'], ['casaFlamC', 'Casa flamenga creme'],
+  ['oficina', 'Galpão de madeira'], ['barraca', 'Tenda de acampamento'], ['raioX', 'Casa de tijolo'], ['casaPedra', 'Cabana de adobe'], ['casaFlamV', 'Casa flamenga vermelha'], ['casaFlamC', 'Casa flamenga creme'], ['sobradoAzul', 'Sobrado azul'], ['casaVaranda', 'Casa amarela com varanda'], ['chaleAlto', 'Chalé de dois andares'], ['padaria', 'Padaria'], ['torreCasa', 'Casa-torre'],
 ];

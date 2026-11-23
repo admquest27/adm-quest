@@ -13,11 +13,15 @@ export const ALT = 42;
 // Áreas de mata (desenhadas com árvores) e de água
 export const FLORESTA = [
   { x: 0, y: 0, w: 39, h: 2 }, { x: 47, y: 0, w: 25, h: 2 }, { x: 0, y: 39, w: 72, h: 3 }, { x: 0, y: 0, w: 1, h: 42 }, { x: 71, y: 0, w: 1, h: 42 },
-  { x: 28, y: 2, w: 4, h: 4 }, { x: 19, y: 16, w: 5, h: 4 }, { x: 24, y: 26, w: 3, h: 3 }, { x: 1, y: 16, w: 3, h: 4 },
+  { x: 28, y: 2, w: 4, h: 4 }, { x: 39, y: 0, w: 2, h: 10 }, { x: 46, y: 0, w: 2, h: 8 }, { x: 1, y: 16, w: 3, h: 4 },
   { x: 38, y: 3, w: 3, h: 7 }, { x: 68, y: 4, w: 3, h: 32 }, { x: 59, y: 15, w: 3, h: 3 }, { x: 66, y: 2, w: 5, h: 6 },   { x: 58, y: 38, w: 12, h: 1 },
 ];
 // Regiões que ninguém atravessa (o espaço atrás do portão do Mundo 2, de onde a estrada sai do mapa)
-export const MUROS = [{ x: 39, y: 0, w: 9, h: 6 }];
+export const MUROS = [{ x: 41, y: 0, w: 5, h: 6 }];
+// Praça central: chão de pedra em volta da fonte
+export const PRACA = { cx: 13.5, cy: 27.5, rx: 7.5, ry: 5 };
+// Postes extras de luz (além dos que acompanham a estrada)
+export const POSTES = [[7, 23], [20, 23], [7, 32], [19, 32], [11, 27], [16, 27]];
 export const RIO = { x: 33, w: 3 };
 export const LAGOS = [{ x: 2, y: 35, w: 4, h: 3 }, { x: 52, y: 4, w: 5, h: 3 }];
 export const PONTE = { y: 21, x0: 31, x1: 37 };
@@ -42,19 +46,19 @@ export function suavizar(pts, passo = 0.5) {
 // Um caminho só, de ponta a ponta: o aluno segue a estrada de fase em fase, na ordem do bimestre. Cada trecho começa
 // na fase anterior e termina na entrada da próxima. O último leva ao portão do Mundo 2 e sai pela borda do mapa.
 export const ESTRADAS = [
-  { para: 'm1f2', pontos: [[6, 27], [5.5, 24], [6.5, 20], [8, 16], [7.5, 12], [9, 9]] },
+  { para: 'm1f2', pontos: [[6, 27], [7.6, 27.6], [7.8, 24], [7.2, 19], [7.6, 14], [8.4, 11], [9, 9]] },
   { para: 'm1f3', pontos: [[9, 9], [11, 11.5], [14, 11], [17, 13.5], [21, 12.5], [23, 10.5], [25, 11]] },
-  { para: 'm1f4', pontos: [[25, 11], [26.5, 14], [25.5, 17.5], [27.5, 20], [30, 21], [38, 21], [40, 21.5], [42, 24.5], [45, 25.5], [47, 28.5], [51, 30]] },
+  { para: 'm1f4', pontos: [[25, 11], [26.5, 14], [25.5, 17.5], [27.5, 20], [30, 21], [38, 21], [40, 21.5], [42, 24.5], [45, 25.5], [46.5, 29.5], [48.5, 31.2], [51, 30]] },
   { para: 'm1f5', pontos: [[51, 30], [54, 31], [57, 29.5], [60, 28], [62, 25]] },
-  { para: 'm1f6', pontos: [[62, 25], [64, 23], [65.5, 20], [64, 17.5], [65, 15], [64, 13]] },
-  { para: 'm1f7', pontos: [[64, 13], [61, 14.5], [58, 12.5], [56, 14], [54, 14]] },
-  { para: 'm1chefao', pontos: [[54, 14], [51, 12.5], [48, 14], [46, 13.5], [44, 13]] },
+  { para: 'm1f6', pontos: [[62, 25], [64.5, 25.5], [66, 21.5], [64.5, 18], [65.5, 15.5], [64, 13]] },
+  { para: 'm1f7', pontos: [[64, 13], [62, 15], [59, 15.5], [56, 15], [54, 14]] },
+  { para: 'm1chefao', pontos: [[54, 14], [51, 15], [48, 15.5], [46, 14.5], [44, 13]] },
   { para: 'mundo2', pontos: [[44, 13], [45.5, 10.5], [43.5, 8], [43, 6], [43, 1], [43, -3]] },
 ].map((e) => ({ ...e, pontos: suavizar(e.pontos) }));
 
 // Construções das fases: canto de cima à esquerda (x, y), tamanho em peças, arte e entrada (onde fica o ponto da fase).
 export const FASES = [
-  { id: 'm1f1', arte: 'casaPartida', x: 5, y: 23, w: 2, h: 4, entrada: [6, 27] },
+  { id: 'm1f1', arte: 'casaPartida', x: 4, y: 21, w: 3, h: 6, entrada: [6, 27] },
   { id: 'm1f2', arte: 'casaPedra', x: 7, y: 6, w: 4, h: 3, entrada: [9, 9] },
   { id: 'm1f3', arte: 'oficina', x: 24, y: 8, w: 3, h: 3, entrada: [25, 11] },
   { id: 'm1f4', arte: 'celeiro', x: 48, y: 27, w: 6, h: 3, entrada: [51, 30] },
@@ -73,7 +77,7 @@ export const LOTES = [
 ];
 
 // Enfeites: peça do pacote no canto (x, y). Bloqueiam só a base (a última linha, ou todas nas casas).
-const casa = new Set(['casaLaranja', 'casaBege', 'casaLaranja2', 'casaAzul', 'casaCreme', 'casaAmarela', 'casaVerde', 'casaReta', 'casaDiag', 'loja', 'lojaVerde', 'casaPedra', 'casaFlamV', 'casaFlamC']);
+const casa = new Set(['casaLaranja', 'casaBege', 'casaLaranja2', 'casaAzul', 'casaCreme', 'casaAmarela', 'casaVerde', 'casaReta', 'casaDiag', 'loja', 'lojaVerde', 'casaPedra', 'casaFlamV', 'casaFlamC', 'sobradoAzul', 'casaVaranda', 'chaleAlto', 'padaria', 'torreCasa', 'casaPartida']);
 const naoBloqueia = new Set(['florAmarela', 'florLaranja', 'florVermelha', 'florBranca', 'mato', 'trigo', 'arbusto1', 'arbusto2', 'arbusto3', 'arbusto4', 'estandarte1', 'estandarte2', 'estandarte3']);
 const enfeite = (peca, x, y) => {
   const r = RECORTES[peca] ?? LPC_PECAS[peca] ?? { w: 1, h: 1 }; const fh = casa.has(peca) ? r.h : 1; // casas bloqueiam inteiras (ninguém anda no telhado)
@@ -83,13 +87,12 @@ const enfeite = (peca, x, y) => {
 const campo = (x0, y0, colunas, linhas) => Array.from({ length: colunas * linhas }, (_, i) => ['trigo', x0 + (i % colunas), y0 + Math.floor(i / colunas)]);
 export const ENFEITES = [
   // Praça: casas de cores e telhados diferentes
-  ['casaAzul', 11, 22], ['casaFlamV', 22, 29], ['casaAmarela', 9, 31], ['casaFlamC', 2, 30],
-  ['casaReta', 22, 23], ['casaDiag', 1, 22],
+  ['sobradoAzul', 11, 16], ['casaVaranda', 22, 25], ['chaleAlto', 7, 29], ['padaria', 12, 33], ['torreCasa', 20, 14], ['casaDiag', 22, 31],
   // Dunas
   ['palmeira', 3, 5], ['palmeira', 15, 4], ['palmeira', 5, 11], ['palmeira', 14, 12],
   // árvores soltas
   ['arvoreRedonda', 20, 14], ['arvoreClara', 29, 14], ['arvoreRosa', 22, 20], ['arvoreRedonda', 30, 31], ['pinheiro', 26, 36], ['arvoreClara', 13, 37],
-  ['arvoreRedonda', 40, 15], ['pinheiro', 47, 6], ['arvoreClara', 58, 8], ['arvoreRosa', 67, 20], ['arvoreRedonda', 60, 31], ['pinheiro', 66, 28], ['arvoreClara', 40, 28],
+  ['arvoreRedonda', 40, 15], ['arvoreClara', 58, 8], ['arvoreRosa', 67, 20], ['arvoreRedonda', 60, 31], ['pinheiro', 66, 28], ['arvoreClara', 40, 28],
   ['arvoreRedonda', 50, 21], ['arvoreRosa', 52, 17], ['arvoreClara', 69, 12],
   // plantação da fazenda
   ...campo(52, 33, 6, 3),
@@ -103,20 +106,21 @@ export const OBJETOS = [
   { id: 'casinha', arte: 'casinha', x: 3, y: 28, bloqueia: true },
   { id: 'impressora', arte: 'impressora', x: 8, y: 27, w: 2, h: 1, bloqueia: true, segredo: 'gato' },
   { id: 'cacto', arte: 'cacto', x: 4, y: 7, bloqueia: true, segredo: 'cacto', toques: 5 },
-  { id: 'aviao', arte: 'aviao', x: 11, y: 8, w: 4, h: 2, bloqueia: true, conversa: 'aviao' },
-  { id: 'escola', arte: 'casaTorre', x: 17, y: 34, w: 2, h: 1, bloqueia: true, segredo: 'antena' },
-  { id: 'coreto', arte: 'coreto', x: 17, y: 25, w: 3, h: 1, bloqueia: true },
+  { id: 'aviao', arte: 'aviao', x: 11, y: 6, w: 6, h: 4, bloqueia: true, conversa: 'aviao' },
+  { id: 'escola', arte: 'casaTorre', x: 15, y: 24, w: 2, h: 1, bloqueia: true, segredo: 'antena' },
+  { id: 'coreto', arte: 'coreto', x: 17, y: 30, w: 3, h: 1, bloqueia: true },
+  { id: 'feira', arte: 'feira', x: 9, y: 26, w: 2, h: 1, bloqueia: true },
   { id: 'porta', arte: 'placaCafe', x: 27, y: 36, bloqueia: true, segredo: 'professores' },
   { id: 'lapide', arte: 'lapide', x: 49, y: 10, bloqueia: true, segredo: 'lapide' },
   { id: 'placa404', arte: 'placa404', x: 8, y: 37, bloqueia: true, segredo: '404' },
-  { id: 'ilha', arte: 'ilha', x: 33, y: 30, w: 3, h: 3, bloqueia: true, segredo: 'bau', alcance: 2.5 },
+  { id: 'ilha', arte: 'ilha', x: 33, y: 30, w: 3, h: 2, bloqueia: true, segredo: 'bau', alcance: 2.5 },
   { id: 'quadro', arte: 'quadroSwot', x: 65, y: 26, w: 2, h: 1, bloqueia: true, conversa: 'swot' },
   { id: 'moinho', arte: 'moinhoBase', x: 60, y: 35, w: 3, h: 2, bloqueia: true, conversa: 'moinho' },
   { id: 'portao', arte: 'portao', x: 41, y: 4, w: 5, h: 2, bloqueia: true, conversa: 'portao' },
   { id: 'fonte', arte: 'fonte', x: 13, y: 27, w: 2, h: 2, bloqueia: true },
   { id: 'poco', arte: 'poco', x: 46, y: 25, w: 2, h: 2, bloqueia: true },
   { id: 'espantalho', arte: 'espantalho', x: 54, y: 33, bloqueia: true, segredo: 'espantalho' },
-  { id: 'carroca', arte: 'carroca', x: 19, y: 28, w: 2, h: 2, bloqueia: true },
+  { id: 'carroca', arte: 'carroca', x: 18, y: 34, w: 2, h: 2, bloqueia: true },
   { id: 'fardos', arte: 'fardo', x: 56, y: 27, w: 2, h: 1, bloqueia: true },
   { id: 'lenha', arte: 'lenha', x: 46, y: 29, bloqueia: true },
 ];
