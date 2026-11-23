@@ -379,6 +379,12 @@
         "coco",
         "Chapéu-coco",
         "headwear/hats/formal/hat_formal_bowler.json"
+      ],
+      [
+        "mago",
+        "Chapéu de mago",
+        "headwear/hats/magic/hat_magic_wizard.json",
+        "base_gray"
       ]
     ],
     "oculos": [
@@ -396,6 +402,25 @@
         "escuros",
         "Óculos escuros",
         "headwear/accessories/glasses/facial_glasses_sunglasses.json"
+      ]
+    ],
+    "barba": [
+      [
+        "barba",
+        "Barba média",
+        "hair/beards/beards_medium.json"
+      ],
+      [
+        "barbacheia",
+        "Barba comum",
+        "hair/beards/beards_beard.json"
+      ]
+    ],
+    "capa": [
+      [
+        "capa",
+        "Capa",
+        "torso/cape/cape_solid.json"
       ]
     ]
   }

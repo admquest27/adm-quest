@@ -1551,6 +1551,24 @@
   ]
  },
  {
+  "arquivo": "hat/magic/wizard",
+  "autores": [
+   "Michael Whitlock (bigbeargames)",
+   "Tuomo Untinen (reemax)",
+   "JaidynReiman"
+  ],
+  "licencas": [
+   "CC-BY-SA 3.0",
+   "GPL 2.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/lpc-items-and-game-effects",
+   "https://opengameart.org/content/lpc-pointed-hats",
+   "https://opengameart.org/content/lpc-expanded-hats-facial-helmets"
+  ]
+ },
+ {
   "arquivo": "facial/glasses/glasses",
   "autores": [
    "ElizaWy"
@@ -1593,6 +1611,66 @@
   "links": [
    "https://opengameart.org/content/lpc-base-character-expressions",
    "https://opengameart.org/content/lpc-expanded-hats-facial-helmets"
+  ]
+ },
+ {
+  "arquivo": "beards/beard/medium",
+  "autores": [
+   "ElizaWy"
+  ],
+  "licencas": [
+   "OGA-BY 3.0"
+  ],
+  "links": [
+   "https://github.com/ElizaWy/LPC/tree/main/Characters/Hair",
+   "https://opengameart.org/content/lpc-expanded-sit-run-jump-more"
+  ]
+ },
+ {
+  "arquivo": "beards/beard/basic",
+  "autores": [
+   "JaidynReiman",
+   "Carlo Enrico Victoria (Nemisys)"
+  ],
+  "licencas": [
+   "CC-BY-SA 3.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/lpc-white-beard"
+  ]
+ },
+ {
+  "arquivo": "cape/solid/fg",
+  "autores": [
+   "bluecarrot16",
+   "JaidynReiman"
+  ],
+  "licencas": [
+   "OGA-BY 3.0",
+   "CC-BY-SA 3.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/lpc-curly-hair-elven-ears-white-cape-with-blue-trim-and-more",
+   "https://opengameart.org/content/lpc-roman-armor",
+   "http://opengameart.org/content/lpc-clothing-updates"
+  ]
+ },
+ {
+  "arquivo": "cape/solid/bg",
+  "autores": [
+   "Nila122",
+   "JaidynReiman"
+  ],
+  "licencas": [
+   "OGA-BY 3.0",
+   "CC-BY-SA 3.0",
+   "GPL 3.0"
+  ],
+  "links": [
+   "https://opengameart.org/content/lpc-curly-hair-elven-ears-white-cape-with-blue-trim-and-more",
+   "https://opengameart.org/content/lpc-roman-armor"
   ]
  }
 ]

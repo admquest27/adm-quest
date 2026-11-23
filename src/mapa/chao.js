@@ -29,11 +29,10 @@ export function pecasDaEstrada(pontos, W, H) {
   for (let i = 0; i < pontos.length - 1; i++) {
     const [ax, ay] = pontos[i]; const [bx, by] = pontos[i + 1];
     const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 4);
-    const diagonal = Math.abs(bx - ax) > 0.3 && Math.abs(by - ay) > 0.3;
     for (let k = 0; k <= n; k++) {
       const x = ax + ((bx - ax) * k) / n; const y = ay + ((by - ay) * k) / n;
-      const pts = diagonal ? [[x, y], [x + 0.45, y], [x, y + 0.45]] : [[x, y]];
-      for (const [px, py] of pts) { const cx = Math.floor(px); const cy = Math.floor(py); if (cx >= 0 && cy >= 0 && cx < W && cy < H) marcadas.add(cy * W + cx); }
+      // faixa de dois quadrados de largura, centrada no traçado (um traço fino sumia no meio do mato)
+      for (const dx of [0, 1]) for (const dy of [0, 1]) { const cx = Math.floor(x) + dx; const cy = Math.floor(y) + dy; if (cx >= 0 && cy >= 0 && cx < W && cy < H) marcadas.add(cy * W + cx); }
     }
   }
   return marcadas;

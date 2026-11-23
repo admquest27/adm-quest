@@ -24,7 +24,7 @@ const faltando = new Set();
 const creditos = new Map();
 
 // Uma peça vira uma lista de camadas (algumas têm parte da frente e de trás do corpo, com zPos diferentes).
-function peca(arqDef) {
+function peca(arqDef, variante = null) {
   const def = lerJson(path.join(lpc, 'sheet_definitions', arqDef));
   const camadas = [];
   for (const [k, v] of Object.entries(def)) {
@@ -39,10 +39,11 @@ function peca(arqDef) {
   const mats = rc.material ? [rc.material] : [rc.color_1?.material, rc.color_2?.material].filter(Boolean);
   for (const c of camadas) {
     for (const a of anims) {
-      const origem = path.join(lpc, 'spritesheets', c.dir, a + '.png');
+      const rel = variante ? path.join(a, variante + '.png') : a + '.png';
+      const origem = path.join(lpc, 'spritesheets', c.dir, rel);
       if (!fs.existsSync(origem)) { faltando.add('spritesheets/' + c.dir); continue; }
       if (!listar) {
-        const alvo = path.join(destino, c.dir, a + '.png');
+        const alvo = path.join(destino, c.dir, rel);
         fs.mkdirSync(path.dirname(alvo), { recursive: true });
         fs.copyFileSync(origem, alvo);
       }
@@ -52,13 +53,13 @@ function peca(arqDef) {
     const chave = cr.file;
     if (!creditos.has(chave)) creditos.set(chave, { arquivo: cr.file, autores: cr.authors ?? [], licencas: cr.licenses ?? [], links: cr.urls ?? [] });
   }
-  return { camadas: camadas.map((c) => ({ z: c.z, arq: c.dir })), anims, mats };
+  return { camadas: camadas.map((c) => ({ z: c.z, arq: c.dir, ...(variante ? { v: variante } : {}) })), anims, mats };
 }
 
 const catalogo = { corpo: CORPO, animacoes: ANIMS, fixos: {}, grupos: {}, paletas: {} };
 for (const [id, arq] of Object.entries(esc.fixos)) catalogo.fixos[id] = peca(arq);
 for (const [grupo, itens] of Object.entries(esc.grupos)) {
-  catalogo.grupos[grupo] = itens.map(([id, nome, arq]) => ({ id, nome, ...peca(arq) }));
+  catalogo.grupos[grupo] = itens.map(([id, nome, arq, variante]) => ({ id, nome, ...peca(arq, variante) }));
 }
 
 // Paletas: a de origem de cada material e as opções de cor.

@@ -70,16 +70,17 @@ export const idAgua = A;
 // Peças LPC (atlas "lpc", 32 px por peça da planta) que substituem as antigas, pelo mesmo nome da planta.
 // porta: centro de baixo da porta em pixels da arte, a partir do canto de cima do quadro.
 export const LPC_PECAS = {
-  casaLaranja: { quadro: 'casa-palha-bege', porta: [81, 189] },
-  casaBege: { quadro: 'casa-palha-clara', porta: [81, 189] },
-  casaLaranja2: { quadro: 'casa-palha-pedra', porta: [81, 189] },
-  loja: { quadro: 'casa-palha-clara2', porta: [81, 189] },
-  templo: { quadro: 'casa-palha-diag', porta: [81, 189] },
-  casaPartida: { quadro: 'casa-palha-pedra2', porta: [81, 189] },
+  casaLaranja: { quadro: 'casa-palha-bege', porta: [81, 158] },
+  casaBege: { quadro: 'casa-palha-clara', porta: [81, 158] },
+  raioX: { quadro: 'casa-tijolo-baixa', porta: [79, 158] },
+  casaLaranja2: { quadro: 'casa-palha-pedra', porta: [81, 158] },
+  loja: { quadro: 'casa-palha-clara2', porta: [81, 158] },
+  templo: { quadro: 'casa-palha-diag', porta: [81, 158] },
+  casaPartida: { quadro: 'casa-palha-pedra2', porta: [81, 158] },
   casaPedra: { quadro: 'casa-adobe', porta: [48, 160] },
-  lojaVerde: { quadro: 'casa-palha-reta', porta: [81, 189] },
+  oficina: { quadro: 'oficina', porta: [73, 106] },
   barraca: { quadro: 'tenda', porta: [60, 158] },
-  arvoreGrande: { quadro: 'cerejeira', porta: [64, 112] },
+  arvoreGrande: { quadro: 'arvore-comando', porta: [96, 214] },
   portal: { quadro: 'portao-ferro', porta: [48, 94] },
 };
 
@@ -90,4 +91,4 @@ export const LPC_ENFEITES = {
   arbusto1: ['arbusto-1'], arbusto2: ['arbusto-2'], arbusto3: ['arbusto-3'], arbusto4: ['arbusto-4'], mato: ['mato'], trigo: ['trigo'],
 };
 // Objetos desenhados para o jogo que já têm versão LPC.
-export const LPC_OBJETOS = { cacto: 'cacto', lapide: 'lapide', escola: 'casa-pedra' };
+export const LPC_OBJETOS = { cacto: 'cacto', lapide: 'lapide', escola: 'casa-pedra', portao: 'portao-mundo2' };

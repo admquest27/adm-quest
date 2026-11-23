@@ -36,11 +36,11 @@ const fase = (id, arte, x, y, entrada) => ({ id, arte, x, y, w: RECORTES[arte]?.
 export const FASES = [
   fase('m1f1', 'casaPartida', 4, 13, [5, 16]),
   fase('m1f2', 'casaPedra', 8, 6, [9, 9]),
-  fase('m1f3', 'lojaVerde', 15, 6, [17, 9]),
+  { id: 'm1f3', arte: 'oficina', x: 15, y: 6, w: 3, h: 3, entrada: [17, 9] },
   fase('m1f4', 'portal', 32, 6, [33, 8]),
   fase('m1f5', 'barraca', 34, 15, [35, 17]),
-  fase('m1f6', 'arvoreGrande', 39, 8, [40, 11]),
-  fase('m1f7', 'casaBege', 42, 15, [43, 18]),
+  fase('m1f6', 'arvoreGrande', 38, 8, [40, 11]),
+  { id: 'm1f7', arte: 'raioX', x: 42, y: 15, w: 3, h: 3, entrada: [43, 18] },
   { id: 'm1chefao', arte: 'castelo', x: 42, y: 4, w: 3, h: 3, entrada: [43, 7] },
 ];
 
@@ -56,7 +56,7 @@ export const ENFEITES = [
   ['casaLaranja', 8, 13], ['casaBege', 16, 13], ['casaLaranja2', 8, 21], ['loja', 14, 20], ['templo', 1, 9],
   ['arvoreRedonda', 2, 12], ['arvoreClara', 12, 11], ['arvoreRosa', 20, 14], ['arvoreRedonda', 24, 9], ['arvoreClara', 24, 16],
   // deserto
-  ['palmeira', 4, 4], ['palmeira', 11, 4], ['palmeira', 6, 8], ['palmeira', 12, 8],
+  ['palmeira', 3, 4], ['palmeira', 13, 3], ['palmeira', 5, 8], ['palmeira', 1, 6],
   // leste
   ['arvoreRedonda', 30, 3], ['pinheiro', 30, 9], ['arvoreClara', 37, 13], ['arvoreRosa', 31, 19], ['arvoreRedonda', 38, 20], ['pinheiro', 45, 20], ['arvoreClara', 25, 20],
   ['estandarte1', 31, 6], ['estandarte2', 35, 6], ['estandarte3', 36, 7],

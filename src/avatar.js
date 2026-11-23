@@ -14,7 +14,7 @@ export const CORES_ROUPA = [['white', 'Branco'], ['gray', 'Cinza'], ['charcoal',
 export const CAMPOS = ['pele', 'rosto', 'nariz', 'sobrancelha', 'olhos', 'cabelo', 'corCabelo', 'cima', 'corCima', 'baixo', 'corBaixo', 'pes', 'corPes'];
 export const PADRAO = { v: 2, pele: 'olive', rosto: 'a', nariz: 'botao', sobrancelha: 'fina', olhos: 'brown', cabelo: 'curto', corCabelo: 'dark_brown', cima: 'camiseta', corCima: 'blue', baixo: 'calca', corBaixo: 'navy', pes: 'tenis', corPes: 'white' };
 // Peças extras (chapéu e óculos): usadas pelos moradores do mapa e, depois, pela loja. Ainda não vão para o banco.
-export const EXTRAS = ['chapeu', 'oculos'];
+export const EXTRAS = ['chapeu', 'oculos', 'barba', 'capa', 'corCapa'];
 const TOM_ANTIGO = ['light', 'amber', 'olive', 'taupe', 'bronze', 'brown'];
 
 export function normalizar(av) {
@@ -54,9 +54,9 @@ function recolorir(g, w, h, trocas) {
 
 const novaTela = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false; return [c, g]; };
 const camadaCache = new Map();
-function camada(arq, anim, trocas, chave) {
-  const k = arq + anim + '|' + chave;
-  if (!camadaCache.has(k)) camadaCache.set(k, imagem(BASE + arq + anim + '.png').then((img) => {
+function camada(arq, anim, trocas, chave, v = null) {
+  const k = arq + anim + (v ?? '') + '|' + chave;
+  if (!camadaCache.has(k)) camadaCache.set(k, imagem(BASE + arq + anim + (v ? '/' + v : '') + '.png').then((img) => {
     if (!trocas.length) return img;
     const [c, g] = novaTela(img.width, img.height); g.drawImage(img, 0, 0); recolorir(g, img.width, img.height, trocas); return c;
   }));
@@ -75,13 +75,13 @@ export function folha(avBruto, anim = 'walk') {
 }
 async function montar(av, anim) {
   const cat = await catalogo(); const P = cat.paletas;
-  const corDoGrupo = { cima: av.corCima, baixo: av.corBaixo, pes: av.corPes };
+  const corDoGrupo = { cima: av.corCima, baixo: av.corBaixo, pes: av.corPes, capa: av.corCapa ?? 'gray' };
   const pecas = [{ ...cat.fixos.corpo, grupo: 'corpo' }];
   for (const g of ['rosto', 'nariz', 'sobrancelha', 'cabelo', 'cima', 'baixo', 'pes']) {
     const lista = cat.grupos[g]; const p = lista.find((x) => x.id === av[g]) ?? lista[0];
     pecas.push({ ...p, grupo: g });
   }
-  for (const g of EXTRAS) { const p = av[g] && cat.grupos[g]?.find((x) => x.id === av[g]); if (p) pecas.push({ ...p, grupo: g }); }
+  for (const g of ['chapeu', 'oculos', 'barba', 'capa']) { const p = av[g] && cat.grupos[g]?.find((x) => x.id === av[g]); if (p) pecas.push({ ...p, grupo: g }); }
   // Se alguma peça não tem esta animação (as saias não têm pulo), devolve null e quem chamou usa outra.
   if (pecas.some((p) => !p.anims.includes(anim))) return null;
   const camadas = [];
@@ -91,7 +91,7 @@ async function montar(av, anim) {
       const id = m === 'body' ? av.pele : m === 'hair' ? av.corCabelo : m === 'eye' ? av.olhos : corDoGrupo[p.grupo];
       const c = P[m]?.cores[id]; if (c) { trocas.push([P[m].base, c]); ids.push(m + ':' + id); }
     }
-    for (const cm of p.camadas) camadas.push({ z: cm.z, prom: camada(cm.arq, anim, trocas, ids.join(',')) });
+    for (const cm of p.camadas) camadas.push({ z: cm.z, prom: camada(cm.arq, anim, trocas, ids.join(','), cm.v) });
   }
   camadas.sort((a, b) => a.z - b.z);
   const imgs = await Promise.all(camadas.map((c) => c.prom));
@@ -102,7 +102,7 @@ async function montar(av, anim) {
 }
 
 // Retrato (cabeça e ombros, de frente) para listas, carteira e guilda; ou o corpo inteiro, de frente.
-const RECORTE = { retrato: [12, 4, 40, 40], corpo: [8, 8, 48, 56], rosto: [18, 12, 28, 28] };
+const RECORTE = { retrato: [12, 4, 40, 40], corpo: [8, 8, 48, 56], rosto: [18, 12, 28, 28], busto: [16, 4, 32, 32] };
 const retratos = new Map();
 export function retrato(av, modo = 'retrato') {
   const chave = modo + JSON.stringify(normalizar(av));
