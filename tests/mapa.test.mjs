@@ -55,3 +55,20 @@ test('sequência clássica de botões', () => {
   assert.equal(conferirSequencia(['A', ...SEQUENCIA]), true);
   assert.equal(conferirSequencia(SEQUENCIA.slice(1)), false);
 });
+
+// Regra de progressão (guia V02): enquanto o castelo estiver de pé, o que fica atrás dele (a saída para o Mundo 2)
+// é inalcançável. Depois da vitória, a colisão do castelo abre e o caminho existe.
+test('o castelo intacto fecha a passagem atrás dele; a ruína abre', () => {
+  const castelo = planta.FASES.find((f) => f.id === 'm1chefao');
+  const atras = [castelo.x + 2, castelo.y - 1]; // logo atrás do castelo, antes do portão
+  assert.ok(livre(...atras), 'a casa atrás do castelo existe e é chão');
+  assert.equal(caminho(t.passa, t.W, t.H, planta.INICIO, atras).length, 0, 'inalcançável com o castelo de pé');
+  const passa = Uint8Array.from(t.passa);
+  for (let y = castelo.y; y < castelo.y + castelo.h; y++) for (let x = castelo.x; x < castelo.x + castelo.w; x++) passa[y * t.W + x] = 1;
+  assert.ok(caminho(passa, t.W, t.H, planta.INICIO, atras).length > 0, 'alcançável com o castelo em ruínas');
+});
+
+test('a lista de segredos tem 12 ids diferentes (regra de preservação da reformulação)', () => {
+  assert.equal(planta.SEGREDOS.length, 12);
+  assert.equal(new Set(planta.SEGREDOS).size, 12);
+});
