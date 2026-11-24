@@ -2,6 +2,7 @@
 // arredondadas (autotile do LPC: cada quadrado vira quatro pedaços de 16 escolhidos pelos vizinhos).
 // A cena desenha o resultado na metade do tamanho, então cada quadrado LPC ocupa uma peça da planta.
 import { semente2 } from './grade.js';
+import { desenharEscarpas, desenharMuralha, desenharEscada } from './escarpa.js';
 
 export const Q = 32; // pixels da arte por peça da planta
 
@@ -63,13 +64,14 @@ function calcada(g, tx, ty, viz) {
 }
 
 // Chão inteiro: grama (com flores de vez em quando), areia do deserto e água de rio e lagos.
-export function desenharChao(img, frames, t, planta, evitar = new Set()) {
+export function desenharChao(img, frames, t, planta, evitar = new Set(), extras = {}) {
   const { W, H } = t; const [c, g] = tela(W * Q, H * Q);
   const grama = quadro(frames, 't-grama'); const flor = quadro(frames, 'grama-flor');
   const agua = quadro(frames, 't-agua'); const areia = quadro(frames, 't-areia');
   const d = planta.DESERTO;
   const naAreia = new Uint8Array(W * H);
-  if (d?.rx) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  if (t.areia) naAreia.set(t.areia);
+  else if (d?.rx) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const a = Math.atan2(y + 0.5 - d.cy, x + 0.5 - d.cx); const r = 1 + 0.1 * Math.sin(a * 3 + 0.6) + 0.06 * Math.sin(a * 7 + 1.3);
     if (((x + 0.5 - d.cx) / (d.rx * r)) ** 2 + ((y + 0.5 - d.cy) / (d.ry * r)) ** 2 < 1) naAreia[y * W + x] = 1;
   }
@@ -90,6 +92,9 @@ export function desenharChao(img, frames, t, planta, evitar = new Set()) {
     if (naAreia[i]) autotile(g, img, areia, temAreia, x, y, 0, 0, Math.floor(s * 7) % 2);
     if (t.agua[i]) autotile(g, img, agua, temAgua, x, y, 0, 0, Math.floor(s * 11) % 3);
   }
+  if (t.escarpa && extras.escarpa) desenharEscarpas(g, extras.escarpa, t);
+  if (t.muralha) desenharMuralha(g, t);
+  if (planta.ESCADA) desenharEscada(g, planta.ESCADA);
   return { canvas: c, naAreia };
 }
 

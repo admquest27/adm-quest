@@ -70,6 +70,17 @@
       "status": "conferir: autor e URL anotados de memória; confirmar no pacote original"
     },
     {
+      "asset_id": "lpc-mountains",
+      "arquivo_original": "lpc-tiles/mountains-v6.png (recorte de 96x160 em public/mapa/lpc/escarpa.png)",
+      "pacote": "LPC Mountains",
+      "autores": "bluecarrot16, Lanea Zimmerman (Sharm), ElizaWy e outros; lista completa em CREDITS-mountains.txt",
+      "licenca": "CC-BY-SA 4.0 / CC-BY-SA 3.0 (a página não exige GPL)",
+      "url": "https://opengameart.org/content/lpc-mountains",
+      "usado_em": "Escarpas do platô norte (terreno Cliff_Grass), com volume desenhado por cima",
+      "modificado": "Recorte de um bloco; sombras, estratos e fendas desenhados pelo projeto",
+      "status": "ok; a página pede linkar de volta e creditar todos os autores do CREDITS-mountains.txt"
+    },
+    {
       "asset_id": "lpc-conifers",
       "arquivo_original": "lpc-tiles/conifers.png",
       "pacote": "LPC Conifers",

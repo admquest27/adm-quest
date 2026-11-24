@@ -1,7 +1,10 @@
 // Mapa do mundo (Phaser): a Vila em 16 bits com o pacote Ninja Adventure. O avatar anda pelo teclado ou pelo
 // controle na tela (A usa, B pula); os pontos de fase ficam no caminho, como nos mapas de mundo clássicos.
 import Phaser from 'phaser';
-import * as planta from './vila.js';
+import * as plantaPadrao from './vila.js';
+
+// A planta do mapa. Normalmente é a da Vila; a reformulação V02 entra por opcoes.planta.
+let planta = plantaPadrao;
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
 import { todasAsTexturas, iconesBarra } from './texturas.js';
 import { FOLHAS, ANIMADOS, PESSOAS, RECORTES, DIRECOES, LINHAS, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
@@ -64,6 +67,7 @@ class MapaCena extends Phaser.Scene {
     for (const n of Object.values(EMOTES)) this.load.image(`emote${n}`, `${b}emote/emote${n}.png`);
     const lpc = this.o.urls.lpc ?? b.replace(/na\/$/, 'lpc/');
     this.load.atlas('lpc', lpc + 'atlas.png', lpc + 'atlas.json');
+    this.load.image('escarpa', lpc + 'escarpa.png');
     carregarFazenda(this, lpc);
     this.load.spritesheet('galinhaL', lpc + 'bichos/galinha.png', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('gatoL', lpc + 'bichos/gato.png', { frameWidth: 32, frameHeight: 32 });
@@ -113,7 +117,7 @@ class MapaCena extends Phaser.Scene {
     this.lpc = { img: this.textures.get('lpc').getSourceImage(), quadros: this.quadrosLPC() };
     const naEstrada = new Set(); for (const e of planta.ESTRADAS) for (const i of pecasDaEstrada(e.pontos, W, H)) naEstrada.add(i);
     this.naEstradaSet = naEstrada;
-    const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada);
+    const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { escarpa: this.textures.get('escarpa').getSourceImage() });
     this.naAreia = chao.naAreia;
     this.textures.addCanvas('chaoLPC', chao.canvas);
     this.add.image(0, 0, 'chaoLPC').setOrigin(0).setScale(Q_ESCALA).setDepth(0);
@@ -133,10 +137,12 @@ class MapaCena extends Phaser.Scene {
     const arvoreBloqueada = (px, py) => zs.some(([x0, y0, x1, y1]) => px > x0 - 26 && px < x1 + 26 && py > y0 + 6 && py - 62 < y1 + 2) || naEstrada.has(Math.floor((py - 2) / P) * W + Math.floor(px / P));
     // mata: árvores em quincôncio, com leve sorteio
     const bordas = [{ x: -5, y: -5, w: W + 10, h: 5 }, { x: -5, y: H, w: W + 10, h: 5 }, { x: -5, y: 0, w: 5, h: H }, { x: W, y: 0, w: 5, h: H }];
-    for (const a of [...planta.FLORESTA, ...bordas]) for (let y = a.y + (a.y > H / 2 ? 1.6 : -1); y < a.y + a.h + 1; y += 1.5) for (let x = a.x - 0.5; x < a.x + a.w; x += 2.1) {
+    const regioes = planta.GEO ? [{ x: -4, y: -4, w: W + 8, h: H + 8, mascara: this.t.floresta }] : [...planta.FLORESTA, ...bordas];
+    for (const a of regioes) for (let y = a.y + (a.y > H / 2 ? 1.6 : -1); y < a.y + a.h + 1; y += 1.5) for (let x = a.x - 0.5; x < a.x + a.w; x += 2.1) {
       const s = semente2(Math.round(x * 3), Math.round(y * 5));
       const px = (x + (Math.round(y / 1.5) % 2 ? 1.05 : 0) + s * 0.5) * P; const py = (y + 1) * P;
       const [tx, ty] = peca(px, py - 4); if (tx >= 0 && ty >= 0 && tx < W && ty < H && this.t.agua[ty * W + tx]) continue;
+      if (a.mascara) { const [mx, my] = [Math.floor(px / P), Math.floor((py - 2) / P)]; const fora = mx < 0 || my < 0 || mx >= W || my >= H; if (!fora && !a.mascara[my * W + mx]) continue; }
       if (arvoreBloqueada(px, py)) continue;
       this.arvoreLPC(px, py, s);
     }
@@ -186,14 +192,19 @@ class MapaCena extends Phaser.Scene {
     } });
     this.time.addEvent({ delay: 3800, loop: true, callback: () => this.peixePula() });
 
-    this.criarFases();
-    this.criarObjetos();
+    this.fases ??= {}; this.objetos ??= {};
+    if (!planta.SO_TERRENO) { // etapa 1 da V02: só o terreno; fases, objetos e gente voltam nas etapas seguintes
+      this.criarFases();
+      this.criarObjetos();
+    }
     this.criarAvatar();
-    this.criarRosalina();
-    this.criarGente();
-    this.criarBichos();
-    criarFazenda(this);
-    criarLotes(this, new Set((this.o.fasesExtras ?? []).map((x) => x.lote)));
+    if (!planta.SO_TERRENO) {
+      this.criarRosalina();
+      this.criarGente();
+      this.criarBichos();
+      criarFazenda(this);
+      criarLotes(this, new Set((this.o.fasesExtras ?? []).map((x) => x.lote)));
+    }
     this.criarClima();
     this.criarAmbiente();
     if (o.casteloCaido) this.casteloCaido();
@@ -327,12 +338,14 @@ class MapaCena extends Phaser.Scene {
     }
     // detalhes de cada fase
     const fx = (id) => this.fases[id];
+    if (fx('m1f7') && fx('m1f5') && fx('m1chefao')) { // (na planta V02 ainda sem fases, estes detalhes esperam a etapa 3)
     const torre = fx('m1f7'); const bt = torre.img.getBounds(); const pl = this.add.image(bt.right - 8, bt.bottom + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y);
     const camp = fx('m1f5'); const bc = camp.img.getBounds(); const fog = this.add.sprite(bc.left - 6, bc.bottom - 2, 'lpc', 'fogueira-0').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + bc.bottom);
     let qf = 0; this.time.addEvent({ delay: 120, loop: true, callback: () => { qf = (qf + 1) % 5; fog.setFrame('fogueira-' + qf); } });
     this.add.image(bc.left - 20, bc.bottom + 2, 'acampamento', 'toras').setDepth(100 + bc.bottom + 2);
     const cast = fx('m1chefao');
     this.bandeirasCastelo = [-32, 32].map((dx) => this.add.sprite(cast.img.x + dx, cast.img.y - 80, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 }));
+    }
     this.aplicarEstados(this.o.estados ?? {}, this.o.concluidas ?? []);
   }
 
@@ -831,7 +844,7 @@ class MapaCena extends Phaser.Scene {
 
   // fumaça nas chaminés, sombras de nuvens e borboletas
   criarClima() {
-    const f1 = planta.FASES[0];
+    const f1 = planta.FASES[0] ?? { x: 0, y: 0 };
     // fumaça saindo do alto dos telhados de palha (ou das chaminés das casas antigas)
     const chamines = this.telhados?.length ? this.telhados.map((b) => [b.centerX + 9, b.top + 7]) : [[f1.x * P + 38, f1.y * P + 4], ...planta.ENFEITES.filter((e) => e.peca.startsWith('casa')).map((e) => [e.x * P + e.w * P * 0.78, e.y * P + 4])];
     this.time.addEvent({ delay: 900, loop: true, callback: () => {
@@ -874,6 +887,7 @@ class MapaCena extends Phaser.Scene {
       const x = i.tipo === 'casa' ? centro(i.alvo)[0] : i.area.centerX;
       return { x, y: i.area.y + 2, nome: this.nomeDe(i), acao: fase ? this.acaoFase(fase) : 'olhar', fase, agir: () => this.agir(i) };
     }
+    if (planta.SO_TERRENO) return null;
     if (this.rosa.visible && dist(this.rosa) < 22) return { x: this.rosa.x, y: this.rosa.y - this.acima(this.rosa), nome: 'Rosalina', acao: 'conversar', agir: () => this.conversarRosalina() };
     const npc = this.gente.find((g) => g.spr.visible && !g.fugindo && dist(g.spr) < 22);
     if (npc) return { x: npc.spr.x, y: npc.spr.y - this.acima(npc.spr), nome: t.nomes?.[npc.quem] ?? '', acao: 'conversar', agir: () => this.conversarCom(npc) };
@@ -974,7 +988,7 @@ class MapaCena extends Phaser.Scene {
 
   introducao() {
     this.emCena = true;
-    const cast = this.fases.m1chefao.img;
+    const cast = this.fases.m1chefao?.img ?? this.av;
     this.cameras.main.stopFollow(); this.cameras.main.centerOn(cast.x, cast.y);
     this.o.aoIntro?.('inicio');
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.PAN_COMPLETE, () => { if (this.pulouIntro) return; this.cameras.main.startFollow(this.av, true, 0.12, 0.12); this.emCena = false; this.o.aoIntro?.('fim'); });
@@ -1147,8 +1161,10 @@ class MapaCena extends Phaser.Scene {
       if (this.andavaLivre) { this.andavaLivre = false; this.o.aoMover?.(peca(av.x, av.y)); }
     }
     av.setDepth(100 + av.y); this.sombra.setPosition(av.x, av.y + (this.avLPC ? 0 : 5));
-    this.iaRosalina(time, dt); this.rosa.setDepth(100 + this.rosa.y);
-    this.moverGente(time, dt); this.moverBichos(time, dt); moverFazenda(this, time, dt);
+    if (!planta.SO_TERRENO) {
+      this.iaRosalina(time, dt); this.rosa.setDepth(100 + this.rosa.y);
+      this.moverGente(time, dt); this.moverBichos(time, dt); moverFazenda(this, time, dt);
+    }
     if (!this.cfg.menosMovimento) {
       this.nuvens.forEach((n, i) => { n.x += (6 + i * 2) * dt / 1000; if (n.x > this.t.W * P + 100) n.x = -100; });
       this.borboletas.forEach((b, i) => { b.x += Math.sin(time / 600 + i) * 0.4; b.y += Math.cos(time / 300 + i * 2) * 0.3; b.setScale(1, Math.floor(time / 120 + i) % 2 ? 1 : 0.4); });
@@ -1163,6 +1179,7 @@ class MapaCena extends Phaser.Scene {
 
 // ---------- interface por cima do mapa ----------
 export function iniciarMapa(raiz, opcoes) {
+  planta = opcoes.planta ?? plantaPadrao;
   const cfg = config();
   raiz.classList.add('mapa');
   const aplicarCfg = (c) => { raiz.dataset.controles = c.controles; raiz.dataset.botoes = c.botoes; raiz.dataset.direcional = c.direcional ?? 'analogico'; raiz.dataset.dicas = c.dicas ? 'sim' : 'nao'; };

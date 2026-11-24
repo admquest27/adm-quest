@@ -18,12 +18,14 @@ export function montarTerreno(planta) {
   const { LARG: W, ALT: H } = planta;
   const idx = (x, y) => y * W + x;
   const dentro = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
-  const floresta = new Uint8Array(W * H); const agua = new Uint8Array(W * H); const areia = new Uint8Array(W * H);
-  for (const a of planta.FLORESTA) for (let y = a.y; y < a.y + a.h; y++) for (let x = a.x; x < a.x + a.w; x++) if (dentro(x, y)) floresta[idx(x, y)] = 1;
-  for (let y = 0; y < H; y++) for (let x = planta.RIO.x; x < planta.RIO.x + planta.RIO.w; x++) { agua[idx(x, y)] = 1; floresta[idx(x, y)] = 0; }
-  for (const l of planta.LAGOS ?? []) for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) if (dentro(x, y)) { agua[idx(x, y)] = 1; floresta[idx(x, y)] = 0; }
+  let floresta = new Uint8Array(W * H); let agua = new Uint8Array(W * H); let areia = new Uint8Array(W * H);
+  const geo = planta.GEO; // planta V02: o terreno vem de máscaras (rio sinuoso, lagos, platô), não de retângulos
+  if (geo) { floresta = Uint8Array.from(geo.floresta); agua = Uint8Array.from(geo.agua); areia = Uint8Array.from(geo.areia); }
+  else for (const a of planta.FLORESTA) for (let y = a.y; y < a.y + a.h; y++) for (let x = a.x; x < a.x + a.w; x++) if (dentro(x, y)) floresta[idx(x, y)] = 1;
+  if (!geo) for (let y = 0; y < H; y++) for (let x = planta.RIO.x; x < planta.RIO.x + planta.RIO.w; x++) { agua[idx(x, y)] = 1; floresta[idx(x, y)] = 0; }
+  if (!geo) for (const l of planta.LAGOS ?? []) for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) if (dentro(x, y)) { agua[idx(x, y)] = 1; floresta[idx(x, y)] = 0; }
   const d = planta.DESERTO;
-  if (d?.w) for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) areia[idx(x, y)] = 1;
+  if (!geo && d?.w) for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) areia[idx(x, y)] = 1;
   const igual = (m, foraConta) => (x, y) => (dentro(x, y) ? m[idx(x, y)] === 1 : foraConta);
   const chao = new Array(W * H); const molhado = new Array(W * H).fill(-1);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -37,13 +39,14 @@ export function montarTerreno(planta) {
 
   const passa = new Uint8Array(W * H).fill(1);
   for (let i = 0; i < W * H; i++) if (floresta[i] || agua[i]) passa[i] = 0;
+  if (geo) for (let i = 0; i < W * H; i++) if (geo.escarpa[i] || geo.muralha[i]) passa[i] = 0;
   for (let x = p.x0; x <= p.x1; x++) passa[idx(x, p.y)] = 1;
   const bloquear = (x, y, w = 1, h = 1) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (dentro(xx, yy)) passa[idx(xx, yy)] = 0; };
   for (const f of planta.FASES) bloquear(f.x, f.y, f.w, f.h);
   for (const e of planta.ENFEITES) if (e.bloqueia) bloquear(e.bx ?? e.x, e.by ?? e.y, e.bw ?? 1, e.bh ?? 1);
   for (const o of planta.OBJETOS) if (o.bloqueia) bloquear(o.x, o.y, o.w ?? 1, o.h ?? 1);
   for (const m of planta.MUROS ?? []) bloquear(m.x, m.y, m.w, m.h);
-  return { W, H, chao, molhado, passa, agua, floresta };
+  return { W, H, chao, molhado, passa, agua, floresta, areia: geo ? areia : null, plato: geo?.plato ?? null, escarpa: geo?.escarpa ?? null, muralha: geo?.muralha ?? null };
 }
 
 // Busca de caminho (A*) em 4 direções. Devolve a lista de peças do início ao fim, sem o início; [] se não há.
