@@ -77,6 +77,13 @@ export const OBJETOS = [
   { id: 'carroca', arte: 'carroca', x: 17, y: 36, w: 2, h: 2, bloqueia: true },
   { id: 'fardos', arte: 'fardo', x: 61, y: 32, w: 2, h: 1, bloqueia: true },
   { id: 'lenha', arte: 'lenha', x: 53, y: 32, bloqueia: true },
+  // jardim do Templo Antigo (casa-torre em 29,22): cães guardiões nos dois lados da base, lanternas e cerejeiras
+  { id: 'caoE', arte: 'cao', x: 27, y: 28, w: 2, h: 1, bloqueia: true },
+  { id: 'caoD', arte: 'cao', x: 31, y: 28, w: 2, h: 1, bloqueia: true },
+  { id: 'toroE', arte: 'toro', x: 26, y: 29, bloqueia: true },
+  { id: 'toroD', arte: 'toro', x: 33, y: 28, bloqueia: true },
+  { id: 'cerejeiraA', arte: 'cerejeira', x: 23, y: 26, w: 2, h: 1, bloqueia: true },
+  { id: 'cerejeiraB', arte: 'cerejeira', x: 34, y: 26, w: 2, h: 1, bloqueia: true },
 ];
 
 export const CURRAL = { x: 48, y: 38, w: 8, h: 5, abertura: { lado: 'cima', x: 51 } };

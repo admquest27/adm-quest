@@ -16,7 +16,7 @@ O texto integral das atribuições de cada pacote fica em [public/mapa/lpc/CREDI
 | Portas e janelas | bluecarrot16, Lanea Zimmerman, Daniel Armstrong, Casper Nilsson, Anamaris, Krusmira | CC-BY-SA 3.0 / GPL 3.0+ |
 | Pinheiros | bluecarrot16, b_o, Lanea Zimmerman, Johann Charlot, Yar, Jetrel, Zabin, Hyptosis, Surt, KnoblePersona | CC-BY-SA 3.0 / GPL 2.0 / GPL 3.0 |
 | Castelo da Bagunça (muralha, torres, grade) | theidiotmachine ("Another LPC style castle") | CC-BY-SA 3.0 |
-| Moinho, tenda, lápides | Casper Nilsson | CC-BY-SA 3.0 / GPL 3.0+ |
+| Moinho, tenda, lápides, cães guardiões, lanternas e cerejeiras | Casper Nilsson | CC-BY-SA 3.0 / GPL 3.0+ |
 | Animais da fazenda e galinha | Daniel Eddeland (daneeklu) | GPL 2.0+ / CC-BY 3.0 |
 | Gatos e cães | bluecarrot16 | CC-BY 3.0 / CC-BY-SA 3.0 / GPL / OGA-BY 3.0 |
 | Avatar em camadas | Universal LPC Spritesheet Character Generator e centenas de autores, por peça | CC-BY-SA 3.0 / CC-BY 3.0 / OGA-BY 3.0 / GPL |

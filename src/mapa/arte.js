@@ -105,6 +105,7 @@ export const LPC_ENFEITES = {
 export const LPC_OBJETOS = {
   cacto: 'cacto', lapide: 'lapide', escola: 'torre-relogio', feira: 'feira', coreto: 'coreto', impressora: 'mesa-escriba', casinha: 'casinha-cachorro', aviao: 'aviao-caido', quadro: 'quadro-swot', placa404: 'placa-404', porta: 'placa-cafe', ilha: 'ilhota', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
   carroca: 'carroca', fardos: 'fardo', lenha: 'lenha-1',
+  toriiTemplo: 'torii', toroE: 'toro', toroD: 'toro', caoE: 'cao-guardiao', caoD: 'cao-guardiao', cerejeiraA: 'cerejeira-a', cerejeiraB: 'cerejeira-b',
 };
 
 // Construções que o professor pode escolher para uma fase extra num terreno vazio (id da planta e nome para a tela).
