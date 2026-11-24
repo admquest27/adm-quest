@@ -13,6 +13,7 @@ O texto integral das atribuições de cada pacote fica em [public/mapa/lpc/CREDI
 | Casa de palha e chalé | bluecarrot16, Casper Nilsson | CC-BY-SA 3.0 / GPL 3.0+ |
 | Portas e janelas | bluecarrot16, Lanea Zimmerman, Daniel Armstrong, Casper Nilsson, Anamaris, Krusmira | CC-BY-SA 3.0 / GPL 3.0+ |
 | Pinheiros | bluecarrot16, b_o, Lanea Zimmerman, Johann Charlot, Yar, Jetrel, Zabin, Hyptosis, Surt, KnoblePersona | CC-BY-SA 3.0 / GPL 2.0 / GPL 3.0 |
+| Castelo da Bagunça (muralha, torres, grade) | theidiotmachine ("Another LPC style castle") | CC-BY-SA 3.0 |
 | Moinho, tenda, lápides | Casper Nilsson | CC-BY-SA 3.0 / GPL 3.0+ |
 | Animais da fazenda e galinha | Daniel Eddeland (daneeklu) | GPL 2.0+ / CC-BY 3.0 |
 | Gatos e cães | bluecarrot16 | CC-BY 3.0 / CC-BY-SA 3.0 / GPL / OGA-BY 3.0 |
@@ -26,7 +27,7 @@ As licenças CC-BY-SA e GPL pedem que a obra derivada seja compartilhada na mesm
 
 ## Pendências
 
-1. **castelo2.png:** o arquivo usado no castelo não traz autor nem licença confirmados. Antes de publicar esta versão do mapa, é preciso identificar a origem. Se não for possível, o castelo será redesenhado com peças de pacote conhecido.
+1. **castelo2.png:** origem confirmada, é "Another LPC style castle", de theidiotmachine (CC-BY-SA 3.0). Já está na tabela acima.
 2. **castelo-concurso.png:** está na pasta de arte, mas não é usado. Confirmar a origem ou remover.
 3. **Novos pacotes (A01 a A29 do guia de reformulação):** nenhum foi baixado ainda. Cada um só entra depois de eu ler a licença no download, anotar o autor e registrar no manifesto. Pacotes com variante GPL (como o LPC Mountains) e CC-BY-SA (como o LPC Crops) exigem conferência antes do uso.
 4. **Tela de Créditos no jogo:** a lista acima ainda precisa aparecer dentro do jogo.

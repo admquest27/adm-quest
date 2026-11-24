@@ -115,14 +115,14 @@
     },
     {
       "asset_id": "lpc-castelo2",
-      "arquivo_original": "lpc-extra/castelo2.png",
-      "pacote": "Desconhecido",
-      "autores": "NÃO CONFIRMADO",
-      "licenca": "NÃO CONFIRMADA",
-      "url": "",
+      "arquivo_original": "lpc-extra/castelo2.png (original: castle2 by the idiotmachine.png, do kit LPC RPG Maker MZ Starter Kit, pasta Individual Assets)",
+      "pacote": "Another LPC style castle",
+      "autores": "theidiotmachine",
+      "licenca": "CC-BY-SA 3.0",
+      "url": "http://opengameart.org/content/another-lpc-style-castle",
       "usado_em": "Castelo da Bagunça (muralha, torres, grade)",
       "modificado": "Recombinado em castelo e ruína",
-      "status": "pendente: identificar autor e licença antes de publicar; se não achar, redesenhar o castelo com peças de pacote conhecido"
+      "status": "ok (origem confirmada em 24/11/2026 pela página LPC Castle Mega-Pack, que cita o autor e a licença)"
     },
     {
       "asset_id": "lpc-castelo-concurso",
