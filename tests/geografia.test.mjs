@@ -83,7 +83,7 @@ test('antes do chefão não se alcança a escada, o platô nem o portão; depois
 });
 
 test('sem atalho da ponte ao castelo: só o corredor leste liga o sul às fases 6 a 8', () => {
-  const [cx, cy] = [54, 17]; // frente do castelo
+  const [cx, cy] = geo.ENTRADAS.m1chefao; // frente do castelo
   assert.equal(alcance(comCastelo(false), planta.INICIO)[I(cx, cy)], 1, 'a frente do castelo é alcançável');
   const p = comCastelo(false);
   for (let y = 19; y <= 26; y++) for (let x = 78; x < W; x++) p[I(x, y)] = 0; // fecha o corredor leste
@@ -148,4 +148,78 @@ test('os três terrenos vazios têm entrada livre, chão livre e chegam a pé', 
     assert.equal(v[I(...l.entrada)], 1, `o lote ${l.id} chega a pé`);
     for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) assert.ok(t.passa[I(x, y)], `lote ${l.id} livre em ${x},${y}`);
   }
+});
+
+// ---------- etapa 3: construções, objetos e segredos nos lugares da planta ----------
+import { readFileSync } from 'node:fs';
+import { LPC_PECAS } from '../src/mapa/arte.js';
+
+const atlas = JSON.parse(readFileSync(new URL('../public/mapa/lpc/atlas.json', import.meta.url), 'utf8'));
+const quadros = Array.isArray(atlas.frames) ? Object.fromEntries(atlas.frames.map((f) => [f.filename, f])) : atlas.frames;
+const retangulosBloqueados = () => {
+  const r = [];
+  for (const f of planta.FASES) { const b = f.bloqueio ?? f; r.push({ nome: f.id, x: b.x, y: b.y, w: b.w, h: b.h }); }
+  for (const e of planta.ENFEITES) if (e.bloqueia) r.push({ nome: e.peca, x: e.bx, y: e.by, w: e.bw, h: e.bh });
+  for (const o of planta.OBJETOS) if (o.bloqueia) r.push({ nome: o.id, x: o.x, y: o.y, w: o.w ?? 1, h: o.h ?? 1 });
+  return r;
+};
+
+test('construções e objetos não se sobrepõem nem pisam na água, na mata ou na escarpa', () => {
+  const rs = retangulosBloqueados();
+  rs.forEach((a, i) => {
+    const doTerreno = a.nome === 'ilha' || a.nome === 'portao'; // a ilhota fica na água e o portão faz parte da muralha, de propósito
+    if (!doTerreno) for (let y = a.y; y < a.y + a.h; y++) for (let x = a.x; x < a.x + a.w; x++) {
+      assert.ok(!t.agua[I(x, y)] && !t.floresta[I(x, y)] && !t.escarpa[I(x, y)] && !t.muralha[I(x, y)], `${a.nome} em ${x},${y} pisa em água, mata ou pedra`);
+    }
+    for (const b of rs.slice(i + 1)) {
+      const sobre = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      assert.ok(!sobre, `${a.nome} sobrepõe ${b.nome}`);
+    }
+  });
+});
+
+test('a estrada principal continua livre com as construções no lugar', () => {
+  for (const e of planta.ESTRADAS.slice(0, 7)) for (const [x, y] of e.pontos) {
+    const cx = Math.floor(x + 0.5); const cy = Math.floor(y + 0.5);
+    const naPonte = cy === geo.PONTE.y && cx >= geo.PONTE.x0 && cx <= geo.PONTE.x1;
+    assert.ok(t.passa[I(cx, cy)] || naPonte, `${e.para}: ${cx},${cy} bloqueado por construção`);
+  }
+});
+
+test('cada fase e cada casa tem a porta alcançável a pé', () => {
+  const v = alcance(comCastelo(false), planta.INICIO);
+  for (const f of planta.FASES) assert.equal(v[I(...f.entrada)], 1, `entrada de ${f.id}`);
+  for (const e of planta.ENFEITES) {
+    const lpc = LPC_PECAS[e.peca]; if (!lpc || e.peca.startsWith('arvore')) continue;
+    const q = quadros[lpc.quadro]; if (!q) continue;
+    const larg = (q.frame?.w ?? q.sourceSize.w) * 0.5; const esq = (e.x + e.w / 2) * 16 - larg / 2;
+    const alvo = [Math.floor((esq + lpc.porta[0] * 0.5) / 16), e.y + e.h];
+    assert.equal(v[I(...alvo)], 1, `porta de ${e.peca} (${e.x},${e.y}) em ${alvo}`);
+  }
+});
+
+test('os objetos com segredo ou conversa têm uma peça livre alcançável ao lado', () => {
+  const fechado = alcance(comCastelo(false), planta.INICIO); const aberto = alcance(comCastelo(true), planta.INICIO);
+  for (const o of planta.OBJETOS) {
+    if (!o.segredo && !o.conversa && o.id !== 'casinha') continue;
+    const v = o.id === 'portao' ? aberto : fechado; // o portão só se alcança depois do chefão
+    const w = o.w ?? 1; const h = o.h ?? 1; const r = Math.ceil(o.alcance ?? 1.2); let achou = false;
+    for (let y = o.y - r; y <= o.y + h + r && !achou; y++) for (let x = o.x - r; x <= o.x + w + r; x++) if (x >= 0 && y >= 0 && x < W && y < H && v[I(x, y)]) { achou = true; break; }
+    assert.ok(achou, `ninguém chega perto de ${o.id}`);
+  }
+});
+
+test('os 12 segredos estão no mapa, e personagens e bichos nascem em chão livre', () => {
+  const ids = new Set(planta.OBJETOS.map((o) => o.segredo).filter(Boolean));
+  for (const s of ['pombo', 'galinhas', 'konami', 'vaca']) ids.add(s); // pombo e galinhas passeiam; konami é a sequência de botões; a vaca mora no curral
+  assert.deepEqual([...ids].sort(), [...planta.SEGREDOS].sort());
+  const v = alcance(comCastelo(false), planta.INICIO);
+  for (const [nome, [x, y]] of [['rosalina', planta.PERSONAGENS.rosalina.casa], ['consultor', planta.PERSONAGENS.consultor.pos], ['barao', planta.PERSONAGENS.barao.pos], ['sapo', planta.SAPO]]) assert.equal(v[I(x, y)], 1, `${nome} em ${x},${y}`);
+  const c = planta.CURRAL;
+  for (let y = c.y; y < c.y + c.h; y++) for (let x = c.x; x < c.x + c.w; x++) assert.ok(t.passa[I(x, y)], `dentro do curral ${x},${y}`);
+  assert.equal(v[I(c.abertura.x, c.y - 1)], 1, 'a abertura do curral chega a pé');
+});
+
+test('as fases ficam na frente da estrada: a entrada é a peça logo abaixo da construção', () => {
+  for (const f of planta.FASES) assert.equal(f.entrada[1], f.y + f.h, `${f.id}: entrada colada na base`);
 });

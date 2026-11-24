@@ -90,14 +90,14 @@ function desenharTrecho(g, t, tr) {
     g.fillStyle = 'rgba(15,12,30,0.18)'; g.fillRect(xa + x, pe + 11, 1, 7);
     g.fillStyle = 'rgba(15,12,30,0.08)'; g.fillRect(xa + x, pe + 18, 1, 8);
     const topo = Math.floor(tops[x] + Y0); const ini = 5 * Q;
-    if (topo > ini) { g.fillStyle = 'rgba(255,244,190,0.08)'; g.fillRect(xa + x, ini, 1, topo - ini - 8); }
+    if (topo > ini) { g.fillStyle = 'rgba(255,244,190,0.045)'; g.fillRect(xa + x, ini, 1, topo - ini - 8); }
   }
 }
 
 export function desenharEscarpas(g, t) {
   for (const tr of ESCARPA_TRECHOS) desenharTrecho(g, t, tr);
   // platô além dos trechos de pedra (vão do castelo): só o topo mais claro
-  const claro = (x0, x1) => { g.fillStyle = 'rgba(255,244,190,0.08)'; g.fillRect(x0 * Q, 5 * Q, (x1 - x0) * Q, 5 * Q); };
+  const claro = (x0, x1) => { g.fillStyle = 'rgba(255,244,190,0.045)'; g.fillRect(x0 * Q, 5 * Q, (x1 - x0) * Q, 5 * Q); };
   claro(49, 60);
   void ESCARPA_ALTURA;
 }

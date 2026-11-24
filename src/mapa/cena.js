@@ -353,10 +353,11 @@ class MapaCena extends Phaser.Scene {
   ruirCastelo(ruina) {
     const cf = this.fases?.m1chefao; if (!cf || this.castelaRuina === ruina) return;
     this.castelaRuina = ruina;
-    cf.img.setFrame(ruina ? 'castelo-ruinas' : 'castelo');
+    const [inteiro, ruinas] = planta.CASTELO_QUADROS ?? ['castelo', 'castelo-ruinas'];
+    cf.img.setFrame(ruina ? ruinas : inteiro);
     this.bandeirasCastelo?.forEach((b) => b.setVisible(!ruina));
     const pr = this.predios?.find((p) => p.img === cf.img); if (pr) pr.off = ruina;
-    const d = cf.def; const { W, passa } = this.t;
+    const d = cf.def.bloqueio ?? cf.def; const { W, passa } = this.t;
     for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) passa[y * W + x] = ruina ? 1 : 0;
   }
 

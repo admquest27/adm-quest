@@ -46,7 +46,7 @@ export const bordaEscarpa = (x) => 8 + 0.85 * Math.sin(x * 0.31 + 0.4) + 0.5 * M
 export const MURALHA = { x: 41, y: 4, w: 47, h: 1 };
 export const ESCADA = { x: 53, y: 6, w: 3, h: 4 };
 // Castelo (o corpo de pedra que fecha a única subida) e portão do Mundo 2 na muralha
-export const CASTELO = { x: 49, y: 10, w: 11, h: 6 };
+export const CASTELO = { x: 49, y: 10, w: 11, h: 8 }; // o corpo (y 12 a 17) mais o trecho coberto pelas alas, até a escada
 export const PORTAO = { x: 51, y: 3, w: 6, h: 3, entrada: [54, 7] };
 
 // ---------- máscaras ----------
@@ -175,11 +175,12 @@ export const ROTA = [
   { para: 'm1f6', pontos: [[76, 30], [81, 29], [83, 26], [83, 21], [81, 18], [79, 18]] },
   { para: 'm1f7', pontos: [[79, 18], [73, 18], [67, 18]] },
   { para: 'm1chefao', pontos: [[67, 18], [62, 18], [57, 18], [54, 18]] },
-  { para: 'mundo2', pontos: [[54, 18], [54, 16], [54, 10], [54, 7], [54, 6], [54, 0]] },
+  // a estrada para no pé da escada (a escada é o caminho dali em diante); a saída para o Mundo 2 vem depois do portão
+  { para: 'mundo2', pontos: [[54, 18], [54, 15], [54, 12], [54, 10], [54, 9]] },
 ];
 // Três terrenos vazios para fases extras, com acesso por uma trilha curta
 export const LOTES = [
-  { id: 'l1', x: 25, y: 19, w: 7, h: 4, entrada: [28, 17] },
+  { id: 'l1', x: 25, y: 18, w: 7, h: 4, entrada: [28, 17] },
   { id: 'l2', x: 31, y: 42, w: 6, h: 4, entrada: [34, 40] },
   { id: 'l3', x: 61, y: 22, w: 6, h: 4, entrada: [64, 21] },
 ];

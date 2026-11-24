@@ -81,6 +81,8 @@ export const LPC_PECAS = {
   torreCasa: { quadro: 'casa-torre', porta: [32, 216], w: 2, h: 7 },
   casaPedra: { quadro: 'kiva', porta: [64, 96], w: 4, h: 3 },
   castelo: { quadro: 'castelo', porta: [88, 176], w: 6, h: 5 },
+  casteloLargo: { quadro: 'castelo-largo', porta: [176, 190], w: 11, h: 6 },
+  aviaoFase: { quadro: 'aviao-caido', porta: [104, 116], w: 7, h: 4 },
   raioX: CASA('casa-tijolo-baixa', [79, 158]),
   oficina: CASA('oficina', [73, 106]),
   barraca: CASA('tenda', [60, 158]),

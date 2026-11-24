@@ -79,12 +79,12 @@ export const LOTES = [
 // Enfeites: peça do pacote no canto (x, y). Bloqueiam só a base (a última linha, ou todas nas casas).
 const casa = new Set(['casaLaranja', 'casaBege', 'casaLaranja2', 'casaAzul', 'casaCreme', 'casaAmarela', 'casaVerde', 'casaReta', 'casaDiag', 'loja', 'lojaVerde', 'casaPedra', 'casaFlamV', 'casaFlamC', 'sobradoAzul', 'casaVaranda', 'chaleAlto', 'padaria', 'torreCasa', 'casaPartida']);
 const naoBloqueia = new Set(['florAmarela', 'florLaranja', 'florVermelha', 'florBranca', 'mato', 'trigo', 'arbusto1', 'arbusto2', 'arbusto3', 'arbusto4', 'estandarte1', 'estandarte2', 'estandarte3']);
-const enfeite = (peca, x, y) => {
+export const enfeite = (peca, x, y) => {
   const r = RECORTES[peca] ?? LPC_PECAS[peca] ?? { w: 1, h: 1 }; const fh = casa.has(peca) ? r.h : 1; // casas bloqueiam inteiras (ninguém anda no telhado)
   return { peca, x, y, w: r.w, h: r.h, bloqueia: !naoBloqueia.has(peca), bx: x, by: y + r.h - fh, bw: r.w, bh: fh };
 };
 // Plantação de trigo em fileiras
-const campo = (x0, y0, colunas, linhas) => Array.from({ length: colunas * linhas }, (_, i) => ['trigo', x0 + (i % colunas), y0 + Math.floor(i / colunas)]);
+export const campo = (x0, y0, colunas, linhas) => Array.from({ length: colunas * linhas }, (_, i) => ['trigo', x0 + (i % colunas), y0 + Math.floor(i / colunas)]);
 export const ENFEITES = [
   // Praça: casas de cores e telhados diferentes
   ['sobradoAzul', 11, 16], ['casaVaranda', 22, 25], ['chaleAlto', 7, 29], ['padaria', 12, 33], ['torreCasa', 20, 14], ['casaDiag', 22, 31],
