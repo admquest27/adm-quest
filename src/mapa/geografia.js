@@ -15,7 +15,7 @@ export const PONTE = { y: 24, x0: 40, x1: 46 };
 
 export const LAGOS = [
   [[4, 42], [6, 41], [8.5, 41.2], [9.5, 43], [9, 45], [7, 46.2], [4.8, 45.5], [3.7, 44]],
-  [[70.4, 13.3], [72.5, 12.7], [74.5, 13.7], [74.5, 16.1], [72.6, 16.8], [70.6, 15.9]],
+  [[70.4, 14.1], [72.5, 13.5], [74.5, 14.5], [74.5, 16.9], [72.6, 17.6], [70.6, 16.7]],
 ];
 
 export const DESERTO = [[4, 7], [9, 4.8], [17, 4.5], [25, 5], [29, 7], [30, 11], [28, 15], [24, 18], [17, 18.5], [11, 17], [5, 15]];
@@ -38,7 +38,11 @@ export const BOSQUE_SEPARADOR = [
 
 // Platô superior do norte (Mundo 2 fica além da muralha) e as escarpas (paredes de 4 peças de altura)
 export const PLATO = [[41, 0], [88, 0], [88, 10], [84, 10.4], [78, 9.5], [72, 10.2], [66, 9.3], [60, 10], [49, 10], [45, 9.4], [41, 10.2]];
-export const ESCARPAS = [{ x: 41, y: 8, w: 8, h: 4 }, { x: 60, y: 8, w: 28, h: 4 }];
+// A escarpa não é uma linha reta: a borda de cima ondula (entra e sai até uns dois quadrados) e a parede tem altura própria.
+// Ela corre de x0 a x1 (em quadrados); onde toca o rio, a água manda e a pedra é cortada. No vão do castelo (49 a 60) fica a escada.
+export const ESCARPA_ALTURA = 4.2;
+export const ESCARPA_TRECHOS = [{ x0: 41, x1: 49 }, { x0: 60, x1: 88 }];
+export const bordaEscarpa = (x) => 8 + 0.85 * Math.sin(x * 0.31 + 0.4) + 0.5 * Math.sin(x * 0.83 + 2.1) + 0.25 * Math.sin(x * 1.9);
 export const MURALHA = { x: 41, y: 4, w: 47, h: 1 };
 export const ESCADA = { x: 53, y: 6, w: 3, h: 4 };
 // Castelo (o corpo de pedra que fecha a única subida) e portão do Mundo 2 na muralha
@@ -148,7 +152,11 @@ export function montarGeografia(W = LARG, H = ALT) {
   const bosque = mascaraPoligono(BOSQUE_SEPARADOR, W, H); for (let i = 0; i < bosque.length; i++) if (bosque[i]) floresta[i] = 1;
   for (let i = 0; i < floresta.length; i++) if (agua[i]) floresta[i] = 0;
   const plato = mascaraPoligono(PLATO, W, H);
-  const escarpa = new Uint8Array(W * H); for (const r of ESCARPAS) retangulo(escarpa, r, 1, W, H);
+  const escarpa = new Uint8Array(W * H);
+  for (const tr of ESCARPA_TRECHOS) for (let x = tr.x0; x < Math.min(W, tr.x1); x++) {
+    const topo = bordaEscarpa(x + 0.5);
+    for (let y = 0; y < H; y++) if (y + 0.5 >= topo && y + 0.5 <= topo + ESCARPA_ALTURA) escarpa[y * W + x] = 1;
+  }
   const muralha = new Uint8Array(W * H); retangulo(muralha, MURALHA, 1, W, H);
   return { W, H, agua, aguaBloqueio, aguaPx: px, areia, floresta, plato, escarpa, muralha };
 }

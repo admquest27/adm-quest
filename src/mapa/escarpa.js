@@ -1,7 +1,8 @@
 // Escarpas do platô, muralha de tijolos do limite norte e escada de pedra atrás do castelo. Tudo desenhado direto no
-// canvas do chão. A escarpa é arte original do projeto (penhasco de colunas de rocha, luz vinda da esquerda, capa de
-// grama e pé escuro); a muralha usa o tijolo do castelo (theidiotmachine, CC-BY-SA 3.0) com ameias recortadas.
-import { Q } from './chao.js';
+// canvas do chão. A escarpa é arte original do projeto: um penhasco de colunas de rocha com a borda ondulada, luz vinda
+// da esquerda, capa de grama, musgo, raízes, pedregulhos no pé e sombra grande no chão. Onde toca o rio, a água manda.
+// A muralha usa o tijolo do castelo (theidiotmachine, CC-BY-SA 3.0) com ameias recortadas.
+import { Q, ESCARPA_TRECHOS, ESCARPA_ALTURA, bordaEscarpa } from './geografia.js';
 import { semente2 } from './grade.js';
 
 const hash = (x, y) => semente2(x * 1.7 + 11, y * 2.3 + 5);
@@ -9,73 +10,96 @@ const rgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 1
 // ruído suave em uma dimensão (interpola valores sorteados a cada 'passo' pixels)
 const ruido = (x, passo, sem) => { const a = Math.floor(x / passo); const f = x / passo - a; const u = f * f * (3 - 2 * f); return hash(a, sem) * (1 - u) + hash(a + 1, sem) * u; };
 
-const TONS = ['#a29b8d', '#8f897c', '#7f796d'].map(rgb);
-const GRAMA = { contorno: rgb('#1d5a27'), escura: rgb('#2c7a31'), media: rgb('#3d8f3a'), clara: rgb('#62b04c') };
+const TONS = ['#aaa395', '#958f82', '#847e72'].map(rgb);
+const GRAMA = { contorno: rgb('#1d5a27'), escura: rgb('#2c7a31'), media: rgb('#3d8f3a'), clara: rgb('#6cbb52'), brilho: rgb('#9bd96c') };
+const MUSGO = rgb('#4f8c3b'); const RAIZ = rgb('#5d4632');
 
-// Faixas de escarpa a partir da máscara: colunas vizinhas com o mesmo trecho vertical viram uma faixa
-function faixas(t) {
-  const { W, H, escarpa } = t; const out = [];
-  let atual = null;
-  for (let x = 0; x < W; x++) {
-    let y0 = -1; let y1 = -1;
-    for (let y = 0; y < H; y++) if (escarpa[y * W + x]) { if (y0 < 0) y0 = y; y1 = y; }
-    if (y0 < 0) { atual = null; continue; }
-    if (atual && atual.y0 === y0 && atual.y1 === y1) atual.x1 = x; else { atual = { x0: x, x1: x, y0, y1 }; out.push(atual); }
-  }
-  return out;
-}
+// Topo (em pixels do mundo) da parede na coluna x de pixels. A borda ondula e ganha um tremido miúdo.
+const topoPx = (x) => bordaEscarpa(x / Q) * Q + Math.round((ruido(x, 7, 21) - 0.5) * 5);
 
-function desenharFaixa(g, f, W) {
-  const X0 = f.x0 * Q; const Y0 = f.y0 * Q; const PW = (f.x1 - f.x0 + 1) * Q; const PH = (f.y1 - f.y0 + 1) * Q;
-  const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH + 14; const gc = cv.getContext('2d');
-  const img = gc.createImageData(PW, PH + 14); const o = img.data;
-  const pintar = (x, y, c, a = 255) => { if (x < 0 || y < 0 || x >= PW || y >= PH + 14) return; const p = (y * PW + x) * 4; o[p] = c[0]; o[p + 1] = c[1]; o[p + 2] = c[2]; o[p + 3] = a; };
+function desenharTrecho(g, t, tr) {
+  const PWm = t.W * Q; const agua = t.aguaPx;
+  const xa = tr.x0 * Q; const xb = Math.min(t.W, tr.x1) * Q; const PW = xb - xa;
+  let minTopo = 1e9; let maxFundo = 0;
+  for (let x = xa; x < xb; x++) { const tp = topoPx(x); minTopo = Math.min(minTopo, tp); maxFundo = Math.max(maxFundo, tp + ESCARPA_ALTURA * Q); }
+  const Y0 = Math.floor(minTopo) - 16; const PH = Math.ceil(maxFundo) + 30 - Y0;
+  const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH; const gc = cv.getContext('2d');
+  const img = gc.createImageData(PW, PH); const o = img.data;
+  const pintar = (x, y, c, a = 255) => {
+    if (x < 0 || y < 0 || x >= PW || y >= PH) return;
+    if (agua && agua[(Y0 + y) * PWm + xa + x]) return; // o rio passa por cima: nada de pedra dentro d'água
+    const p = (y * PW + x) * 4; o[p] = c[0]; o[p + 1] = c[1]; o[p + 2] = c[2]; o[p + 3] = a;
+  };
   const lum = (c, k) => [Math.min(255, Math.round(c[0] * k)), Math.min(255, Math.round(c[1] * k)), Math.min(255, Math.round(c[2] * k))];
-  const fimDir = f.x1 < W - 1; // no limite do mapa a mata esconde o fim
-  const cap = 10; // largura da ponta arredondada
-  // colunas de rocha: larguras e tons sorteados; cada uma tem as suas fraturas horizontais
+  // colunas de rocha: larguras e tons sorteados; cada uma tem as suas fraturas e um recuo próprio no pé
   const colunas = []; const colDe = new Int16Array(PW);
-  { let x = 0; let k = 0; while (x < PW) { const w = 15 + Math.floor(hash(k, 3) * 17); const quebras = [0.2 + hash(k, 5) * 0.25, 0.55 + hash(k, 6) * 0.3].map((q) => Math.floor(q * PH)); colunas.push({ x0: x, w, tom: TONS[Math.floor(hash(k, 9) * 3)], quebras, folga: Math.floor(hash(k, 7) * 4) }); for (let i = x; i < Math.min(PW, x + w); i++) colDe[i] = k; x += w; k++; } }
+  { let x = 0; let k = 0; while (x < PW) { const w = 14 + Math.floor(hash(k + tr.x0, 3) * 20); colunas.push({ x0: x, w, tom: TONS[Math.floor(hash(k + tr.x0, 9) * 3)], quebras: [0.18 + hash(k + tr.x0, 5) * 0.22, 0.5 + hash(k + tr.x0, 6) * 0.3].map((q) => q), folga: Math.floor(hash(k + tr.x0, 7) * 6), recuo: Math.floor(hash(k + tr.x0, 8) * 7) }); for (let i = x; i < Math.min(PW, x + w); i++) colDe[i] = k; x += w; k++; } }
+  const tops = new Float32Array(PW); const fundos = new Float32Array(PW);
   for (let x = 0; x < PW; x++) {
-    let ponta = 0;
-    if (x < cap) ponta = Math.max(ponta, cap - x);
-    if (fimDir && x >= PW - cap) ponta = Math.max(ponta, x - (PW - cap) + 1);
-    const lip = 9 + Math.round(ruido(x, 10, 7) * 4) + Math.round(ponta * 0.9); // borda de baixo da capa de grama
-    const pe = PH - 14 + Math.round(ruido(x, 13, 8) * 4) - Math.round(ponta * 1.6); // onde a rocha acaba e começa o pé
+    const lip = topoPx(xa + x) - Y0; tops[x] = lip;
     const col = colunas[colDe[x]]; const dx = x - col.x0;
-    // capa de grama que sobra por cima da parede, com tufos pendurados
-    for (let y = Math.max(0, lip - 7); y < lip + (hash(x >> 1, 77) < 0.25 ? 2 : 0); y++) {
+    const pe = lip + ESCARPA_ALTURA * Q - 14 - col.recuo * 0.6 + Math.round(ruido(x, 13, 8) * 4); fundos[x] = pe;
+    const alt = Math.max(1, pe - lip);
+    // capa de grama que sobra por cima da parede, com tufos pendurados e um fio de luz no alto
+    for (let y = Math.floor(lip) - 8; y < Math.floor(lip) + (hash(x >> 1, 77) < 0.28 ? 3 : 0); y++) {
       const dd = lip - y; const r = hash(x >> 1, y);
-      pintar(x, y, dd <= 0 ? GRAMA.escura : dd === 1 ? GRAMA.contorno : dd <= 3 ? (r < 0.5 ? GRAMA.escura : GRAMA.media) : (r < 0.3 ? GRAMA.clara : GRAMA.media));
+      pintar(x, y, dd <= 0 ? GRAMA.escura : dd < 1.5 ? GRAMA.contorno : dd <= 3 ? (r < 0.5 ? GRAMA.escura : GRAMA.media) : dd >= 7 ? GRAMA.brilho : (r < 0.35 ? GRAMA.clara : GRAMA.media));
     }
     // face de pedra: luz da esquerda em cada coluna, fraturas horizontais, sombra sob a grama e escuro no fundo
-    for (let y = lip; y < pe; y++) {
-      let k = 1;
-      if (dx === 0) k = 0.5; else if (dx === 1) k = 1.22; else if (dx === 2) k = 1.1; else if (dx >= col.w - 3) k = 0.74; else k = 1 - 0.18 * (dx / col.w);
-      const prof = (y - lip) / Math.max(1, pe - lip);
-      k *= 1 - 0.32 * prof * prof - 0.06 * prof; if (y - lip < 5) k *= 0.62 + 0.076 * (y - lip);
-      for (const q of col.quebras) { if (y === q + col.folga && dx > 0 && dx < col.w - 1) k *= 0.5; else if (y === q + col.folga + 1 && dx > 1) k *= 1.16; }
-      const r = hash(x, y); if (r < 0.012) k *= 1.14; else if (r > 0.992) k *= 0.88;
-      if (ponta) k *= 1 - Math.min(0.5, ponta * 0.055);
+    for (let y = Math.floor(lip); y < pe; y++) {
+      let k;
+      if (dx === 0) k = 0.5; else if (dx === 1) k = 1.24; else if (dx === 2) k = 1.1; else if (dx >= col.w - 3) k = 0.72; else k = 1 - 0.2 * (dx / col.w);
+      const prof = (y - lip) / alt;
+      k *= 1 - 0.38 * prof * prof - 0.07 * prof; if (y - lip < 6) k *= 0.58 + 0.07 * (y - lip);
+      for (const q of col.quebras) { const yq = Math.floor(lip + q * alt) + col.folga; if (y === yq && dx > 0 && dx < col.w - 1) k *= 0.48; else if (y === yq + 1 && dx > 1) k *= 1.18; }
+      const r = hash(x, y); if (r < 0.014) k *= 1.15; else if (r > 0.99) k *= 0.86;
       pintar(x, y, lum(col.tom, k));
     }
-    // pé da parede: base escura com pedregulhos e capim
-    for (let y = pe; y < Math.min(PH + 10, pe + 8); y++) {
+    // musgo em manchas, nos trechos mais úmidos (perto do pé)
+    if (hash(x >> 2, 91) < 0.34) { const my = Math.floor(lip + (0.45 + hash(x >> 2, 92) * 0.4) * alt); for (let d = 0; d < 3 + Math.floor(hash(x, 93) * 4); d++) pintar(x, my + d, MUSGO, d === 0 ? 150 : 210); }
+    // raízes que descem da grama
+    if (hash(x, 94) < 0.045) { const n = 8 + Math.floor(hash(x, 95) * 18); for (let d = 0; d < n; d++) pintar(x + Math.round(Math.sin(d * 0.6) * 1), Math.floor(lip) + 2 + d, RAIZ); }
+    // pé da parede: base escura, pedregulhos e capim
+    for (let y = Math.floor(pe); y < pe + 8; y++) {
       const dd = y - pe; const r = hash(x >> 1, y + 40);
-      if (dd < 2) pintar(x, y, [52, 48, 44]); else if (r < 0.22 && dd < 6) pintar(x, y, rgb('#9d9788')); else if (dd < 5) pintar(x, y, rgb(r < 0.6 ? '#4a463f' : '#5c574e')); else if (r < 0.5 && dd < 7) pintar(x, y, GRAMA.escura);
+      if (dd < 2) pintar(x, y, [50, 46, 42]); else if (r < 0.22 && dd < 6) pintar(x, y, rgb('#a29c8c')); else if (dd < 5) pintar(x, y, rgb(r < 0.6 ? '#4a463f' : '#5c574e')); else if (r < 0.5 && dd < 7) pintar(x, y, GRAMA.escura);
     }
   }
-  // capim solto na base
-  for (let k = 0; k < PW / 6; k++) { const x = Math.floor(hash(k, 51) * PW); const pe = PH - 14 + Math.round(ruido(x, 13, 8) * 4); for (let a = 0; a < 3; a++) pintar(x + (a % 2), pe + 1 - a, a ? GRAMA.clara : GRAMA.media); }
+  // pedregulhos soltos ao pé da parede
+  for (let k = 0; k < PW / 52; k++) {
+    const x = Math.floor((k + hash(k + tr.x0, 61)) * 52); if (x >= PW - 8 || x < 8) continue;
+    const y = Math.floor(fundos[x]) + 6; const rx = 5 + Math.floor(hash(k, 62) * 4); const ry = 3 + Math.floor(hash(k, 63) * 3);
+    for (let dy = -ry; dy <= ry; dy++) for (let dx = -rx; dx <= rx; dx++) {
+      if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) > 1) continue;
+      const luz = dy < -ry * 0.3 ? 1.22 : dy > ry * 0.4 ? 0.62 : 0.95; pintar(x + dx, y + dy, lum(TONS[1], luz * (dx < -rx * 0.4 ? 1.1 : 1)));
+    }
+  }
+  // arbustos na beirada de cima, passando um pouco por cima da borda
+  for (let k = 0; k < PW / 44; k++) {
+    const x = Math.floor((k + hash(k + tr.x0, 71)) * 44); if (x >= PW - 8 || x < 8) continue;
+    const y = Math.floor(tops[x]) - 3; const rx = 5 + Math.floor(hash(k, 72) * 3);
+    for (let dy = -5; dy <= 2; dy++) for (let dx = -rx; dx <= rx; dx++) { if ((dx * dx) / (rx * rx) + (dy * dy) / 21 > 1) continue; pintar(x + dx, y + dy, dy < -2 ? GRAMA.clara : dy > 0 ? GRAMA.contorno : GRAMA.media); }
+  }
   gc.putImageData(img, 0, 0);
-  g.drawImage(cv, X0, Y0);
-  // sombra projetada no chão, abaixo do pé
-  g.fillStyle = 'rgba(15,12,30,0.26)'; g.fillRect(X0 + 4, Y0 + PH - 4, PW - 8, 7);
-  g.fillStyle = 'rgba(15,12,30,0.12)'; g.fillRect(X0 + 8, Y0 + PH + 3, PW - 16, 5);
+  g.drawImage(cv, xa, Y0);
+  // sombra grande projetada no chão, abaixo do pé, em três degraus; e o topo do platô um pouco mais claro
+  for (let x = 0; x < PW; x++) {
+    if (agua && agua[Math.floor(fundos[x] + Y0 + 8) * PWm + xa + x]) continue;
+    const pe = Math.floor(fundos[x] + Y0);
+    g.fillStyle = 'rgba(15,12,30,0.32)'; g.fillRect(xa + x, pe + 5, 1, 6);
+    g.fillStyle = 'rgba(15,12,30,0.18)'; g.fillRect(xa + x, pe + 11, 1, 7);
+    g.fillStyle = 'rgba(15,12,30,0.08)'; g.fillRect(xa + x, pe + 18, 1, 8);
+    const topo = Math.floor(tops[x] + Y0); const ini = 5 * Q;
+    if (topo > ini) { g.fillStyle = 'rgba(255,244,190,0.08)'; g.fillRect(xa + x, ini, 1, topo - ini - 8); }
+  }
 }
 
 export function desenharEscarpas(g, t) {
-  for (const f of faixas(t)) desenharFaixa(g, f, t.W);
+  for (const tr of ESCARPA_TRECHOS) desenharTrecho(g, t, tr);
+  // platô além dos trechos de pedra (vão do castelo): só o topo mais claro
+  const claro = (x0, x1) => { g.fillStyle = 'rgba(255,244,190,0.08)'; g.fillRect(x0 * Q, 5 * Q, (x1 - x0) * Q, 5 * Q); };
+  claro(49, 60);
+  void ESCARPA_ALTURA;
 }
 
 // Muralha: três fileiras de tijolo do castelo (a de baixo é a que bloqueia). A de cima ganha ameias recortadas,
@@ -86,7 +110,6 @@ export function desenharMuralha(g, t, tijolo) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (!muralha[y * W + x]) continue;
     const x0 = x * Q; const y0 = y * Q;
-    // fileira de baixo: tijolo com um beiral de pedra clara no alto e sombra no pé
     g.drawImage(tijolo, 0, 0, Q, Q, x0, y0, Q, Q);
     g.fillStyle = 'rgba(52,44,70,0.20)'; g.fillRect(x0, y0, Q, Q);
     g.fillStyle = 'rgba(20,16,40,0.18)'; g.fillRect(x0, y0 + Q - 8, Q, 8);
@@ -99,7 +122,7 @@ export function desenharMuralha(g, t, tijolo) {
     gt.fillStyle = '#d6cdb8'; for (let k = 0; k < 2; k++) gt.fillRect(k * 16, 11, 10, 2);
     gt.fillStyle = '#4a4658'; for (let k = 0; k < 2; k++) { gt.fillRect(k * 16 + 10, 11, 6, 1); }
     gt.fillStyle = 'rgba(20,16,40,0.12)'; gt.fillRect(0, 13, Q, 3);
-    g.fillStyle = 'rgba(52,44,70,0.06)'; g.drawImage(tmp, x0, y0 - 2 * Q); g.fillRect(x0, y0 - 2 * Q + 11, Q, 21);
+    g.drawImage(tmp, x0, y0 - 2 * Q);
     // sombra projetada no chão, ao sul
     g.fillStyle = 'rgba(15,12,30,0.24)'; g.fillRect(x0, y0 + Q, Q, 6); g.fillStyle = 'rgba(15,12,30,0.1)'; g.fillRect(x0, y0 + Q + 6, Q, 4);
   }
