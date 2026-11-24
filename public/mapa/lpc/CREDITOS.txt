@@ -1453,3 +1453,6 @@ Castle work:
 
 
 [LPC] Roofs v2 e Colonial Buildings (bluecarrot16, Lanea Zimmerman, Michele Bucelli, Casper Nilsson, Xenodora, keith karnage, NaRNeRZz, Talon, TheraHedwig, Guido Bos). CC-BY-SA 3.0 / GPL 3.0. https://opengameart.org/ (LPC Roofs). Usado nas casas das fases (oficina, celeiro, casa do raio-X), com troca de cor das paredes.
+
+
+[LPC] Jungle (viney-trees) por bluecarrot16, Lanea Zimmerman (Sharm), Sevarihk, Hyptosis, Emcee Flesher, ansimuz, KnoblePersona, surt, Talosaurus e colaboradores do Open Pixel Project (OpenPixelProject.com). CC-BY 4.0. Usado na árvore de decisão da fase 6.

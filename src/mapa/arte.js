@@ -91,6 +91,7 @@ export const LPC_PECAS = {
   // casas V02 (telhados com volume, pacote LPC Roofs v2)
   oficinaV2: { quadro: 'oficina-v2', porta: [64, 216], w: 3, h: 3 },
   celeiroV2: { quadro: 'celeiro-v2', porta: [101, 214], w: 6, h: 3 },
+  arvoreDecisaoV2: { quadro: 'arvore-decisao', porta: [88, 212], w: 3, h: 3 },
   raioXV2: { quadro: 'raiox-v2', porta: [64, 184], w: 3, h: 3 },
 };
 
