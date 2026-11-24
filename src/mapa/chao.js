@@ -95,7 +95,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
   }
   if (t.aguaPx) desenharAguas(g, t);
   if (t.escarpa) desenharEscarpas(g, t);
-  if (t.muralha) desenharMuralha(g, t);
+  if (t.muralha && extras.tijolo) desenharMuralha(g, t, extras.tijolo);
   if (planta.ESCADA) desenharEscada(g, planta.ESCADA);
   return { canvas: c, naAreia };
 }

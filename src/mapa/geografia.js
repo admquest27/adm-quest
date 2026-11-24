@@ -152,3 +152,26 @@ export function montarGeografia(W = LARG, H = ALT) {
   const muralha = new Uint8Array(W * H); retangulo(muralha, MURALHA, 1, W, H);
   return { W, H, agua, aguaBloqueio, aguaPx: px, areia, floresta, plato, escarpa, muralha };
 }
+
+// ---------- rota principal (etapa 2) ----------
+// Entradas das fases (onde o aluno para na frente de cada construção) e as estradas que ligam uma à outra.
+// 1-1 → 1-2 → 1-3 → ponte → 1-4 → 1-5 → 1-6 → 1-7 → Castelo → portão. Não há estrada da ponte para o castelo.
+export const ENTRADAS = {
+  m1f1: [10, 33], m1f2: [15, 14], m1f3: [34, 16], m1f4: [57, 34], m1f5: [76, 30], m1f6: [79, 18], m1f7: [67, 18], m1chefao: [54, 18],
+};
+export const ROTA = [
+  { para: 'm1f2', pontos: [[10, 33], [7, 33], [6, 30], [6, 24], [7, 20], [10, 17], [15, 14]] },
+  { para: 'm1f3', pontos: [[15, 14], [19, 15], [23, 16], [28, 16], [34, 16]] },
+  { para: 'm1f4', pontos: [[34, 16], [36, 19], [38, 23], [40, 24], [48, 24], [51, 26], [52, 30], [52, 34], [57, 34]] },
+  { para: 'm1f5', pontos: [[57, 34], [63, 34], [69, 33], [76, 30]] },
+  { para: 'm1f6', pontos: [[76, 30], [81, 29], [83, 26], [83, 21], [81, 18], [79, 18]] },
+  { para: 'm1f7', pontos: [[79, 18], [73, 18], [67, 18]] },
+  { para: 'm1chefao', pontos: [[67, 18], [62, 18], [57, 18], [54, 18]] },
+  { para: 'mundo2', pontos: [[54, 18], [54, 16], [54, 10], [54, 7], [54, 6], [54, 0]] },
+];
+// Três terrenos vazios para fases extras, com acesso por uma trilha curta
+export const LOTES = [
+  { id: 'l1', x: 25, y: 19, w: 7, h: 4, entrada: [28, 17] },
+  { id: 'l2', x: 31, y: 42, w: 6, h: 4, entrada: [34, 40] },
+  { id: 'l3', x: 61, y: 22, w: 6, h: 4, entrada: [64, 21] },
+];

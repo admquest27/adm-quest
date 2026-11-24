@@ -102,3 +102,50 @@ test('o deserto, a mata e a praça ficam onde a planta manda', () => {
   assert.ok(t.floresta[I(1, 25)] && t.floresta[I(86, 25)] && t.floresta[I(40, 49)], 'mata nas bordas');
   assert.ok(t.floresta[I(52, 21)], 'bosque separador');
 });
+
+// ---------- etapa 2: estradas, entradas e terrenos vazios ----------
+const ordem = ['m1f1', 'm1f2', 'm1f3', 'm1f4', 'm1f5', 'm1f6', 'm1f7', 'm1chefao'];
+
+test('as oito entradas existem, são chão e a estrada principal segue a ordem das fases', () => {
+  for (const id of ordem) { const [x, y] = geo.ENTRADAS[id]; assert.ok(t.passa[I(x, y)], `entrada de ${id}`); }
+  assert.deepEqual(geo.ROTA.map((e) => e.para), ['m1f2', 'm1f3', 'm1f4', 'm1f5', 'm1f6', 'm1f7', 'm1chefao', 'mundo2']);
+  geo.ROTA.slice(0, 7).forEach((e, k) => {
+    assert.deepEqual(e.pontos[0], geo.ENTRADAS[ordem[k]], `o trecho ${e.para} começa na fase anterior`);
+    assert.deepEqual(e.pontos.at(-1), geo.ENTRADAS[ordem[k + 1]], `o trecho ${e.para} termina na entrada dela`);
+  });
+});
+
+test('a estrada só pisa em chão livre e só cruza a água pela ponte', () => {
+  for (const e of planta.ESTRADAS.slice(0, 7)) {
+    for (const [x, y] of e.pontos) {
+      const cx = Math.floor(x + 0.5); const cy = Math.floor(y + 0.5);
+      const naPonte = cy === geo.PONTE.y && cx >= geo.PONTE.x0 && cx <= geo.PONTE.x1;
+      assert.ok(t.passa[I(cx, cy)] || naPonte, `${e.para}: ponto ${x.toFixed(1)},${y.toFixed(1)} em chão bloqueado`);
+      if (t.agua[I(cx, cy)]) assert.ok(naPonte, `${e.para}: cruza água fora da ponte em ${cx},${cy}`);
+    }
+  }
+});
+
+test('dá para ir de fase em fase, na ordem, a pé (com o castelo de pé até a frente dele)', () => {
+  const p = comCastelo(false);
+  ordem.slice(0, -1).forEach((id, k) => {
+    assert.equal(alcance(p, geo.ENTRADAS[id])[I(...geo.ENTRADAS[ordem[k + 1]])], 1, `de ${id} até ${ordem[k + 1]}`);
+  });
+});
+
+test('depois do chefão a estrada leva à escada; o portão no fim continua fechado', () => {
+  const aberto = alcance(comCastelo(true), geo.ENTRADAS.m1chefao);
+  assert.equal(aberto[I(...geo.PORTAO.entrada)], 1, 'chega diante do portão');
+  assert.equal(t.muralha[I(54, 4)], 1, 'a muralha fecha o portão');
+  for (let x = geo.MURALHA.x; x < geo.MURALHA.x + geo.MURALHA.w; x++) assert.equal(aberto[I(x, 3)], 0, `nada além da muralha em ${x},3`);
+});
+
+test('os três terrenos vazios têm entrada livre, chão livre e chegam a pé', () => {
+  assert.equal(geo.LOTES.length, 3);
+  const p = comCastelo(false); const v = alcance(p, planta.INICIO);
+  for (const l of geo.LOTES) {
+    assert.ok(t.passa[I(...l.entrada)], `entrada do lote ${l.id}`);
+    assert.equal(v[I(...l.entrada)], 1, `o lote ${l.id} chega a pé`);
+    for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) assert.ok(t.passa[I(x, y)], `lote ${l.id} livre em ${x},${y}`);
+  }
+});
