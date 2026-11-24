@@ -39,14 +39,14 @@ export function montarTerreno(planta) {
 
   const passa = new Uint8Array(W * H).fill(1);
   for (let i = 0; i < W * H; i++) if (floresta[i] || agua[i]) passa[i] = 0;
-  if (geo) for (let i = 0; i < W * H; i++) if (geo.escarpa[i] || geo.muralha[i]) passa[i] = 0;
+  if (geo) for (let i = 0; i < W * H; i++) if (geo.escarpa[i] || geo.muralha[i] || geo.aguaBloqueio[i]) passa[i] = 0;
   for (let x = p.x0; x <= p.x1; x++) passa[idx(x, p.y)] = 1;
   const bloquear = (x, y, w = 1, h = 1) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (dentro(xx, yy)) passa[idx(xx, yy)] = 0; };
   for (const f of planta.FASES) bloquear(f.x, f.y, f.w, f.h);
   for (const e of planta.ENFEITES) if (e.bloqueia) bloquear(e.bx ?? e.x, e.by ?? e.y, e.bw ?? 1, e.bh ?? 1);
   for (const o of planta.OBJETOS) if (o.bloqueia) bloquear(o.x, o.y, o.w ?? 1, o.h ?? 1);
   for (const m of planta.MUROS ?? []) bloquear(m.x, m.y, m.w, m.h);
-  return { W, H, chao, molhado, passa, agua, floresta, areia: geo ? areia : null, plato: geo?.plato ?? null, escarpa: geo?.escarpa ?? null, muralha: geo?.muralha ?? null };
+  return { W, H, chao, molhado, passa, agua, floresta, aguaPx: geo?.aguaPx ?? null, areia: geo ? areia : null, plato: geo?.plato ?? null, escarpa: geo?.escarpa ?? null, muralha: geo?.muralha ?? null };
 }
 
 // Busca de caminho (A*) em 4 direções. Devolve a lista de peças do início ao fim, sem o início; [] se não há.

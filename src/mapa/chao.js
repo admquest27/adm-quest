@@ -2,6 +2,7 @@
 // arredondadas (autotile do LPC: cada quadrado vira quatro pedaços de 16 escolhidos pelos vizinhos).
 // A cena desenha o resultado na metade do tamanho, então cada quadrado LPC ocupa uma peça da planta.
 import { semente2 } from './grade.js';
+import { desenharAguas } from './agua.js';
 import { desenharEscarpas, desenharMuralha, desenharEscada } from './escarpa.js';
 
 export const Q = 32; // pixels da arte por peça da planta
@@ -90,9 +91,10 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
     else g.drawImage(img, grama.x + 32 * Math.floor(s * 3), grama.y + 160, 32, 32, x * Q, y * Q, 32, 32);
     if (naPraca[i]) calcada(g, x, y, (dx, dy) => (dentro(x + dx, y + dy) ? naPraca[(y + dy) * W + x + dx] === 1 : false));
     if (naAreia[i]) autotile(g, img, areia, temAreia, x, y, 0, 0, Math.floor(s * 7) % 2);
-    if (t.agua[i]) autotile(g, img, agua, temAgua, x, y, 0, 0, Math.floor(s * 11) % 3);
+    if (t.agua[i] && !t.aguaPx) autotile(g, img, agua, temAgua, x, y, 0, 0, Math.floor(s * 11) % 3);
   }
-  if (t.escarpa && extras.escarpa) desenharEscarpas(g, extras.escarpa, t);
+  if (t.aguaPx) desenharAguas(g, t);
+  if (t.escarpa) desenharEscarpas(g, t);
   if (t.muralha) desenharMuralha(g, t);
   if (planta.ESCADA) desenharEscada(g, planta.ESCADA);
   return { canvas: c, naAreia };

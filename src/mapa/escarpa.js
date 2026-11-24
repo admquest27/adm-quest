@@ -1,48 +1,89 @@
-// Escarpas do platô (paredes de 4 peças de altura, do pacote LPC Mountains, terreno "Cliff_Grass"),
-// muralha de tijolos do limite norte e a escada de pedra atrás do castelo. Desenha direto no canvas do chão.
+// Escarpas do platô, muralha de tijolos do limite norte e escada de pedra atrás do castelo. Tudo desenhado direto no
+// canvas do chão (arte original do projeto, em pixel art): a escarpa é um penhasco de pedra em camadas, com capa de
+// grama, juntas, fendas, pé com pedregulhos e sombra projetada no chão.
 import { Q } from './chao.js';
 import { semente2 } from './grade.js';
 
-// Folha da escarpa (96x160): 3 colunas (ponta esquerda, meio, ponta direita) e 5 linhas.
-// Linhas 2, 3 e 4 são a parede: borda de grama, miolo e pé.
-const COL = [0, 32, 64];
+const hash = (x, y) => semente2(x * 1.7 + 11, y * 2.3 + 5);
+const rgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+// ruído suave em uma dimensão (interpola valores sorteados a cada 'passo' pixels)
+const ruido = (x, passo, sem) => { const a = Math.floor(x / passo); const f = x / passo - a; const u = f * f * (3 - 2 * f); return hash(a, sem) * (1 - u) + hash(a + 1, sem) * u; };
 
-export function desenharEscarpas(g, img, t) {
-  const { W, H, escarpa } = t;
-  const tem = (x, y) => x >= 0 && y >= 0 && x < W && y < H && escarpa[y * W + x] === 1;
-  const tmp = document.createElement('canvas'); tmp.width = Q; tmp.height = Q; const gt = tmp.getContext('2d'); gt.imageSmoothingEnabled = false;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (!tem(x, y)) continue;
-    const lin = !tem(x, y - 1) ? 2 : !tem(x, y + 1) ? 4 : 3;
-    // pontas redondas só onde a parede acaba de verdade dentro do mapa (no limite do mapa a mata esconde o fim)
-    const esq = !tem(x - 1, y) && x > 0; const dir = !tem(x + 1, y) && x < W - 1;
-    const col = esq ? 0 : dir ? 2 : 1;
-    if (lin >= 3) { gt.clearRect(0, 0, Q, Q); gt.drawImage(img, COL[col], 32 * lin, 32, 32, 0, 0, 32, 32); volume(gt, x, y, lin); g.drawImage(tmp, x * Q, y * Q); }
-    else g.drawImage(img, COL[col], 32 * lin, 32, 32, x * Q, y * Q, 32, 32);
-    if (lin === 4) { g.fillStyle = 'rgba(20,16,40,0.24)'; g.fillRect(x * Q, y * Q + 13, Q, 6); g.fillStyle = 'rgba(20,16,40,0.10)'; g.fillRect(x * Q, y * Q + 19, Q, 5); }
+const PEDRA = ['#8d8779', '#7b7568', '#98917f', '#847e70', '#928b7c'].map(rgb);
+const GRAMA = { contorno: rgb('#1d5a27'), escura: rgb('#2c7a31'), media: rgb('#3d8f3a'), clara: rgb('#62b04c') };
+
+// Faixas de escarpa a partir da máscara: colunas vizinhas com o mesmo trecho vertical viram uma faixa
+function faixas(t) {
+  const { W, H, escarpa } = t; const out = [];
+  let atual = null;
+  for (let x = 0; x < W; x++) {
+    let y0 = -1; let y1 = -1;
+    for (let y = 0; y < H; y++) if (escarpa[y * W + x]) { if (y0 < 0) y0 = y; y1 = y; }
+    if (y0 < 0) { atual = null; continue; }
+    if (atual && atual.y0 === y0 && atual.y1 === y1) atual.x1 = x; else { atual = { x0: x, x1: x, y0, y1 }; out.push(atual); }
   }
+  return out;
 }
 
-// Dá volume à parede: luz de cima, estratos de rocha, fendas verticais e lascas claras (a arte original é lisa)
-function volume(g, x, y, lin) {
-  const x0 = 0; const y0 = 0; const topo = 0;
-  g.save();
-  g.globalCompositeOperation = 'source-atop';
-  g.fillStyle = 'rgba(255,230,190,0.10)'; g.fillRect(x0, y0 + topo, Q, 6);
-  g.fillStyle = 'rgba(30,18,10,0.16)'; g.fillRect(x0, y0 + 20, Q, 12);
-  // estratos: faixas horizontais mais escuras, um pouco tortas
-  for (let k = 0; k < 3; k++) {
-    const yy = y0 + 4 + Math.floor(semente2(x * 7 + k, y * 3 + lin) * 24); const a = Math.floor(semente2(x + k * 5, y * 11) * 10);
-    g.fillStyle = 'rgba(40,24,12,0.22)'; g.fillRect(x0 + a, yy, 14 + Math.floor(semente2(x * 2 + k, y) * 14), 2);
-    g.fillStyle = 'rgba(255,225,180,0.14)'; g.fillRect(x0 + a, yy + 2, 10, 1);
+function desenharFaixa(g, f, W) {
+  const X0 = f.x0 * Q; const Y0 = f.y0 * Q; const PW = (f.x1 - f.x0 + 1) * Q; const PH = (f.y1 - f.y0 + 1) * Q;
+  const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH + 14; const gc = cv.getContext('2d');
+  const img = gc.createImageData(PW, PH + 14); const o = img.data;
+  const pintar = (x, y, c, a = 255) => { if (x < 0 || y < 0 || x >= PW || y >= PH + 14) return; const p = (y * PW + x) * 4; o[p] = c[0]; o[p + 1] = c[1]; o[p + 2] = c[2]; o[p + 3] = a; };
+  const fimDir = f.x1 < W - 1; // no limite do mapa a mata esconde o fim
+  const cap = 9; // largura da ponta arredondada
+  // faixas de rocha: alturas e tons sorteados, levemente onduladas
+  const estratos = []; { let y = 0; let k = 0; while (y < PH + 20) { const h = 8 + Math.floor(hash(k, 3) * 6); estratos.push({ y, h, tom: PEDRA[Math.floor(hash(k, 9) * PEDRA.length)], junta: 13 + Math.floor(hash(k, 4) * 9), desloc: Math.floor(hash(k, 5) * 20) }); y += h; k++; } }
+  const fendas = []; for (let k = 0; k < PW / 46; k++) fendas.push({ x: Math.floor(hash(k, 31) * PW), y: Math.floor(hash(k, 32) * PH * 0.6) + 14, h: 12 + Math.floor(hash(k, 33) * 26) });
+  for (let x = 0; x < PW; x++) {
+    let ponta = 0;
+    if (x < cap) ponta = Math.max(ponta, cap - x);
+    if (fimDir && x >= PW - cap) ponta = Math.max(ponta, x - (PW - cap) + 1);
+    const lip = 9 + Math.round(ruido(x, 9, 7) * 5) + Math.round(ponta * 0.9); // borda de baixo da capa de grama
+    const pe = PH - 12 + Math.round(ruido(x, 11, 8) * 5) - Math.round(ponta * 1.6); // onde a rocha acaba e começa o pé
+    // capa de grama que sobra por cima da parede
+    for (let y = Math.max(0, lip - 7); y < lip; y++) {
+      const dd = lip - y; const r = hash(x >> 1, y);
+      pintar(x, y, dd === 1 ? GRAMA.contorno : dd <= 3 ? (r < 0.5 ? GRAMA.escura : GRAMA.media) : (r < 0.3 ? GRAMA.clara : GRAMA.media));
+    }
+    // face de pedra
+    for (let y = lip; y < pe; y++) {
+      const yy = y + Math.round(2 * Math.sin(x * 0.045 + 1));
+      let e = estratos[0]; for (const s of estratos) if (yy >= s.y && yy < s.y + s.h) { e = s; break; }
+      const dentroE = yy - e.y; const c = e.tom; let luz = 1;
+      if (dentroE === 0) luz = 1.28; else if (dentroE === e.h - 1) luz = 0.62; else if (dentroE === e.h - 2) luz = 0.82;
+      // juntas verticais entre blocos
+      const jx = (x + e.desloc) % e.junta; if (jx === 0 && dentroE > 0 && dentroE < e.h - 1) luz *= 0.78; else if (jx === 1 && dentroE > 1 && dentroE < e.h - 1) luz *= 1.1;
+      // manchas e lascas
+      const r = hash(x, y); if (r < 0.03) luz *= 1.1; else if (r > 0.97) luz *= 0.9;
+      // luz de cima: escurece com a profundidade; sombra logo abaixo da capa de grama
+      const prof = (y - lip) / Math.max(1, pe - lip); luz *= 1 - 0.34 * prof; if (y - lip < 4) luz *= 0.72 + 0.07 * (y - lip);
+      // lados da ponta arredondada ficam no escuro
+      if (ponta) luz *= 1 - Math.min(0.45, ponta * 0.05);
+      pintar(x, y, [Math.min(255, c[0] * luz), Math.min(255, c[1] * luz), Math.min(255, c[2] * luz)].map(Math.round));
+    }
+    // pé da parede: base escura com pedregulhos e capim
+    for (let y = pe; y < Math.min(PH + 10, pe + 8); y++) {
+      const dd = y - pe; const r = hash(x >> 1, y + 40);
+      if (dd < 2) pintar(x, y, [58, 53, 48]); else if (r < 0.25 && dd < 6) pintar(x, y, rgb('#a29c8c')); else if (dd < 5) pintar(x, y, rgb(r < 0.6 ? '#4a463f' : '#5c574e')); else if (r < 0.5 && dd < 7) pintar(x, y, GRAMA.escura);
+    }
   }
-  // fendas verticais
-  for (let k = 0; k < 2; k++) {
-    const cx = x0 + 3 + Math.floor(semente2(x * 13 + k, y * 17 + 5) * 26); const h = 6 + Math.floor(semente2(x + k, y * 3) * 12); const cy = y0 + Math.floor(semente2(x * 3, y * 5 + k) * 14);
-    g.fillStyle = 'rgba(30,16,8,0.45)'; g.fillRect(cx, cy, 1, h); g.fillRect(cx + 1, cy + 3, 1, Math.max(2, h - 6));
-    g.fillStyle = 'rgba(255,225,180,0.2)'; g.fillRect(cx - 1, cy + 1, 1, h - 2);
+  // fendas verticais que cortam as camadas
+  for (const fe of fendas) for (let k = 0; k < fe.h; k++) {
+    const xx = fe.x + Math.round(Math.sin(k * 0.5 + fe.x) * 1.2); const yy = fe.y + k;
+    pintar(xx, yy, [52, 46, 42]); if (k % 3 === 0) pintar(xx + 1, yy, rgb('#b6af9c'), 170);
   }
-  g.restore();
+  // capim solto na base
+  for (let k = 0; k < PW / 5; k++) { const x = Math.floor(hash(k, 51) * PW); const pe = PH - 12 + Math.round(ruido(x, 11, 8) * 5); for (let a = 0; a < 3; a++) pintar(x + (a % 2), pe + 1 - a, a ? GRAMA.clara : GRAMA.media); }
+  gc.putImageData(img, 0, 0);
+  g.drawImage(cv, X0, Y0);
+  // sombra projetada no chão, abaixo do pé
+  g.fillStyle = 'rgba(15,12,30,0.26)'; g.fillRect(X0 + 4, Y0 + PH - 3, PW - 8, 7);
+  g.fillStyle = 'rgba(15,12,30,0.12)'; g.fillRect(X0 + 8, Y0 + PH + 4, PW - 16, 5);
+}
+
+export function desenharEscarpas(g, t) {
+  for (const f of faixas(t)) desenharFaixa(g, f, t.W);
 }
 
 // Muralha de tijolos (uma peça de altura): face de pedra, ameias em cima e sombra embaixo.
@@ -59,7 +100,6 @@ export function desenharMuralha(g, t) {
       for (let b = -1; b < 3; b++) { const bx = x0 + desloc + b * 16; if (bx >= x0 && bx < x0 + Q) { g.fillRect(bx, yy, 1, 6); } }
       for (let b = 0; b < 3; b++) { const tom = semente2(x * 3 + b, y * 5 + fila); g.fillStyle = tom < 0.5 ? '#a3a0b0' : '#7f7c8d'; g.fillRect(x0 + ((desloc + b * 16 + 2) % Q), yy + 1, 10, 1); }
     }
-    // ameias: blocos que sobem acima do topo, de dois em dois
     g.fillStyle = '#4a4658'; g.fillRect(x0, y0, Q, 8);
     g.fillStyle = '#a3a0b0'; g.fillRect(x0 + 1, y0 + 1, 10, 7); g.fillRect(x0 + 17, y0 + 1, 10, 7);
     g.fillStyle = '#c9c6d4'; g.fillRect(x0 + 1, y0 + 1, 10, 1); g.fillRect(x0 + 17, y0 + 1, 10, 1);

@@ -83,15 +83,43 @@ function eixoSuave(pts, passo = 0.25) {
   out.push(pts[pts.length - 1]); return out;
 }
 
-function mascaraRio(W = LARG, H = ALT) {
-  const m = new Uint8Array(W * H); const eixo = eixoSuave(RIO_EIXO);
-  for (const [cx, cy, w] of eixo) {
-    const r = w / 2;
-    for (let y = Math.max(0, Math.floor(cy - r - 1)); y <= Math.min(H - 1, Math.ceil(cy + r + 1)); y++) {
-      for (let x = Math.max(0, Math.floor(cx - r - 1)); x <= Math.min(W - 1, Math.ceil(cx + r + 1)); x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r) m[y * W + x] = 1;
-    }
+// ---------- água em pixels (forma contínua e suave) ----------
+// A água não usa peças de autotile: é uma forma desenhada pixel a pixel (rio com largura que oscila, lagos arredondados).
+// Daí saem duas máscaras de peças: 'agua' (a peça é mais da metade água) e 'aguaBloqueio' (qualquer pedaço relevante de água).
+export const Q = 32;
+
+function desenharDisco(px, PW, PH, cx, cy, r) {
+  for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(PH - 1, Math.ceil(cy + r)); y++) {
+    const dy = y - cy; const w = Math.floor(Math.sqrt(Math.max(0, r * r - dy * dy)));
+    for (let x = Math.max(0, Math.floor(cx - w)); x <= Math.min(PW - 1, Math.ceil(cx + w)); x++) px[y * PW + x] = 1;
   }
-  return m;
+}
+
+// Borrão de caixa em duas passadas (separável), usado para arredondar as margens dos lagos
+function borrar(src, w, h, raio) {
+  const tmp = new Float32Array(w * h); const out = new Float32Array(w * h); const n = raio * 2 + 1;
+  for (let y = 0; y < h; y++) { let s = 0; for (let x = -raio; x <= raio; x++) s += src[y * w + Math.min(w - 1, Math.max(0, x))]; for (let x = 0; x < w; x++) { tmp[y * w + x] = s / n; s += src[y * w + Math.min(w - 1, x + raio + 1)] - src[y * w + Math.max(0, x - raio)]; } }
+  for (let x = 0; x < w; x++) { let s = 0; for (let y = -raio; y <= raio; y++) s += tmp[Math.min(h - 1, Math.max(0, y)) * w + x]; for (let y = 0; y < h; y++) { out[y * w + x] = s / n; s += tmp[Math.min(h - 1, y + raio + 1) * w + x] - tmp[Math.max(0, y - raio) * w + x]; } }
+  return out;
+}
+
+export function aguaEmPixels(W = LARG, H = ALT) {
+  const PW = W * Q; const PH = H * Q; const px = new Uint8Array(PW * PH);
+  const eixo = eixoSuave(RIO_EIXO, 0.2);
+  eixo.forEach(([cx, cy, w], i) => {
+    const osc = 1 + 0.07 * Math.sin(i * 0.06) + 0.04 * Math.sin(i * 0.17 + 1.2);
+    desenharDisco(px, PW, PH, cx * Q, cy * Q, (w / 2) * Q * osc);
+  });
+  for (const lago of LAGOS) {
+    const pol = ampliar(lago, 1.2).map(([x, y]) => [x * Q, y * Q]);
+    const x0 = Math.max(0, Math.floor(Math.min(...pol.map((p) => p[0])) - 24)); const y0 = Math.max(0, Math.floor(Math.min(...pol.map((p) => p[1])) - 24));
+    const x1 = Math.min(PW, Math.ceil(Math.max(...pol.map((p) => p[0])) + 24)); const y1 = Math.min(PH, Math.ceil(Math.max(...pol.map((p) => p[1])) + 24));
+    const w = x1 - x0; const h = y1 - y0; const cru = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (dentroDoPoligono(x0 + x + 0.5, y0 + y + 0.5, pol)) cru[y * w + x] = 1;
+    const suave = borrar(borrar(cru, w, h, 10), w, h, 8);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const lim = 0.5 + 0.07 * Math.sin((x0 + x) * 0.07 + (y0 + y) * 0.05); if (suave[y * w + x] > lim) px[(y0 + y) * PW + x0 + x] = 1; }
+  }
+  return { px, PW, PH };
 }
 
 // Tira peças soltas (sem vizinho igual em pelo menos duas direções) para o autotile não ficar com pontas
@@ -107,9 +135,12 @@ function limpar(m, W = LARG, H = ALT) {
 
 // Tudo que o terreno precisa: águas, areia, mata, platô e paredes. Devolve máscaras de W x H (1 = sim).
 export function montarGeografia(W = LARG, H = ALT) {
-  const agua = mascaraRio(W, H);
-  for (const l of LAGOS) { const m = mascaraPoligono(ampliar(l, 1.35), W, H); for (let i = 0; i < m.length; i++) if (m[i]) agua[i] = 1; }
-  limpar(agua, W, H);
+  const { px, PW } = aguaEmPixels(W, H);
+  const agua = new Uint8Array(W * H); const aguaBloqueio = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let n = 0; for (let yy = 0; yy < Q; yy++) { const base = (y * Q + yy) * PW + x * Q; for (let xx = 0; xx < Q; xx++) n += px[base + xx]; }
+    const cob = n / (Q * Q); if (cob >= 0.5) agua[y * W + x] = 1; if (cob >= 0.12) aguaBloqueio[y * W + x] = 1;
+  }
   const areia = limpar(mascaraPoligono(DESERTO, W, H), W, H);
   const dentro = mascaraPoligono(LIMITE, W, H);
   const floresta = new Uint8Array(W * H);
@@ -119,5 +150,5 @@ export function montarGeografia(W = LARG, H = ALT) {
   const plato = mascaraPoligono(PLATO, W, H);
   const escarpa = new Uint8Array(W * H); for (const r of ESCARPAS) retangulo(escarpa, r, 1, W, H);
   const muralha = new Uint8Array(W * H); retangulo(muralha, MURALHA, 1, W, H);
-  return { W, H, agua, areia, floresta, plato, escarpa, muralha };
+  return { W, H, agua, aguaBloqueio, aguaPx: px, areia, floresta, plato, escarpa, muralha };
 }

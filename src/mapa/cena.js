@@ -67,7 +67,6 @@ class MapaCena extends Phaser.Scene {
     for (const n of Object.values(EMOTES)) this.load.image(`emote${n}`, `${b}emote/emote${n}.png`);
     const lpc = this.o.urls.lpc ?? b.replace(/na\/$/, 'lpc/');
     this.load.atlas('lpc', lpc + 'atlas.png', lpc + 'atlas.json');
-    this.load.image('escarpa', lpc + 'escarpa.png');
     carregarFazenda(this, lpc);
     this.load.spritesheet('galinhaL', lpc + 'bichos/galinha.png', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('gatoL', lpc + 'bichos/gato.png', { frameWidth: 32, frameHeight: 32 });
@@ -117,7 +116,7 @@ class MapaCena extends Phaser.Scene {
     this.lpc = { img: this.textures.get('lpc').getSourceImage(), quadros: this.quadrosLPC() };
     const naEstrada = new Set(); for (const e of planta.ESTRADAS) for (const i of pecasDaEstrada(e.pontos, W, H)) naEstrada.add(i);
     this.naEstradaSet = naEstrada;
-    const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { escarpa: this.textures.get('escarpa').getSourceImage() });
+    const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada);
     this.naAreia = chao.naAreia;
     this.textures.addCanvas('chaoLPC', chao.canvas);
     this.add.image(0, 0, 'chaoLPC').setOrigin(0).setScale(Q_ESCALA).setDepth(0);
