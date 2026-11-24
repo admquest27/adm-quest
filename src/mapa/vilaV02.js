@@ -30,11 +30,11 @@ export const INICIO = geo.ENTRADAS.m1f1;
 export const FASES = [
   { id: 'm1f1', arte: 'casaPartida', x: 8, y: 27, w: 3, h: 6, entrada: geo.ENTRADAS.m1f1 },
   { id: 'm1f2', arte: 'aviaoFase', x: 12, y: 10, w: 7, h: 4, entrada: geo.ENTRADAS.m1f2 },
-  { id: 'm1f3', arte: 'oficina', x: 33, y: 13, w: 3, h: 3, entrada: geo.ENTRADAS.m1f3 },
-  { id: 'm1f4', arte: 'celeiro', x: 54, y: 31, w: 6, h: 3, entrada: geo.ENTRADAS.m1f4 },
+  { id: 'm1f3', arte: 'oficinaV2', x: 33, y: 13, w: 3, h: 3, entrada: geo.ENTRADAS.m1f3 },
+  { id: 'm1f4', arte: 'celeiroV2', x: 54, y: 31, w: 6, h: 3, entrada: geo.ENTRADAS.m1f4 },
   { id: 'm1f5', arte: 'barraca', x: 75, y: 27, w: 3, h: 3, entrada: geo.ENTRADAS.m1f5 },
   { id: 'm1f6', arte: 'arvoreGrande', x: 78, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f6 },
-  { id: 'm1f7', arte: 'raioX', x: 66, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f7 },
+  { id: 'm1f7', arte: 'raioXV2', x: 66, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f7 },
   // castelo (castelo.js): 7 peças de largura, encostado na rocha das escarpas dos dois lados; o bloqueio vai até a escada (y 10 a 17)
   { id: 'm1chefao', arte: 'casteloProc', x: 51, y: 11, w: 7, h: 7, bloqueio: geo.CASTELO, entrada: geo.ENTRADAS.m1chefao },
 ];
