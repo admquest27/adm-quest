@@ -40,13 +40,21 @@ export const BOSQUE_SEPARADOR = [
 export const PLATO = [[41, 0], [88, 0], [88, 10], [84, 10.4], [78, 9.5], [72, 10.2], [66, 9.3], [60, 10], [49, 10], [45, 9.4], [41, 10.2]];
 // A escarpa não é uma linha reta: a borda de cima ondula (entra e sai até uns dois quadrados) e a parede tem altura própria.
 // Ela corre de x0 a x1 (em quadrados); onde toca o rio, a água manda e a pedra é cortada. No vão do castelo (49 a 60) fica a escada.
-export const ESCARPA_ALTURA = 4.2;
-export const ESCARPA_TRECHOS = [{ x0: 41, x1: 49 }, { x0: 60, x1: 88 }];
+export const ESCARPA_ALTURA = 4.8;
+// O castelo ocupa x 51 a 57. Perto dele a rocha desce até o chão do castelo (a parede cresce), então não sobra vão de grama.
+export const ESCARPA_TRECHOS = [{ x0: 41, x1: 51 }, { x0: 58, x1: 88 }];
+export const ESCARPA_CASTELO = { esq: 51, dir: 58, extra: 4.6, rampa: 3.2 };
+// Altura extra da parede (em quadrados) na coluna x: cresce suavemente ao se aproximar do castelo
+export const alturaExtraEscarpa = (x) => {
+  const k = ESCARPA_CASTELO;
+  const t = x < k.esq ? (x - (k.esq - k.rampa)) / k.rampa : x >= k.dir ? (k.dir + k.rampa - x) / k.rampa : 0;
+  const u = Math.max(0, Math.min(1, t)); return k.extra * u * u * (3 - 2 * u);
+};
 export const bordaEscarpa = (x) => 8 + 0.85 * Math.sin(x * 0.31 + 0.4) + 0.5 * Math.sin(x * 0.83 + 2.1) + 0.25 * Math.sin(x * 1.9);
 export const MURALHA = { x: 41, y: 4, w: 47, h: 1 };
-export const ESCADA = { x: 53, y: 6, w: 3, h: 4 };
+export const ESCADA = { x: 53, y: 6, w: 3, h: 6 };
 // Castelo (o corpo de pedra que fecha a única subida) e portão do Mundo 2 na muralha
-export const CASTELO = { x: 49, y: 10, w: 11, h: 8 }; // o corpo (y 12 a 17) mais o trecho coberto pelas alas, até a escada
+export const CASTELO = { x: 51, y: 10, w: 7, h: 8 }; // o corpo do castelo, de x 51 a 57, de y 10 (pé da escada) a 17
 export const PORTAO = { x: 51, y: 3, w: 6, h: 3, entrada: [54, 7] };
 
 // ---------- máscaras ----------
@@ -155,7 +163,8 @@ export function montarGeografia(W = LARG, H = ALT) {
   const escarpa = new Uint8Array(W * H);
   for (const tr of ESCARPA_TRECHOS) for (let x = tr.x0; x < Math.min(W, tr.x1); x++) {
     const topo = bordaEscarpa(x + 0.5);
-    for (let y = 0; y < H; y++) if (y + 0.5 >= topo && y + 0.5 <= topo + ESCARPA_ALTURA) escarpa[y * W + x] = 1;
+    const fundo = topo + ESCARPA_ALTURA + alturaExtraEscarpa(x + 0.5);
+    for (let y = 0; y < H; y++) if (y + 0.5 >= topo && y + 0.5 <= fundo) escarpa[y * W + x] = 1;
   }
   const muralha = new Uint8Array(W * H); retangulo(muralha, MURALHA, 1, W, H);
   return { W, H, agua, aguaBloqueio, aguaPx: px, areia, floresta, plato, escarpa, muralha };
@@ -176,7 +185,7 @@ export const ROTA = [
   { para: 'm1f7', pontos: [[79, 18], [73, 18], [67, 18]] },
   { para: 'm1chefao', pontos: [[67, 18], [62, 18], [57, 18], [54, 18]] },
   // a estrada para no pé da escada (a escada é o caminho dali em diante); a saída para o Mundo 2 vem depois do portão
-  { para: 'mundo2', pontos: [[54, 18], [54, 15], [54, 12], [54, 10], [54, 9]] },
+  { para: 'mundo2', pontos: [[54, 18], [54, 17.4]] },
 ];
 // Três terrenos vazios para fases extras, com acesso por uma trilha curta
 export const LOTES = [

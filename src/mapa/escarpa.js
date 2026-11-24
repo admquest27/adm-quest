@@ -2,7 +2,7 @@
 // canvas do chão. A escarpa é arte original do projeto: um penhasco de colunas de rocha com a borda ondulada, luz vinda
 // da esquerda, capa de grama, musgo, raízes, pedregulhos no pé e sombra grande no chão. Onde toca o rio, a água manda.
 // A muralha usa o tijolo do castelo (theidiotmachine, CC-BY-SA 3.0) com ameias recortadas.
-import { Q, ESCARPA_TRECHOS, ESCARPA_ALTURA, bordaEscarpa } from './geografia.js';
+import { Q, ESCARPA_TRECHOS, ESCARPA_ALTURA, bordaEscarpa, alturaExtraEscarpa } from './geografia.js';
 import { semente2 } from './grade.js';
 
 const hash = (x, y) => semente2(x * 1.7 + 11, y * 2.3 + 5);
@@ -21,7 +21,7 @@ function desenharTrecho(g, t, tr) {
   const PWm = t.W * Q; const agua = t.aguaPx;
   const xa = tr.x0 * Q; const xb = Math.min(t.W, tr.x1) * Q; const PW = xb - xa;
   let minTopo = 1e9; let maxFundo = 0;
-  for (let x = xa; x < xb; x++) { const tp = topoPx(x); minTopo = Math.min(minTopo, tp); maxFundo = Math.max(maxFundo, tp + ESCARPA_ALTURA * Q); }
+  for (let x = xa; x < xb; x++) { const tp = topoPx(x); minTopo = Math.min(minTopo, tp); maxFundo = Math.max(maxFundo, tp + (ESCARPA_ALTURA + alturaExtraEscarpa(x / Q)) * Q); }
   const Y0 = Math.floor(minTopo) - 16; const PH = Math.ceil(maxFundo) + 30 - Y0;
   const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH; const gc = cv.getContext('2d');
   const img = gc.createImageData(PW, PH); const o = img.data;
@@ -38,7 +38,7 @@ function desenharTrecho(g, t, tr) {
   for (let x = 0; x < PW; x++) {
     const lip = topoPx(xa + x) - Y0; tops[x] = lip;
     const col = colunas[colDe[x]]; const dx = x - col.x0;
-    const pe = lip + ESCARPA_ALTURA * Q - 14 - col.recuo * 0.6 + Math.round(ruido(x, 13, 8) * 4); fundos[x] = pe;
+    const pe = lip + (ESCARPA_ALTURA + alturaExtraEscarpa((xa + x) / Q)) * Q - 14 - col.recuo * 0.6 + Math.round(ruido(x, 13, 8) * 4); fundos[x] = pe;
     const alt = Math.max(1, pe - lip);
     // capa de grama que sobra por cima da parede, com tufos pendurados e um fio de luz no alto
     for (let y = Math.floor(lip) - 8; y < Math.floor(lip) + (hash(x >> 1, 77) < 0.28 ? 3 : 0); y++) {
@@ -50,10 +50,10 @@ function desenharTrecho(g, t, tr) {
       let k;
       if (dx === 0) k = 0.5; else if (dx === 1) k = 1.24; else if (dx === 2) k = 1.1; else if (dx >= col.w - 3) k = 0.72; else k = 1 - 0.2 * (dx / col.w);
       const prof = (y - lip) / alt;
-      k *= 1 - 0.38 * prof * prof - 0.07 * prof; if (y - lip < 6) k *= 0.58 + 0.07 * (y - lip);
+      k *= 1.14 - 0.62 * Math.pow(prof, 1.25); if (y - lip < 6) k *= 0.6 + 0.067 * (y - lip);
       for (const q of col.quebras) { const yq = Math.floor(lip + q * alt) + col.folga; if (y === yq && dx > 0 && dx < col.w - 1) k *= 0.48; else if (y === yq + 1 && dx > 1) k *= 1.18; }
       const r = hash(x, y); if (r < 0.014) k *= 1.15; else if (r > 0.99) k *= 0.86;
-      pintar(x, y, lum(col.tom, k));
+      const fria = Math.max(0, prof - 0.35) * 0.5; pintar(x, y, [Math.min(255, Math.round(col.tom[0] * k * (1 - fria * 0.5))), Math.min(255, Math.round(col.tom[1] * k * (1 - fria * 0.2))), Math.min(255, Math.round(col.tom[2] * k * (1 + fria * 0.35)))]);
     }
     // musgo em manchas, nos trechos mais úmidos (perto do pé)
     if (hash(x >> 2, 91) < 0.34) { const my = Math.floor(lip + (0.45 + hash(x >> 2, 92) * 0.4) * alt); for (let d = 0; d < 3 + Math.floor(hash(x, 93) * 4); d++) pintar(x, my + d, MUSGO, d === 0 ? 150 : 210); }
@@ -86,9 +86,10 @@ function desenharTrecho(g, t, tr) {
   for (let x = 0; x < PW; x++) {
     if (agua && agua[Math.floor(fundos[x] + Y0 + 8) * PWm + xa + x]) continue;
     const pe = Math.floor(fundos[x] + Y0);
-    g.fillStyle = 'rgba(15,12,30,0.32)'; g.fillRect(xa + x, pe + 5, 1, 6);
-    g.fillStyle = 'rgba(15,12,30,0.18)'; g.fillRect(xa + x, pe + 11, 1, 7);
-    g.fillStyle = 'rgba(15,12,30,0.08)'; g.fillRect(xa + x, pe + 18, 1, 8);
+    g.fillStyle = 'rgba(15,12,30,0.40)'; g.fillRect(xa + x, pe + 5, 1, 8);
+    g.fillStyle = 'rgba(15,12,30,0.26)'; g.fillRect(xa + x, pe + 13, 1, 9);
+    g.fillStyle = 'rgba(15,12,30,0.13)'; g.fillRect(xa + x, pe + 22, 1, 10);
+    g.fillStyle = 'rgba(15,12,30,0.05)'; g.fillRect(xa + x, pe + 32, 1, 8);
     const topo = Math.floor(tops[x] + Y0); const ini = 5 * Q;
     if (topo > ini) { g.fillStyle = 'rgba(255,244,190,0.045)'; g.fillRect(xa + x, ini, 1, topo - ini - 8); }
   }

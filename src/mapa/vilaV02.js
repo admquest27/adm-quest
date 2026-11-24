@@ -13,7 +13,7 @@ export const PONTE = geo.PONTE;
 export const ESCADA = geo.ESCADA;
 export const CASTELO = geo.CASTELO;
 export const PORTAO = geo.PORTAO;
-export const CASTELO_QUADROS = ['castelo-largo', 'castelo-largo-ruinas'];
+export const CASTELO_PROC = true; // o castelo é desenhado por castelo.js (com volume), não vem do atlas
 export const FLORESTA = [];
 export const MUROS = [];
 export const LAGOS = [];
@@ -35,8 +35,8 @@ export const FASES = [
   { id: 'm1f5', arte: 'barraca', x: 75, y: 27, w: 3, h: 3, entrada: geo.ENTRADAS.m1f5 },
   { id: 'm1f6', arte: 'arvoreGrande', x: 78, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f6 },
   { id: 'm1f7', arte: 'raioX', x: 66, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f7 },
-  // castelo: 11 peças de largura fecham o vão entre as escarpas; o bloqueio vai até a escada (y 10 a 17)
-  { id: 'm1chefao', arte: 'casteloLargo', x: 49, y: 12, w: 11, h: 6, bloqueio: geo.CASTELO, entrada: geo.ENTRADAS.m1chefao },
+  // castelo (castelo.js): 7 peças de largura, encostado na rocha das escarpas dos dois lados; o bloqueio vai até a escada (y 10 a 17)
+  { id: 'm1chefao', arte: 'casteloProc', x: 51, y: 11, w: 7, h: 7, bloqueio: geo.CASTELO, entrada: geo.ENTRADAS.m1chefao },
 ];
 
 // Enfeites. A ordem das casas define os textos (casas[i]): Dona Planilha, Seu Prazo, Juninho, Lojinha, Templo Antigo,
@@ -48,7 +48,7 @@ export const ENFEITES = [
   // árvores soltas
   ['arvoreRedonda', 21, 19], ['arvoreClara', 35, 26], ['arvoreRosa', 35, 31], ['arvoreRedonda', 4, 31], ['pinheiro', 28, 41], ['arvoreClara', 4, 21],
   ['arvoreRedonda', 46, 29], ['arvoreClara', 62, 29], ['arvoreRosa', 66, 37], ['pinheiro', 72, 33], ['arvoreRedonda', 70, 41], ['arvoreClara', 82, 33],
-  ['arvoreRosa', 60, 12], ['arvoreRedonda', 73, 24], ['arvoreClara', 47, 31],
+  ['arvoreRosa', 63, 19], ['arvoreRedonda', 73, 24], ['arvoreClara', 47, 31],
   // plantação da fazenda
   ...campo(60, 39, 8, 4),
   // flores e plantas

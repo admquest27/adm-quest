@@ -8,6 +8,7 @@ let planta = plantaPadrao;
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
 import { todasAsTexturas, iconesBarra } from './texturas.js';
 import { FOLHAS, ANIMADOS, PESSOAS, RECORTES, DIRECOES, LINHAS, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
+import { desenharCastelo } from './castelo.js';
 import { desenharChao, desenharEstradas, pecasDaEstrada } from './chao.js';
 import { MORADORES } from './moradores.js';
 import { carregarFazenda, criarFazenda, moverFazenda, conversarVaca, criarLotes } from './fazenda.js';
@@ -193,6 +194,7 @@ class MapaCena extends Phaser.Scene {
     this.time.addEvent({ delay: 3800, loop: true, callback: () => this.peixePula() });
 
     this.fases ??= {}; this.objetos ??= {};
+    if (planta.CASTELO_PROC && !this.textures.exists('castelo-v02')) { this.textures.addCanvas('castelo-v02', desenharCastelo(false)); this.textures.addCanvas('castelo-v02-ruinas', desenharCastelo(true)); }
     if (!planta.SO_TERRENO) { // etapa 1 da V02: só o terreno; fases, objetos e gente voltam nas etapas seguintes
       this.criarFases();
       this.criarObjetos();
@@ -327,7 +329,9 @@ class MapaCena extends Phaser.Scene {
       if (f.extra) for (let yy = f.y; yy < f.y + f.h; yy++) for (let xx = f.x; xx < f.x + f.w; xx++) this.t.passa[yy * this.t.W + xx] = 0;
       const cx = f.x * P + (f.w * P) / 2; const by = (f.y + f.h) * P;
       const lpcF = LPC_PECAS[f.arte];
-      const img = lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
+      const proc = f.arte === 'casteloProc';
+      if (proc) this.add.ellipse(cx, by - 2, f.w * P * 0.92, 12, 0x0f0c1e, 0.3).setDepth(3.5);
+      const img = proc ? this.add.image(cx, by, 'castelo-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
       img.setDepth(100 + by);
       if (lpcF?.quadro.startsWith('casa-palha')) (this.casasLPC ??= []).push({ img, quadro: lpcF.quadro });
       const [nx, ny] = centro(f.entrada);
@@ -344,7 +348,7 @@ class MapaCena extends Phaser.Scene {
     let qf = 0; this.time.addEvent({ delay: 120, loop: true, callback: () => { qf = (qf + 1) % 5; fog.setFrame('fogueira-' + qf); } });
     this.add.image(bc.left - 20, bc.bottom + 2, 'acampamento', 'toras').setDepth(100 + bc.bottom + 2);
     const cast = fx('m1chefao');
-    this.bandeirasCastelo = [-32, 32].map((dx) => this.add.sprite(cast.img.x + dx, cast.img.y - 80, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 }));
+    if (!planta.CASTELO_PROC) this.bandeirasCastelo = [-32, 32].map((dx) => this.add.sprite(cast.img.x + dx, cast.img.y - 80, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 }));
     }
     this.aplicarEstados(this.o.estados ?? {}, this.o.concluidas ?? []);
   }
@@ -353,8 +357,8 @@ class MapaCena extends Phaser.Scene {
   ruirCastelo(ruina) {
     const cf = this.fases?.m1chefao; if (!cf || this.castelaRuina === ruina) return;
     this.castelaRuina = ruina;
-    const [inteiro, ruinas] = planta.CASTELO_QUADROS ?? ['castelo', 'castelo-ruinas'];
-    cf.img.setFrame(ruina ? ruinas : inteiro);
+    if (planta.CASTELO_PROC) cf.img.setTexture(ruina ? 'castelo-v02-ruinas' : 'castelo-v02');
+    else { const [inteiro, ruinas] = planta.CASTELO_QUADROS ?? ['castelo', 'castelo-ruinas']; cf.img.setFrame(ruina ? ruinas : inteiro); }
     this.bandeirasCastelo?.forEach((b) => b.setVisible(!ruina));
     const pr = this.predios?.find((p) => p.img === cf.img); if (pr) pr.off = ruina;
     const d = cf.def.bloqueio ?? cf.def; const { W, passa } = this.t;
