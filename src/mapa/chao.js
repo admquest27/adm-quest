@@ -4,6 +4,7 @@
 import { semente2 } from './grade.js';
 import { desenharAguas } from './agua.js';
 import { desenharEscarpas, desenharEscada } from './escarpa.js';
+import { desenharCalcamento } from './calcamento.js';
 
 export const Q = 32; // pixels da arte por peça da planta
 
@@ -77,7 +78,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
     if (((x + 0.5 - d.cx) / (d.rx * r)) ** 2 + ((y + 0.5 - d.cy) / (d.ry * r)) ** 2 < 1) naAreia[y * W + x] = 1;
   }
   const pr = planta.PRACA; const naPraca = new Uint8Array(W * H);
-  if (pr) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  if (pr && !planta.TRILHAS) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const a = Math.atan2(y + 0.5 - pr.cy, x + 0.5 - pr.cx); const r = 1 + 0.07 * Math.sin(a * 3 + 1) + 0.05 * Math.sin(a * 5 + 2);
     if (((x + 0.5 - pr.cx) / (pr.rx * r)) ** 2 + ((y + 0.5 - pr.cy) / (pr.ry * r)) ** 2 < 1 && !t.agua[y * W + x]) naPraca[y * W + x] = 1;
   }
@@ -93,6 +94,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
     if (naAreia[i]) autotile(g, img, areia, temAreia, x, y, 0, 0, Math.floor(s * 7) % 2);
     if (t.agua[i] && !t.aguaPx) autotile(g, img, agua, temAgua, x, y, 0, 0, Math.floor(s * 11) % 3);
   }
+  if (planta.TRILHAS) desenharCalcamento(g, t, planta, Q);
   if (t.aguaPx) desenharAguas(g, t);
   if (t.escarpa) desenharEscarpas(g, t, extras.rochas);
     if (planta.ESCADA) desenharEscada(g, planta.ESCADA);

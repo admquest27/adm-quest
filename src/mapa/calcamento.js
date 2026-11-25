@@ -1,0 +1,69 @@
+// Chão da vila: calçamento de pedras irregulares com bordas orgânicas (praça e caminhos), canteiros, sebes e bancos.
+// Arte do projeto, desenhada direto no canvas do chão. Q é o tamanho de um quadrado em pixels.
+const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
+const PEDRAS = [[194, 181, 157], [187, 174, 152], [199, 187, 163], [182, 170, 150]];
+
+export function desenharCalcamento(g, t, planta, Q) {
+  const W = t.W * Q; const H = t.H * Q;
+  const m = document.createElement('canvas'); m.width = W; m.height = H; const gm = m.getContext('2d');
+  gm.fillStyle = gm.strokeStyle = '#000'; gm.lineCap = 'round'; gm.lineJoin = 'round';
+  // praça: elipse de borda levemente irregular
+  const pr = planta.PRACA; gm.beginPath();
+  for (let k = 0; k <= 90; k++) { const a = (k / 90) * Math.PI * 2; const r = 1 + 0.035 * Math.sin(a * 5 + 1) + 0.025 * Math.sin(a * 9 + 2); const x = (pr.cx + Math.cos(a) * pr.rx * r) * Q; const y = (pr.cy + Math.sin(a) * pr.ry * r) * Q; if (k) gm.lineTo(x, y); else gm.moveTo(x, y); }
+  gm.fill();
+  for (const [cx, cy, rx, ry] of planta.PATIOS ?? []) { gm.beginPath(); gm.ellipse(cx * Q, cy * Q, rx * Q, ry * Q, 0, 0, Math.PI * 2); gm.fill(); }
+  for (const pts of planta.TRILHAS ?? []) {
+    gm.lineWidth = 2.2 * Q; gm.beginPath(); gm.moveTo(pts[0][0] * Q, pts[0][1] * Q);
+    for (let i = 1; i < pts.length - 1; i++) gm.quadraticCurveTo(pts[i][0] * Q, pts[i][1] * Q, ((pts[i][0] + pts[i + 1][0]) / 2) * Q, ((pts[i][1] + pts[i + 1][1]) / 2) * Q);
+    const u = pts[pts.length - 1]; gm.lineTo(u[0] * Q, u[1] * Q); gm.stroke();
+  }
+  const a = gm.getImageData(0, 0, W, H).data;
+  const dentro = (x, y) => x >= 0 && y >= 0 && x < W && y < H && a[(y * W + x) * 4 + 3] > 127;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const gc = cv.getContext('2d');
+  const img = gc.createImageData(W, H); const o = img.data;
+  const C = 15; // tamanho médio de uma pedra
+  const centro = (i, j) => [(i + 0.15 + 0.7 * hash(i, j)) * C + (j % 2) * C * 0.5, (j + 0.15 + 0.7 * hash(j + 7, i)) * C * 0.82];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!dentro(x, y)) continue;
+    const j0 = Math.floor(y / (C * 0.82)); let d1 = 1e9, d2 = 1e9, quem = 0, px = 0, py = 0;
+    for (let j = j0 - 1; j <= j0 + 1; j++) { const i0 = Math.floor((x - (j % 2) * C * 0.5) / C); for (let i = i0 - 1; i <= i0 + 1; i++) { const [cx, cy] = centro(i, j); const d = Math.hypot(x - cx, (y - cy) * 1.2); if (d < d1) { d2 = d1; d1 = d; quem = hash(i * 3, j * 5); px = cx; py = cy; } else if (d < d2) d2 = d; } }
+    let c = PEDRAS[Math.floor(quem * PEDRAS.length)]; let k = 1;
+    if (d2 - d1 < 1.6) c = [152, 138, 118]; else { if (x - px + (y - py) < -5) k = 1.06; else if (x - px + (y - py) > 6) k = 0.94; }
+    // aro de pedras escuras em volta da praça e dos caminhos, com mato nas frestas da beirada
+    const borda = !dentro(x - 5, y) || !dentro(x + 5, y) || !dentro(x, y - 5) || !dentro(x, y + 5);
+    if (borda) { k *= 0.78; if (!dentro(x - 2, y) || !dentro(x + 2, y) || !dentro(x, y - 2) || !dentro(x, y + 2)) c = hash(x >> 1, y >> 1) < 0.35 ? [61, 143, 58] : [96, 86, 80]; }
+    const p = (y * W + x) * 4; o[p] = Math.min(255, c[0] * k); o[p + 1] = Math.min(255, c[1] * k); o[p + 2] = Math.min(255, c[2] * k); o[p + 3] = 255;
+  }
+  gc.putImageData(img, 0, 0); g.drawImage(cv, 0, 0);
+  const r = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
+  // rosácea em volta da fonte
+  g.strokeStyle = 'rgba(122,72,60,0.55)'; for (const [k, l] of [[0.34, 5], [0.62, 3]]) { g.lineWidth = l; g.beginPath(); g.ellipse(pr.cx * Q, pr.cy * Q, pr.rx * k * Q, pr.ry * k * Q, 0, 0, Math.PI * 2); g.stroke(); }
+  // tanque de pedra em volta da fonte
+  const fo = planta.TANQUE; if (fo) {
+    const [tx, ty, rx, ry] = fo; const el = (cor, k, dy = 0) => { g.fillStyle = cor; g.beginPath(); g.ellipse(tx * Q, ty * Q + dy, rx * Q - k, ry * Q - k * 0.7, 0, 0, Math.PI * 2); g.fill(); };
+    el('rgba(15,12,30,0.3)', -4, 8); el('#3a3244', -2, 3); el('#a89d89', 0, 3); el('#ded4bd', 1, -3); el('#8a8070', 9, -3); el('#1c6d98', 11, -2); el('#2c96c2', 15, 1);
+    for (let i = 0; i < 40; i++) r(i % 3 ? '#8fdcee' : '#e8fbff', tx * Q + Math.cos(i * 2.4) * (rx * Q - 22) * hash(i, 3), ty * Q + Math.sin(i * 2.4) * (ry * Q - 18) * hash(i, 4), 5, 2);
+    for (let a = 0; a < 16; a++) r('#8a8070', tx * Q + Math.cos((a / 16) * Math.PI * 2) * (rx * Q - 5), ty * Q - 4 + Math.sin((a / 16) * Math.PI * 2) * (ry * Q - 4), 2, 6);
+  }
+  // jardim [x, y, raioX, raioY]: gramado mais claro, anel de flores aberto na entrada e sebe baixa em arco
+  const jd = planta.JARDIM; if (jd) {
+    const [jx, jy, rx, ry, entrada] = jd; const pt = (a, k) => [jx * Q + Math.cos(a) * rx * k * Q, jy * Q + Math.sin(a) * ry * k * Q];
+    const aberto = (a) => Math.abs(Math.atan2(Math.sin(a - entrada), Math.cos(a - entrada))) < 0.5;
+    for (let a = 0; a < Math.PI * 2; a += 0.055) { if (aberto(a)) continue; const [x, y] = pt(a, 1.12); r('rgba(10,25,10,0.3)', x - 6, y + 4, 16, 6); r('#14401c', x - 8, y - 9, 17, 15); r('#2c7a31', x - 6, y - 8, 13, 11); for (let i = 0; i < 4; i++) r(i % 2 ? '#55a844' : '#1f5c28', x - 6 + hash(a * 50, i) * 11, y - 8 + hash(i, a * 50) * 10, 3, 3); }
+    for (let i = 0; i < 260; i++) { const a = hash(i, 11) * Math.PI * 2; if (aberto(a)) continue; const [x, y] = pt(a, 0.68 + hash(i, 12) * 0.3); const grupo = Math.floor(((a + 6.3) * 2.2) % 5); r('#2c7a31', x - 2, y + 2, 8, 5); r(['#e8588a', '#ffd23c', '#fff3c4', '#9a6cf0', '#ff7a4a'][grupo], x, y, 5, 5); r('#fff8dc', x + 1, y + 1, 2, 2); }
+  }
+  // sebes [x, y, comprimento]
+  for (const [x, y, w] of planta.SEBES ?? []) { const x0 = x * Q; const y0 = y * Q; r('rgba(10,25,10,0.3)', x0 + 4, y0 + 8, w * Q, 8); r('#14401c', x0, y0 - 14, w * Q, 26); r('#2c7a31', x0 + 2, y0 - 12, w * Q - 4, 21); for (let i = 0; i < w * 26; i++) r(hash(i, x) < 0.5 ? '#55a844' : '#1f5c28', x0 + 3 + hash(i, y) * (w * Q - 8), y0 - 12 + hash(y, i) * 19, 3, 3); }
+  // canteiros [x, y, largura] com borda de madeira e flores
+  for (const [x, y, w] of planta.CANTEIROS ?? []) {
+    const x0 = x * Q; const y0 = y * Q; const lw = w * Q;
+    r('rgba(10,25,10,0.3)', x0 + 4, y0 + 8, lw, 10); r('#3a2210', x0, y0 - 8, lw, 22); r('#8a5a2e', x0 + 2, y0 - 6, lw - 4, 18); r('#4a2c16', x0 + 4, y0 - 4, lw - 8, 12);
+    for (let i = 0; i < w * 11; i++) { const fx = x0 + 5 + hash(i, x + y) * (lw - 14); const fy = y0 - 10 + hash(x - i, y) * 15; r('#2c7a31', fx - 1, fy + 3, 8, 5); r(['#e8588a', '#ffd23c', '#fff3c4', '#9a6cf0', '#ff7a4a'][(i + x) % 5], fx, fy, 6, 5); r('#fff8dc', fx + 2, fy + 1, 2, 2); }
+  }
+  // bancos de praça [x, y]
+  for (const [x, y] of planta.BANCOS ?? []) {
+    const x0 = x * Q; const y0 = y * Q;
+    r('rgba(10,15,30,0.3)', x0 + 3, y0 + 6, 44, 6); for (const px of [x0 + 2, x0 + 38]) r('#2b2538', px, y0 - 4, 4, 14);
+    for (const [yy, h] of [[-20, 6], [-12, 6], [-3, 7]]) { r('#3a2210', x0, y0 + yy - 1, 44, h + 2); r('#a8743f', x0 + 1, y0 + yy, 42, h); r('#d0a064', x0 + 1, y0 + yy, 42, 2); }
+  }
+}
