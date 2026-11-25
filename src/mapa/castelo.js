@@ -14,7 +14,7 @@ const VERMELHO = '#c22d40'; const VERMELHO_ESC = '#7c1a28'; const OURO = '#efc54
 const BASE = CASTELO_H - 12;
 
 export function desenharCastelo(ruina = false, tijolo = null) {
-  const cv = document.createElement('canvas'); cv.width = CASTELO_W; cv.height = CASTELO_H; const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  const cv = document.createElement('canvas'); cv.width = CASTELO_W; cv.height = CASTELO_H; const g = cv.getContext('2d', { willReadFrequently: true }); g.imageSmoothingEnabled = false;
   const r = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 
   // parede de tijolo dentro de um recorte, com um tom por cima

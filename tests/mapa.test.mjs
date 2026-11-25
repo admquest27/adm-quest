@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as planta from '../src/mapa/vila.js';
+import * as planta from '../src/mapa/vilaBase.js';
 import { montarTerreno, caminho, livreMaisPerto, pecaBloco, conferirSequencia, SEQUENCIA } from '../src/mapa/grade.js';
 
 const t = montarTerreno(planta);

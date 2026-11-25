@@ -2,9 +2,9 @@
 // A geografia (rio, lagos, platô, escarpas, muralha) e a rota ficam em geografia.js; aqui estão as construções,
 // os objetos (com os 12 segredos), a fazenda, a praça e os personagens, todos nos lugares da planta.
 // Convenção das fases: (x, y) é o canto de cima à esquerda; a entrada fica logo abaixo da construção (y + h).
-export * from './vila.js?real';
+export * from './vilaBase.js';
 import * as geo from './geografia.js';
-import { suavizar, enfeite, campo } from './vila.js?real';
+import { suavizar, enfeite, campo } from './vilaBase.js';
 
 export const LARG = geo.LARG;
 export const ALT = geo.ALT;

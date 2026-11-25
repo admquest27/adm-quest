@@ -8,7 +8,7 @@ import { desenharCalcamento } from './calcamento.js';
 
 export const Q = 32; // pixels da arte por peça da planta
 
-function tela(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; return [c, g]; }
+function tela(w, h, leitura = false) { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', leitura ? { willReadFrequently: true } : undefined); g.imageSmoothingEnabled = false; return [c, g]; }
 
 // Bloco de terreno (96x192): no alto, os cantos de dentro; no meio, a borda 3x3; embaixo, três miolos.
 function autotile(g, img, b, tem, x, y, ox, oy, variante) {
@@ -112,7 +112,7 @@ export function desenharEstradas(segmentos, t, largura = 46, semTerra = [], text
     const pts = pontos.map(([x, y]) => [(x + 0.5) * Q, (y + 0.5) * Q]);
     const R = largura / 2 + 2; const bx0 = Math.max(0, Math.floor(Math.min(...pts.map((q) => q[0])) - R)); const by0 = Math.max(0, Math.floor(Math.min(...pts.map((q) => q[1])) - R));
     const bx1 = Math.min(PW, Math.ceil(Math.max(...pts.map((q) => q[0])) + R)); const by1 = Math.min(PH, Math.ceil(Math.max(...pts.map((q) => q[1])) + R));
-    const bw = bx1 - bx0; const bh = by1 - by0; const [, gm] = tela(bw, bh); gm.fillStyle = '#000';
+    const bw = bx1 - bx0; const bh = by1 - by0; const [, gm] = tela(bw, bh, true); gm.fillStyle = '#000';
     // refaz o traçado em passos de 3 px, com a largura variando de leve (estrada de verdade não é um tubo)
     let k = 0;
     for (let i = 0; i < pts.length - 1; i++) {
@@ -141,6 +141,8 @@ export function desenharEstradas(segmentos, t, largura = 46, semTerra = [], text
   const box = segmentos.map(() => [PW, PH, -1, -1]); const cor = new Array(N); const dn = new Int8Array(N).fill(-1);
   for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) {
     const i = y * PW + x; let c = null; let o = dono[i];
+    // longe de qualquer estrada não há nada a pintar
+    if (o < 0 && !(x > 0 && dono[i - 1] >= 0) && !(x < PW - 1 && dono[i + 1] >= 0) && !(y > 0 && dono[i - PW] >= 0) && !(y < PH - 1 && dono[i + PW] >= 0)) continue;
     if (o >= 0) {
       const dd = dist[i]; const r = hash(x >> 1, y >> 1);
       // luz vinda de cima: a borda de cima é mais clara, a de baixo mais escura

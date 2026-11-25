@@ -4,8 +4,11 @@ const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.54
 const PEDRAS = [[194, 181, 157], [187, 174, 152], [199, 187, 163], [182, 170, 150]];
 
 export function desenharCalcamento(g, t, planta, Q) {
-  const W = t.W * Q; const H = t.H * Q;
-  const m = document.createElement('canvas'); m.width = W; m.height = H; const gm = m.getContext('2d');
+  // retângulo (em pixels) que contém praça, pátios e caminhos, com folga
+  const pts0 = [...(planta.TRILHAS ?? []).flat(), [planta.PRACA.cx - planta.PRACA.rx, planta.PRACA.cy - planta.PRACA.ry], [planta.PRACA.cx + planta.PRACA.rx, planta.PRACA.cy + planta.PRACA.ry], ...(planta.PATIOS ?? []).flatMap(([x, y, rx, ry]) => [[x - rx, y - ry], [x + rx, y + ry]])];
+  const X0 = Math.max(0, Math.floor((Math.min(...pts0.map((p) => p[0])) - 2) * Q)); const Y0 = Math.max(0, Math.floor((Math.min(...pts0.map((p) => p[1])) - 2) * Q));
+  const W = Math.min(t.W * Q, Math.ceil((Math.max(...pts0.map((p) => p[0])) + 2) * Q)) - X0; const H = Math.min(t.H * Q, Math.ceil((Math.max(...pts0.map((p) => p[1])) + 2) * Q)) - Y0;
+  const m = document.createElement('canvas'); m.width = W; m.height = H; const gm = m.getContext('2d', { willReadFrequently: true }); gm.translate(-X0, -Y0);
   gm.fillStyle = gm.strokeStyle = '#000'; gm.lineCap = 'round'; gm.lineJoin = 'round';
   // praça: elipse de borda levemente irregular
   const pr = planta.PRACA; gm.beginPath();
@@ -18,23 +21,25 @@ export function desenharCalcamento(g, t, planta, Q) {
     const u = pts[pts.length - 1]; gm.lineTo(u[0] * Q, u[1] * Q); gm.stroke();
   }
   const a = gm.getImageData(0, 0, W, H).data;
-  const dentro = (x, y) => x >= 0 && y >= 0 && x < W && y < H && a[(y * W + x) * 4 + 3] > 127;
+  const dentro = (x, y) => { const lx = x - X0; const ly = y - Y0; return lx >= 0 && ly >= 0 && lx < W && ly < H && a[(ly * W + lx) * 4 + 3] > 127; };
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const gc = cv.getContext('2d');
   const img = gc.createImageData(W, H); const o = img.data;
   const C = 15; // tamanho médio de uma pedra
-  const centro = (i, j) => [(i + 0.15 + 0.7 * hash(i, j)) * C + (j % 2) * C * 0.5, (j + 0.15 + 0.7 * hash(j + 7, i)) * C * 0.82];
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (!dentro(x, y)) continue;
+  // os centros das pedras são calculados uma vez e guardados
+  const guardados = new Map();
+  const centro = (i, j) => { const k = i * 4096 + j; let v = guardados.get(k); if (!v) { v = [(i + 0.15 + 0.7 * hash(i, j)) * C + (j % 2) * C * 0.5, (j + 0.15 + 0.7 * hash(j + 7, i)) * C * 0.82, hash(i * 3, j * 5)]; guardados.set(k, v); } return v; };
+  for (let y = Y0; y < Y0 + H; y++) for (let x = X0; x < X0 + W; x++) {
+    if (a[((y - Y0) * W + x - X0) * 4 + 3] <= 127) continue;
     const j0 = Math.floor(y / (C * 0.82)); let d1 = 1e9, d2 = 1e9, quem = 0, px = 0, py = 0;
-    for (let j = j0 - 1; j <= j0 + 1; j++) { const i0 = Math.floor((x - (j % 2) * C * 0.5) / C); for (let i = i0 - 1; i <= i0 + 1; i++) { const [cx, cy] = centro(i, j); const d = Math.hypot(x - cx, (y - cy) * 1.2); if (d < d1) { d2 = d1; d1 = d; quem = hash(i * 3, j * 5); px = cx; py = cy; } else if (d < d2) d2 = d; } }
+    for (let j = j0 - 1; j <= j0 + 1; j++) { const i0 = Math.floor((x - (j % 2) * C * 0.5) / C); for (let i = i0 - 1; i <= i0 + 1; i++) { const [cx, cy, h] = centro(i, j); const ex = x - cx; const ey = (y - cy) * 1.2; const d = Math.sqrt(ex * ex + ey * ey); if (d < d1) { d2 = d1; d1 = d; quem = h; px = cx; py = cy; } else if (d < d2) d2 = d; } }
     let c = PEDRAS[Math.floor(quem * PEDRAS.length)]; let k = 1;
     if (d2 - d1 < 1.6) c = [152, 138, 118]; else { if (x - px + (y - py) < -5) k = 1.06; else if (x - px + (y - py) > 6) k = 0.94; }
     // aro de pedras escuras em volta da praça e dos caminhos, com mato nas frestas da beirada
     const borda = !dentro(x - 5, y) || !dentro(x + 5, y) || !dentro(x, y - 5) || !dentro(x, y + 5);
     if (borda) { k *= 0.78; if (!dentro(x - 2, y) || !dentro(x + 2, y) || !dentro(x, y - 2) || !dentro(x, y + 2)) c = hash(x >> 1, y >> 1) < 0.35 ? [61, 143, 58] : [96, 86, 80]; }
-    const p = (y * W + x) * 4; o[p] = Math.min(255, c[0] * k); o[p + 1] = Math.min(255, c[1] * k); o[p + 2] = Math.min(255, c[2] * k); o[p + 3] = 255;
+    const p = ((y - Y0) * W + x - X0) * 4; o[p] = Math.min(255, c[0] * k); o[p + 1] = Math.min(255, c[1] * k); o[p + 2] = Math.min(255, c[2] * k); o[p + 3] = 255;
   }
-  gc.putImageData(img, 0, 0); g.drawImage(cv, 0, 0);
+  gc.putImageData(img, 0, 0); g.drawImage(cv, X0, Y0);
   const r = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
   // rosácea em volta da fonte
   g.strokeStyle = 'rgba(122,72,60,0.55)'; for (const [k, l] of [[0.34, 5], [0.62, 3]]) { g.lineWidth = l; g.beginPath(); g.ellipse(pr.cx * Q, pr.cy * Q, pr.rx * k * Q, pr.ry * k * Q, 0, 0, Math.PI * 2); g.stroke(); }

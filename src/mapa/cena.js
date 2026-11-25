@@ -33,6 +33,10 @@ const VEL = 64;
 const EMOTES = { susto: 1, feliz: 6, pontos: 20, ex: 21, exVermelho: 22, pergunta: 23, coracao: 27, sono: 28, estrela: 29, bravo: 9 };
 
 const ICONES = { bau: 'disquete', cacto: 'cacto', lapide: 'lapide', 404: 'placa404', professores: 'placaCafe', antena: 'lpc:torre-grande', gato: 'lpc:impressora-nova', pombo: 'lpc:pombo-a', galinhas: 'galinhaBranca', konami: 'consultorDanca-0', espantalho: 'lpc:espantalho', vaca: 'vacaL:4' };
+const TEXTO_RESERVA = { portao: 'O portão do Mundo 2 está fechado. Ele abre no próximo bimestre.' };
+// resume a lista de créditos do avatar num texto: um autor por vez, sem repetir
+const creditosAvatar = (d) => { const nomes = new Set(); const ver = (v) => { if (Array.isArray(v)) v.forEach(ver); else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { if (/autor|author/i.test(k)) [].concat(x).forEach((n) => typeof n === 'string' && nomes.add(n.trim())); else ver(x); } }; ver(d); return [...nomes].join(', ') + '. Licenças CC-BY-SA, CC-BY, OGA-BY e GPL, por peça.'; };
+const CASA_RESERVA = { nome: 'Casa da Vila', texto: 'Ninguém atende. Volte outro dia.' };
 // textos de reserva dos segredos mais novos (o texto de verdade vem do conteúdo importado pelo professor)
 const SEGREDO_RESERVA = {
   espantalho: 'O Espantalho está no mesmo posto há dez anos e nunca pediu aumento. O Consultor Cinzento diz que isso não é um bom exemplo de gestão de pessoas.',
@@ -127,7 +131,7 @@ class MapaCena extends Phaser.Scene {
     this.events.once('shutdown', calarAmbiente); this.events.once('destroy', calarAmbiente);
     const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { tijolo: this.textures.get('tijolo').getSourceImage(), rochas: this.textures.get('rochas').getSourceImage() });
     this.naAreia = chao.naAreia;
-    this.textures.addCanvas('chaoLPC', chao.canvas);
+    this.textures.addImage('chaoLPC', chao.canvas);
     this.add.image(0, 0, 'chaoLPC').setOrigin(0).setScale(Q_ESCALA).setDepth(0);
     const pt = planta.PONTE;
     this.add.image(((pt.x0 + pt.x1 + 1) / 2) * P, pt.y * P + P / 2, 'lpc', 'ponte-reta').setScale(Q_ESCALA).setDepth(3);
@@ -201,7 +205,7 @@ class MapaCena extends Phaser.Scene {
     this.time.addEvent({ delay: 3800, loop: true, callback: () => this.peixePula() });
 
     this.fases ??= {}; this.objetos ??= {};
-    if (planta.CASTELO_PROC && !this.textures.exists('castelo-v02')) { const tj = this.textures.get('tijolo').getSourceImage(); this.textures.addCanvas('castelo-v02', desenharCastelo(false, tj)); this.textures.addCanvas('castelo-v02-ruinas', desenharCastelo(true, tj)); }
+    if (planta.CASTELO_PROC && !this.textures.exists('castelo-v02')) { const tj = this.textures.get('tijolo').getSourceImage(); this.textures.addImage('castelo-v02', desenharCastelo(false, tj)); this.textures.addImage('castelo-v02-ruinas', desenharCastelo(true, tj)); }
     if (!planta.SO_TERRENO) { // etapa 1 da V02: só o terreno; fases, objetos e gente voltam nas etapas seguintes
       this.criarFases();
       this.criarObjetos();
@@ -289,7 +293,7 @@ class MapaCena extends Phaser.Scene {
       const pts = pontosDe(e.pontos); this.todosPontos.push(...pts);
       const chave = `estrada-${i}`;
       const des = desenhos[i];
-      this.textures.addCanvas(chave, des.canvas);
+      this.textures.addImage(chave, des.canvas);
       const img = this.add.image(des.x * Q_ESCALA, des.y * Q_ESCALA, chave).setOrigin(0).setScale(Q_ESCALA).setDepth(2.5);
       const tracos = this.add.group();
       pts.forEach(([x, y], k) => { if (k % 5 === 0) tracos.add(this.add.circle(x, y, 1.3, 0x7b4a32, 0.55).setDepth(2.4)); });
@@ -335,7 +339,7 @@ class MapaCena extends Phaser.Scene {
     const m = planta.MURALHA; const q = P / Q_ESCALA;
     if (m && !this.textures.exists('muralha-v02')) {
       const vao = { x0: (planta.PORTAO.x - m.x) * q, x1: (planta.PORTAO.x + planta.PORTAO.w - m.x) * q };
-      const d = desenharMuralha(m, q, this.textures.get('tijolo').getSourceImage(), vao); this.textures.addCanvas('muralha-v02', d.canvas); this.muralhaDesloc = d.deslocY;
+      const d = desenharMuralha(m, q, this.textures.get('tijolo').getSourceImage(), vao); this.textures.addImage('muralha-v02', d.canvas); this.muralhaDesloc = d.deslocY;
     }
     if (m) this.add.image(m.x * P, (m.y - 2) * P - (this.muralhaDesloc ?? 70) * Q_ESCALA, 'muralha-v02').setOrigin(0, 0).setScale(Q_ESCALA).setDepth(100 + (m.y + m.h) * P - 4);
     const c = planta.CACHOEIRA; if (!c) return;
@@ -403,7 +407,7 @@ class MapaCena extends Phaser.Scene {
       const lpcF = LPC_PECAS[f.arte];
       const proc = f.arte === 'casteloProc';
       const aviao = f.arte === 'aviaoProc';
-      if (aviao && !this.textures.exists('aviao-v02')) this.textures.addCanvas('aviao-v02', desenharAviao());
+      if (aviao && !this.textures.exists('aviao-v02')) this.textures.addImage('aviao-v02', desenharAviao());
       if (proc) this.add.ellipse(cx, by - 2, f.w * P * 0.92, 12, 0x0f0c1e, 0.3).setDepth(3.5);
       const img = aviao ? this.add.image(cx, by, 'aviao-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : proc ? this.add.image(cx, by, 'castelo-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
       if (lpcF?.fumaca) lpcF.fumaca.forEach(([sx, sy], n) => { const x = cx - (img.displayWidth / 2) + sx * Q_ESCALA; const y = by - img.displayHeight + sy * Q_ESCALA; this.time.addEvent({ delay: 520, loop: true, startAt: n * 260, callback: () => { const p = this.add.circle(x + Phaser.Math.Between(-1, 1), y, 2, 0xd8d4e2, 0.7).setDepth(101 + by); this.tweens.add({ targets: p, y: y - 24, x: p.x + Phaser.Math.Between(2, 10), scale: 2.6, alpha: 0, duration: 2000, onComplete: () => p.destroy() }); } }); });
@@ -463,7 +467,7 @@ class MapaCena extends Phaser.Scene {
   aplicarEstados(estados, concluidas) {
     this.o.estados = estados; this.o.concluidas = concluidas;
     const feitas = new Set(concluidas);
-    this.ruirCastelo(feitas.has('m1chefao'));
+    this.ruirCastelo(feitas.has('m1chefao') || Boolean(this.casteloJaCaiu));
     for (const [id, f] of Object.entries(this.fases)) {
       f.extras.forEach((e) => e.destroy()); f.extras = [];
       this.tweens.killTweensOf(f.no); f.no.setScale(0.7).clearTint();
@@ -522,7 +526,7 @@ class MapaCena extends Phaser.Scene {
         for (let i = 0; i < 6; i++) { const p = this.add.circle(img.x + Phaser.Math.Between(-22, 22), img.y - Phaser.Math.Between(0, 16), Phaser.Math.Between(2, 5), 0xd8d2e6, 0.9).setDepth(900); this.tweens.add({ targets: p, y: p.y - 18, alpha: 0, scale: 2, duration: 900, onComplete: () => p.destroy() }); }
       } });
       this.time.delayedCall(2700, () => {
-        if (planta.CASTELO_PROC) this.ruirCastelo(true);
+        this.casteloJaCaiu = true; if (planta.CASTELO_PROC) this.ruirCastelo(true);
         const b = this.add.sprite(img.x, img.y + 10, 'bandeiraGrande-0').setOrigin(0.15, 1).setDepth(901);
         let fb = 0; this.time.addEvent({ delay: 200, loop: true, callback: () => { fb = (fb + 1) % 3; b.setTexture(`bandeiraGrande-${fb}`); } });
         this.tweens.add({ targets: b, y: img.y - 18, duration: 1800, ease: 'Sine.easeOut' });
@@ -534,6 +538,7 @@ class MapaCena extends Phaser.Scene {
 
   // Castelo que já caiu numa visita anterior: ruínas, bandeira branca e o Barão longe dali
   casteloCaido() {
+    this.casteloJaCaiu = true;
     const img = this.fases.m1chefao.img; if (planta.CASTELO_PROC) this.ruirCastelo(true); else img.setTexture('castelo-cai-6');
     const b = this.add.sprite(img.x, img.y - 18, 'bandeiraGrande-0').setOrigin(0.15, 1).setDepth(901);
     let fb = 0; this.time.addEvent({ delay: 200, loop: true, callback: () => { fb = (fb + 1) % 3; b.setTexture(`bandeiraGrande-${fb}`); } });
@@ -553,7 +558,7 @@ class MapaCena extends Phaser.Scene {
       this.objetos[ob.id] = { def: ob, img, toques: 0 };
       // só o que tem segredo, conversa ou casinha responde ao botão A; o resto é enfeite
       if (!ob.segredo && !ob.conversa && ob.id !== 'casinha') continue;
-      const alvo = rec?.porta ? [Math.floor((img.x - img.width / 2 + rec.porta[0]) / P), ob.y + (ob.h ?? 1)] : this.alvoPerto(ob.x, ob.y, ob.w ?? 1, ob.h ?? 1, ob.alcance ?? 1);
+      const alvo = ob.id === 'portao' && planta.PORTAO ? planta.PORTAO.entrada : rec?.porta ? [Math.floor((img.x - img.width / 2 + rec.porta[0]) / P), ob.y + (ob.h ?? 1)] : this.alvoPerto(ob.x, ob.y, ob.w ?? 1, ob.h ?? 1, ob.alcance ?? 1);
       this.interativos.push({ tipo: 'objeto', id: ob.id, area: new Phaser.Geom.Rectangle(img.x - img.displayWidth / 2 - 2, img.y - img.displayHeight - 2, img.displayWidth + 4, img.displayHeight + 4), alvo });
     }
     this.time.addEvent({ delay: 3200, loop: true, callback: () => {
@@ -599,7 +604,7 @@ class MapaCena extends Phaser.Scene {
 
   agir(i) {
     if (i.tipo === 'fase') this.o.aoTocarFase?.(i.id);
-    else if (i.tipo === 'casa') { const c = this.o.textos?.casas?.[i.id]; this.o.falar?.({ nome: c?.nome ?? '', texto: c?.texto ?? '' }); }
+    else if (i.tipo === 'casa') { const c = this.o.textos?.casas?.[i.id] ?? CASA_RESERVA; this.o.falar?.({ nome: c.nome ?? '', texto: c.texto || CASA_RESERVA.texto }); }
     else this.tocarObjeto(i.id);
   }
 
@@ -615,7 +620,7 @@ class MapaCena extends Phaser.Scene {
     if (id === 'casinha') { this.defenderCasinha(); return; }
     if (d.toques) { ob.toques += 1; this.tweens.add({ targets: ob.img, scaleY: 0.85, duration: 70, yoyo: true }); if (ob.toques < d.toques) { efeitoToque(); return; } }
     if (d.segredo) this.achar(d.segredo);
-    else if (d.conversa) this.o.falar?.({ nome: '', texto: this.o.textos?.[d.conversa] ?? '' });
+    else if (d.conversa) this.o.falar?.({ nome: this.o.textos?.nomesObjetos?.[id] ?? '', texto: this.o.textos?.[d.conversa] || TEXTO_RESERVA[d.conversa] || 'Nada de novo por aqui.' });
   }
 
   achar(segredo) { this.o.aoAcharSegredo?.(segredo); }
@@ -632,7 +637,9 @@ class MapaCena extends Phaser.Scene {
   // ---------- avatar ----------
   criarAvatar() {
     const { W } = this.t; const pos = this.o.posicao;
-    const ini = pos && this.t.passa[pos[1] * W + pos[0]] ? pos : planta.INICIO;
+    const { H, passa } = this.t; const noMapa = Array.isArray(pos) && pos[0] >= 0 && pos[1] >= 0 && pos[0] < W && pos[1] < H && passa[pos[1] * W + pos[0]];
+    const volta = noMapa && (String(pos) === String(planta.INICIO) || caminho(passa, W, H, planta.INICIO, pos).length > 0);
+    const ini = volta ? pos : planta.INICIO;
     const [ax, ay] = centro(ini);
     // avatar do aluno montado em camadas LPC (64 px, desenhado na metade); sem ele, o herói antigo
     if (this.o.folhaAvatar) {
@@ -1329,7 +1336,10 @@ export function iniciarMapa(raiz, opcoes) {
         <label class="check"><input type="checkbox" id="cfg-dicas"> Mostrar dicas dos botões</label>
         <label class="check"><input type="checkbox" id="cfg-movimento"> Menos movimento na tela</label>
         <p class="mapa-cfg-dica">No celular: arraste o dedo no lado esquerdo da tela para andar (ou use as setas, se preferir), A para conversar ou entrar, B para pular. No computador: setas ou W A S D para andar, E ou Enter para conversar ou entrar, Espaço para pular, M para o mapa inteiro e Esc para este menu.</p>
-        <button class="btn verde" id="cfg-fechar">Voltar ao jogo</button></div></div>
+        <button class="btn verde" id="cfg-fechar">Voltar ao jogo</button> <button class="btn" id="cfg-creditos" type="button">Créditos da arte</button></div></div>
+    <div class="mapa-cfg" id="mapa-creditos" hidden role="dialog" aria-label="Créditos">
+      <div class="mapa-cfg-caixa" style="max-height:94vh;overflow:auto"><h2>Créditos</h2><p class="mapa-cfg-dica">ADM Quest, jogo educacional do professor Silas (EMED Senac Campinas). A arte do mapa e dos personagens usa trabalhos livres da comunidade Liberated Pixel Cup (LPC), publicados no OpenGameArt, nas licenças CC-BY, CC-BY-SA, OGA-BY, GPL e CC0, conforme cada pacote. Música e efeitos sonoros: feitos para o jogo.</p><pre id="creditos-texto" style="white-space:pre-wrap;overflow-wrap:anywhere;text-align:left;font-size:11px;line-height:1.4;max-height:24vh;overflow:auto;user-select:text">Carregando...</pre>
+        <button class="btn verde" id="creditos-fechar" type="button">Voltar ao jogo</button></div></div>
     <div class="mapa-cfg" id="mapa-album" hidden role="dialog" aria-label="Álbum de segredos">
       <div class="mapa-cfg-caixa"><h2>Álbum de segredos</h2><p class="mapa-cfg-dica" id="album-conta"></p><ul class="mapa-album" id="album-lista"></ul>
         <button class="btn verde" id="album-fechar">Voltar ao jogo</button></div></div>
@@ -1369,11 +1379,22 @@ export function iniciarMapa(raiz, opcoes) {
     if (b) { const op = atual.botoes[Number(b.dataset.op)]; efeitoToque(); const fim = atual.aoFechar; fila = []; mostrar(); if (op.acao) op.acao(); else fim?.(); return; }
     avancar();
   });
-  const falar = (...msgs) => { fila.push(...msgs.filter(Boolean)); if (!atual || caixa.hidden) mostrar(); };
+  const falar = (...msgs) => { const comTexto = msgs.filter((m) => m && (m.texto || m.opcoes)); if (!comTexto.length) return; fila.push(...comTexto); if (!atual || caixa.hidden) mostrar(); };
   raiz.addEventListener('pointerdown', (e) => {
     if (caixa.hidden || e.target.closest('.mapa-dialogo, .mapa-cfg, .mapa-barra, [data-bt], [data-dir]')) return;
     e.stopPropagation(); avancar();
   }, true);
+
+  // ---------- créditos (exigidos pelas licenças da arte): a lista completa é lida do arquivo publicado junto ----------
+  const painelCred = $('#mapa-creditos'); let credLidos = false;
+  $('#cfg-creditos').addEventListener('click', () => {
+    painelCred.hidden = false;
+    if (credLidos) return; credLidos = true;
+    const ler = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.text(); });
+    const avatar = ler(opcoes.urls.lpc.replace('mapa/lpc/', 'lpc/av/') + '../creditos-avatar.json').then((t) => '\n\nPeças dos personagens (avatar):\n' + creditosAvatar(JSON.parse(t))).catch(() => '');
+    Promise.all([ler(opcoes.urls.lpc + 'CREDITOS.txt'), avatar]).then(([a, b]) => { $('#creditos-texto').textContent = a + b; }).catch(() => { credLidos = false; $('#creditos-texto').textContent = 'Não consegui carregar a lista agora. Confira a internet e abra de novo.'; });
+  });
+  $('#creditos-fechar').addEventListener('click', () => { painelCred.hidden = true; });
 
   // ---------- configurações ----------
   const painel = $('#mapa-cfg-painel');
@@ -1585,7 +1606,7 @@ export function iniciarMapa(raiz, opcoes) {
     derrotarCastelo() { cena?.derrotarCastelo(); },
     pausar() { pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
     retomar() { jogo.loop.wake(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = true; aoRedimensionar(); tocarMusica(); },
-    destruir() { window.removeEventListener('resize', aoRedimensionar); pararMusica(); pararRetrato(); clearInterval(digita); jogo.destroy(true); raiz.innerHTML = ''; raiz.classList.remove('mapa'); },
+    destruir() { window.removeEventListener('resize', aoRedimensionar); pararMusica(); pararRetrato(); clearInterval(digita); const gl = jogo.renderer?.gl; jogo.destroy(true); setTimeout(() => { try { gl?.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* já liberado */ } }, 300); raiz.innerHTML = ''; raiz.classList.remove('mapa'); },
     alternarSom,
   };
 }

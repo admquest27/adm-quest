@@ -9,7 +9,7 @@ import { LOTES } from './mapa/vila.js';
 import { MODELOS_FASE } from './mapa/arte.js';
 import { MUNDO, parteAluno } from './fases.js';
 
-export const NOME_LOTE = { l1: 'Terreno 1, perto das Dunas', l2: 'Terreno 2, ao sul da Praça', l3: 'Terreno 3, perto do Castelo' };
+export const NOME_LOTE = { l1: 'Terreno 1, perto das Dunas', l2: 'Terreno 2, na Fazenda', l3: 'Terreno 3, perto do Castelo' };
 const lotes = () => LOTES.map((l) => l.id);
 const doLote = (st, id) => st.fases.find((f) => f.lote === id && !f.arquivada);
 

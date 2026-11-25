@@ -103,7 +103,7 @@ function trechoTexturizado(g, t, tr, rochas) {
   const fundoPx = (x) => topoPx(x) + (ESCARPA_ALTURA + alturaExtraEscarpa(x / Q)) * Q;
   let alto = 1e9; let fundo = 0; for (let x = xa; x < xb; x += 4) { alto = Math.min(alto, topoPx(x)); fundo = Math.max(fundo, fundoPx(x)); }
   const Y0 = Math.max(0, Math.floor(alto) - 30); const PH = Math.ceil(fundo) + 40 - Y0;
-  const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+  const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH; const c = cv.getContext('2d', { willReadFrequently: true }); c.imageSmoothingEnabled = false;
   const FONTES = [28, 60, 92, 214, 238];
   // uma faixa de rocha: fatias de 48 px com 16 de sobreposição, cada uma na altura da borda naquele ponto
   const faixa = (desl, alt, sem, escuro) => {

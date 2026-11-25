@@ -92,6 +92,11 @@ test('há um atalho da ponte à frente do castelo, e a escada continua fechada',
   assert.equal(v[I(geo.ESCADA.x + 1, geo.ESCADA.y)], 0, 'a escada só abre depois do chefão');
 });
 
+test('a frente do portão do Mundo 2 só é alcançada depois do chefão', () => {
+  assert.equal(alcance(comCastelo(false), planta.INICIO)[I(...planta.PORTAO.entrada)], 0);
+  assert.equal(alcance(comCastelo(true), planta.INICIO)[I(...planta.PORTAO.entrada)], 1);
+});
+
 test('as escarpas e a muralha são sólidas e o resto do platô é chão', () => {
   for (let i = 0; i < W * H; i++) if (t.escarpa[i] || t.muralha[i]) assert.equal(t.passa[i], 0);
   assert.ok(t.passa[I(54, 7)], 'a entrada do portão é chão');
