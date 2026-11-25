@@ -129,6 +129,7 @@ class MapaCena extends Phaser.Scene {
     this.naEstradaSet = naEstrada;
     if (planta.GEO) this.criarAlto();
     this.events.once('shutdown', calarAmbiente); this.events.once('destroy', calarAmbiente);
+    this.events.once('postupdate', () => this.o.aoPronto?.()); // primeiro quadro pronto
     const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { tijolo: this.textures.get('tijolo').getSourceImage(), rochas: this.textures.get('rochas').getSourceImage() });
     this.naAreia = chao.naAreia;
     this.textures.addImage('chaoLPC', chao.canvas);
@@ -1346,7 +1347,7 @@ export function iniciarMapa(raiz, opcoes) {
     <div class="mapa-faixa" id="mapa-faixa" hidden></div>
     <div class="mapa-zona" id="mapa-zona" hidden></div>
     <button class="mapa-btn mapa-pular" id="mapa-pular" hidden>Pular ⏭</button>
-    <div class="mapa-girar">Deite o celular para jogar</div>`;
+    <div class="mapa-girar"><div>Deite o celular para jogar${opcoes.verLista ? '<br><button class="btn claro" type="button" data-lista>Prefiro o menu em lista</button>' : ''}</div></div>`;
   const $ = (s) => raiz.querySelector(s);
 
   // ---------- caixa de diálogo ----------
@@ -1468,7 +1469,8 @@ export function iniciarMapa(raiz, opcoes) {
     pintarSom(); efeitoToque();
   });
   $('#mapa-cheia').addEventListener('click', async () => {
-    try { if (!document.fullscreenElement) { await raiz.requestFullscreen(); await screen.orientation?.lock?.('landscape'); } else await document.exitFullscreen(); } catch { /* aparelho sem tela cheia */ }
+    // a tela cheia é da página inteira: se fosse só do mapa, ao abrir uma fase o celular ficaria preso num mapa escondido
+    try { if (!document.fullscreenElement) { await document.documentElement.requestFullscreen(); await screen.orientation?.lock?.('landscape'); } else await document.exitFullscreen(); } catch { /* aparelho sem tela cheia */ }
   });
 
   // ---------- segredos ----------
@@ -1604,7 +1606,7 @@ export function iniciarMapa(raiz, opcoes) {
     atualizarEstados(estados, concluidas) { opcoes.estados = estados; opcoes.concluidas = concluidas; cena?.aplicarEstados(estados, concluidas); },
     revelarCaminho(id) { cena?.revelarCaminho(id); },
     derrotarCastelo() { cena?.derrotarCastelo(); },
-    pausar() { pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
+    pausar() { try { screen.orientation?.unlock?.(); } catch { /* sem trava de rotação */ } pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
     retomar() { jogo.loop.wake(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = true; aoRedimensionar(); tocarMusica(); },
     destruir() { window.removeEventListener('resize', aoRedimensionar); pararMusica(); pararRetrato(); clearInterval(digita); const gl = jogo.renderer?.gl; jogo.destroy(true); setTimeout(() => { try { gl?.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* já liberado */ } }, 300); raiz.innerHTML = ''; raiz.classList.remove('mapa'); },
     alternarSom,

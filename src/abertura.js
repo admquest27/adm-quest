@@ -7,52 +7,70 @@ import { quadro } from './pixel/rosalina.js';
 import { gradeBrasao, canvasBrasao } from './pixel/brasao.js';
 import { tocarMusica, pararMusica, alternarSom, somLigado, efeitoInicio, efeitoToque } from './pixel/som.js';
 
-const W = 256; const H = 144;
+// A cena é desenhada em 768 x 432: o cenário usa a arte do próprio jogo e o brasão e o letreiro são desenhados
+// numa camada de 256 x 144 ampliada três vezes, com os pixels nítidos.
+const W = 768; const H = 432;
 const reduz = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-const casa = (ctx, x, y, telhado) => {
-  ctx.fillStyle = '#120f22'; ctx.fillRect(x - 1, y - 1, 16, 12); ctx.fillStyle = '#f3e2b8'; ctx.fillRect(x, y, 14, 10); ctx.fillStyle = '#d9c08c'; ctx.fillRect(x, y + 8, 14, 2);
-  for (let i = 0; i < 8; i++) { ctx.fillStyle = '#120f22'; ctx.fillRect(x - 2 + i, y - 1 - i, 18 - i * 2, 1); ctx.fillStyle = telhado; ctx.fillRect(x - 1 + i, y - 1 - i, 16 - i * 2, 1); }
-  ctx.fillStyle = '#8b5a2b'; ctx.fillRect(x + 5, y + 4, 4, 6); ctx.fillStyle = '#5fb4e8'; ctx.fillRect(x + 1, y + 2, 3, 3); ctx.fillRect(x + 10, y + 2, 3, 3);
-};
-const arvore = (ctx, x, y) => { ctx.fillStyle = '#6b3f1d'; ctx.fillRect(x + 3, y + 7, 2, 4); ctx.fillStyle = '#120f22'; ctx.fillRect(x, y, 8, 8); ctx.fillStyle = '#2f8a3c'; ctx.fillRect(x + 1, y + 1, 6, 6); ctx.fillStyle = '#4fbf5c'; ctx.fillRect(x + 1, y + 1, 4, 3); };
-const castelo = (ctx, x, y) => {
-  ctx.fillStyle = '#4a3f66'; ctx.fillRect(x, y, 26, 20); ctx.fillRect(x - 4, y - 6, 8, 26); ctx.fillRect(x + 22, y - 6, 8, 26);
-  for (let i = 0; i < 3; i++) { ctx.fillRect(x - 4 + i * 3, y - 9, 2, 3); ctx.fillRect(x + 22 + i * 3, y - 9, 2, 3); }
-  ctx.fillStyle = '#2a2142'; ctx.fillRect(x + 9, y + 9, 8, 11); ctx.fillStyle = '#d9503f'; ctx.fillRect(x + 25, y - 16, 1, 7); ctx.fillRect(x + 26, y - 16, 4, 3);
-};
 const BORBOLETA = [['.p.p.', 'ppypp', '.p.p.'], ['.....', 'pyyyp', '.....']];
-const morro = (x, base, amp, comp, fase) => base - Math.round(amp * (0.5 + 0.5 * Math.sin((x + fase) / comp)));
+const CAMADA = document.createElement('canvas'); CAMADA.width = 256; CAMADA.height = 144;
+const CADELA = document.createElement('canvas'); CADELA.width = 44; CADELA.height = 32;
+
+// Arte do jogo: chega aos poucos; enquanto isso aparecem o céu e o letreiro.
+const arte = {};
+function carregarArte() {
+  const base = import.meta.env.BASE_URL + 'mapa/lpc/';
+  const img = (a) => new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = base + a; });
+  return Promise.all([img('atlas.png'), fetch(base + 'atlas.json').then((r) => r.json()), img('rochas.png'), img('terra.png'), img('tijolo.png'), import('./mapa/castelo.js')])
+    .then(([atlas, j, rochas, terra, tijolo, c]) => { Object.assign(arte, { atlas, quadros: j.frames, rochas, terra, castelo: c.desenharCastelo(false, tijolo) }); });
+}
+// construções que passam pela estrada, da esquerda para a direita, com o espaço depois de cada uma
+const DESFILE = [['casa-v2-hipped', 14], ['cerejeira-a', 10], ['casa-v2-rosa', 26], ['feira-grande', 22], ['cerejeira-b', 18], ['casa-v2-gambrel', 30], ['coreto', 20], ['fonte-0', 24], ['casa-v2-planilha', 22], ['banca-vermelha', 30]];
 
 function cena(ctx, s, brasao) {
-  ctx.fillStyle = '#d4ecf8'; ctx.fillRect(0, 0, W, H);
-  ['#5fb4e8', '#78c3ee', '#93d1f2', '#b3def5', '#d4ecf8'].forEach((c, i, l) => { ctx.fillStyle = c; ctx.fillRect(0, i * 18, W, 18); if (i) for (let x = i % 2; x < W; x += 2) { ctx.fillStyle = l[i - 1]; ctx.fillRect(x, i * 18, 1, 1); } });
-  ctx.fillStyle = '#fff3c4'; ctx.fillRect(220, 10, 14, 14); ctx.fillStyle = '#ffe08a'; ctx.fillRect(222, 12, 10, 10);
-  for (const [x0, y, v] of [[20, 20, 1], [120, 34, 0.6], [200, 14, 0.8], [300, 26, 0.7]]) {
-    const x = ((x0 - s * 6 * v) % 320 + 320) % 320 - 40; ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, 26, 6); ctx.fillRect(x + 5, y - 4, 12, 5); ctx.fillRect(x + 14, y - 2, 8, 3); ctx.fillStyle = '#d4ecf8'; ctx.fillRect(x, y + 5, 26, 1);
+  ctx.imageSmoothingEnabled = false;
+  const r = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+  ['#4fa8e4', '#68b8ea', '#85c8ef', '#a8d9f4', '#cdeaf8'].forEach((c, i) => r(c, 0, i * 56, W, 60));
+  r('#fff3c4', 660, 34, 44, 44); r('#ffe08a', 668, 42, 28, 28);
+  for (const [x0, y, v] of [[60, 60, 1], [360, 104, 0.6], [600, 40, 0.8], [880, 82, 0.7]]) {
+    const x = ((x0 - s * 14 * v) % 960 + 960) % 960 - 120; r('#ffffff', x, y, 78, 18); r('#ffffff', x + 15, y - 12, 36, 14); r('#ffffff', x + 42, y - 6, 24, 9); r('#d4ecf8', x, y + 15, 78, 3);
   }
-  for (let x = 0; x < W; x++) { const h = morro(x, 100, 18, 22, s * 5); ctx.fillStyle = '#86c9a0'; ctx.fillRect(x, h, 1, H - h); }
-  castelo(ctx, Math.round(((210 - s * 5) % 400 + 400) % 400 - 60), 64);
-  for (let x = 0; x < W; x++) { const h = morro(x, 110, 10, 16, s * 12 + 40); ctx.fillStyle = '#4fae5c'; ctx.fillRect(x, h, 1, H - h); ctx.fillStyle = '#7fd18a'; ctx.fillRect(x, h, 1, 1); }
-  const desl = (s * 14) % 96;
-  for (let i = -1; i < 4; i++) { const x = Math.round(i * 96 - desl); casa(ctx, x + 10, 98, '#d9503f'); arvore(ctx, x + 34, 99); casa(ctx, x + 50, 100, '#3b82d6'); arvore(ctx, x + 74, 101); arvore(ctx, x + 82, 98); }
-  ctx.fillStyle = '#3fa34d'; ctx.fillRect(0, 112, W, 32); ctx.fillStyle = '#e8c98a'; ctx.fillRect(0, 128, W, 10); ctx.fillStyle = '#d2ad66';
-  for (let x = -((s * 30) % 8); x < W; x += 8) ctx.fillRect(Math.round(x), 133, 4, 1);
-  ctx.fillStyle = '#237033'; for (let x = -((s * 30) % 12); x < W; x += 12) ctx.fillRect(Math.round(x), 115, 1, 2);
+  for (let x = 0; x < W; x += 3) { const h = 236 - Math.round(34 * (0.5 + 0.5 * Math.sin((x + s * 6) / 70))); r('#7fc29a', x, h, 3, H - h); }
+  if (arte.atlas) {
+    // paredão de rocha com o Castelo da Bagunça ao fundo, andando devagar
+    const dr = (s * 8) % 48;
+    for (let x = -48 - dr; x < W + 48; x += 40) { const sx = [28, 60, 92, 214, 238][Math.abs(Math.round((x + dr + s * 8) / 40)) % 5]; ctx.drawImage(arte.rochas, sx, 168, 48, 64, Math.round(x), 232, 48, 64); }
+    r('#3d8f3a', 0, 228, W, 8); r('#6cbb52', 0, 228, W, 3);
+    // o castelo fica parado no meio, logo abaixo do letreiro
+    ctx.drawImage(arte.castelo, W / 2 - 75, 204, 150, 181);
+  }
+  r('#3fa34d', 0, 292, W, H - 292); r('#2f8136', 0, 292, W, 4);
+  if (arte.atlas) {
+    const pecas = DESFILE.map(([n, folga]) => ({ f: arte.quadros[n]?.frame, folga })).filter((p) => p.f);
+    const total = pecas.reduce((t, p) => t + p.f.w * 0.4 + p.folga, 0);
+    let x = -((s * 34) % total);
+    while (x < W) for (const p of pecas) { const w = p.f.w * 0.4; const h = p.f.h * 0.4; if (x + w > 0 && x < W) { r('rgba(10,30,15,0.28)', x + 6, 370, w - 8, 7); ctx.drawImage(arte.atlas, p.f.x, p.f.y, p.f.w, p.f.h, Math.round(x), Math.round(374 - h), w, h); } x += w + p.folga; }
+    const dt = Math.round((s * 90) % 32);
+    for (let x2 = -dt; x2 < W; x2 += 32) { ctx.drawImage(arte.terra, 64, 160, 32, 32, x2, 386, 32, 32); ctx.drawImage(arte.terra, 64, 160, 32, 10, x2, 418, 32, 10); }
+    r('#7a5530', 0, 384, W, 3); r('#7a5530', 0, 427, W, 3);
+  } else r('#e8c98a', 0, 376, W, 46);
+
+  const g = CAMADA.getContext('2d'); g.clearRect(0, 0, 256, 144);
   // Rosalina atrás da borboleta, com pulinhos
-  const ciclo = (s * 30) % (W + 120) - 60;
-  const pulo = (s % 3.2) < 0.45 ? -Math.round(Math.sin(((s % 3.2) / 0.45) * Math.PI) * 9) : 0;
-  const bx = ciclo + 52 + Math.sin(s * 3) * 6; const by = 96 + Math.sin(s * 5) * 7;
-  BORBOLETA[Math.floor(s * 8) % 2].forEach((l, y) => { for (let x = 0; x < l.length; x++) if (l[x] !== '.') { ctx.fillStyle = COR[l[x]]; ctx.fillRect(Math.round(bx) + x, Math.round(by) + y, 1, 1); } });
-  const f = Math.floor(s * 9) % 2;
-  desenha(ctx, quadro('lado', { passo: f, rabo: f ? -1 : 0, orelha: pulo ? 1 : f }), ciclo, 104 + pulo);
+  const ciclo = (s * 60) % (W + 240) - 120;
+  const pulo = (s % 3.2) < 0.45 ? -Math.round(Math.sin(((s % 3.2) / 0.45) * Math.PI) * 18) : 0;
+  const bx = ciclo + 112 + Math.sin(s * 3) * 12; const by = 350 + Math.sin(s * 5) * 14;
+  BORBOLETA[Math.floor(s * 8) % 2].forEach((l, y) => { for (let x = 0; x < l.length; x++) if (l[x] !== '.') { ctx.fillStyle = COR[l[x]]; ctx.fillRect(Math.round(bx) + x * 3, Math.round(by) + y * 3, 3, 3); } });
+  // a Rosalina na estrada, no dobro do tamanho
+  const f = Math.floor(s * 9) % 2; CADELA.getContext('2d').clearRect(0, 0, 44, 32); desenha(CADELA.getContext('2d'), quadro('lado', { passo: f, rabo: f ? -1 : 0, orelha: pulo ? 1 : f }), 0, 1);
+  ctx.drawImage(CADELA, Math.round(ciclo), 360 + pulo, 88, 64);
   // brasão e letreiro caindo e quicando
   const tl = Math.min(1, s / 1.1); const queda = tl < 1 ? -90 * (1 - tl) ** 2 : 0;
   const quique = tl >= 1 && s < 2 ? -Math.abs(Math.sin((s - 1.1) * 7)) * 6 * Math.max(0, 1 - (s - 1.1) / 0.9) : 0;
   const balanco = s > 2 && !reduz() ? Math.round(Math.sin(s * 2) * 1.5) : 0;
   const y0 = Math.round(queda + quique + balanco);
-  desenha(ctx, brasao, Math.round(W / 2 - brasao.w / 2), 2 + y0);
-  letreiro(ctx, 'ADM QUEST', 26, W / 2, 46 + y0, { prof: 4 });
+  desenha(g, brasao, Math.round(128 - brasao.w / 2), 2 + y0);
+  letreiro(g, 'ADM QUEST', 26, 128, 44 + y0, { prof: 4 });
+  ctx.drawImage(CAMADA, 0, 0, W, H);
 }
 
 // Mostra a abertura. aoEntrar() é chamado no toque em "Entrar no jogo" (dentro do próprio toque, para o login abrir).
@@ -84,7 +102,7 @@ export function mostrarAbertura({ aoEntrar, logado = false, erro = '' } = {}) {
     toque.hidden = estado !== 'titulo' || s < 2;
     if (irisDir || iris > 0) {
       iris = Math.max(0, Math.min(1, iris + irisDir * 0.05));
-      ctx.fillStyle = '#120f22'; ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(W / 2, H / 2, Math.max(0.1, (1 - iris) * 170), 0, Math.PI * 2, true); ctx.fill();
+      ctx.fillStyle = '#120f22'; ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.arc(W / 2, H / 2, Math.max(0.1, (1 - iris) * 510), 0, Math.PI * 2, true); ctx.fill();
       if (iris >= 1 && irisDir > 0) { irisDir = 0; menu.hidden = false; estado = 'menu'; }
       if (iris <= 0 && irisDir < 0) irisDir = 0;
     }
@@ -128,6 +146,7 @@ export function mostrarAbertura({ aoEntrar, logado = false, erro = '' } = {}) {
     destino.width = cb.width; destino.height = cb.height; destino.getContext('2d').drawImage(cb, 0, 0);
     if (estado === 'menu') { menu.hidden = false; iris = 1; }
     requestAnimationFrame(quadroCena);
+    carregarArte().then(() => { if (ativo && reduz()) requestAnimationFrame(quadroCena); }).catch(() => {});
   });
 
   return () => { ativo = false; pararMusica(); };

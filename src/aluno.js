@@ -19,6 +19,9 @@ import {
   MUNDO, SITUACAO_ROTULO, progId, contarTarefas, situacao, podeEditar, textoPlaca, etapasDe, etapaLiberada,
 } from './fases.js';
 
+// o que precisa ter chegado do banco antes de abrir o mapa
+const ESSENCIAIS = ['turma', 'mundo', 'fases', 'progresso', 'aval'];
+
 // opcoes.uid + opcoes.aoSair: o professor vê o jogo como um aluno (somente leitura).
 export function iniciarAluno(user, opcoes = {}) {
   const alvo = opcoes.uid ?? user.uid;
@@ -29,10 +32,12 @@ export function iniciarAluno(user, opcoes = {}) {
     turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
     eco: null, carteira: null, compras: null, naCarteira: false,
     grupos: [], perfis: {}, naGuilda: false, montando: null, rascunho: null, perfilEnviado: '', tutorial: null,
-    votacoes: [], meusVotos: {}, acertos: [], noMapa: false, voltarMapa: false,
+    votacoes: [], meusVotos: {}, acertos: [], noMapa: false, voltarMapa: false, chegou: new Set(),
   };
   let paradasAtivo = [];
   let mapa = null;
+  const vistaSalva = () => { try { return localStorage.getItem(`admq-vista-${alvo}`); } catch { return null; } };
+  const guardarVista = (v) => { try { localStorage.setItem(`admq-vista-${alvo}`, v); } catch { /* sem armazenamento */ } };
 
   const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>` : '');
   const mostrar = (html, classe) => tela(faixa() + html, classe);
@@ -56,18 +61,21 @@ export function iniciarAluno(user, opcoes = {}) {
     const redesenha = () => { if (st.dados?.status === 'ativo' && document.activeElement?.id !== 'gd-nome' && !document.activeElement?.dataset?.codigo) desenhar(); };
     const turma = st.dados.turma;
     paradasAtivo = [
-      onSnapshot(doc(db, 'turmas', turma), (s) => { st.turma = s.exists() ? s.data() : null; redesenha(); }, () => {}),
-      onSnapshot(doc(db, 'mundos', MUNDO), (s) => { st.mundo = s.exists() ? s.data() : null; redesenha(); }, () => {}),
+      onSnapshot(doc(db, 'turmas', turma), (s) => { st.chegou.add('turma'); st.turma = s.exists() ? s.data() : null; redesenha(); }, () => {}),
+      onSnapshot(doc(db, 'mundos', MUNDO), (s) => { st.chegou.add('mundo'); st.mundo = s.exists() ? s.data() : null; redesenha(); }, () => {}),
       onSnapshot(query(collection(db, 'fases'), where('mundo', '==', MUNDO)), (s) => {
+        st.chegou.add('fases');
         st.fases = s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((f) => !f.arquivada).sort((a, b) => a.ordem - b.ordem);
         redesenha();
       }, () => {}),
       onSnapshot(query(collection(db, 'progresso'), where('uid', '==', alvo)), (s) => {
+        st.chegou.add('progresso');
         st.progresso = {};
         s.docs.forEach((d) => { st.progresso[d.data().fase] = d.data(); });
         redesenha();
       }, () => {}),
       onSnapshot(query(collection(db, 'avaliacoes'), where('uid', '==', alvo)), (s) => {
+        st.chegou.add('aval');
         st.aval = {};
         s.docs.forEach((d) => { st.aval[d.data().fase] = d.data(); });
         redesenha();
@@ -157,6 +165,21 @@ export function iniciarAluno(user, opcoes = {}) {
     if (!ver && st.tutorial === null && !jaViu(`admq-tut-${alvo}`)) st.tutorial = 0;
     if (st.tutorial !== null) return mostrar(`<section class="cartao largo">${htmlTutorial(st.tutorial)}</section>`, 'centro alto');
     const rec = st.turma?.recursos ?? {};
+    // o aluno entra direto no mapa; quem escolheu o menu em lista continua nele (a escolha fica no aparelho)
+    if (!st.vistaDecidida) {
+      if (ver || vistaSalva() === 'lista') st.vistaDecidida = true;
+      else {
+        // espera turma, mundo, fases e progresso chegarem, para a lista não piscar e o mapa já abrir certo
+        const chegou = ESSENCIAIS.every((k) => st.chegou.has(k));
+        if (!chegou && !st.desistiuDeEsperar) {
+          st.espera ??= setTimeout(() => { st.desistiuDeEsperar = true; if (!st.vistaDecidida) desenhar(); }, 8000);
+          return carregando('Abrindo a vila...');
+        }
+        clearTimeout(st.espera);
+        st.vistaDecidida = true;
+        if (rec.mapa && st.mundo && st.fases.length) st.noMapa = true;
+      }
+    }
     if (st.naCarteira && rec.admbux) return telaCarteira();
     if (st.naGuilda && rec.guildas) return telaGuilda();
     if (st.faseAberta) return telaCartao();
@@ -171,7 +194,7 @@ export function iniciarAluno(user, opcoes = {}) {
       mapa = criarMapaAluno({
         alvo, ver, turma: st.dados.turma,
         aoAbrirFase: (id) => { st.faseAberta = id; st.voltarMapa = true; st.noMapa = false; mapa.esconder(); st.aviso = ''; desenhar(); window.scrollTo(0, 0); },
-        aoVoltar: () => { st.noMapa = false; mapa.esconder(); desenhar(); },
+        aoVoltar: () => { st.noMapa = false; guardarVista('lista'); mapa.esconder(); desenhar(); },
       });
     }
     mapa.mostrar(st);
@@ -410,7 +433,7 @@ export function iniciarAluno(user, opcoes = {}) {
     try {
       if (b.id === 'sair') { mapa?.destruir(); mapa = null; signOut(auth); return; }
       if (b.id === 'sair-ver') { mapa?.destruir(); mapa = null; opcoes.aoSair?.(); return; }
-      if (b.id === 'abrir-mapa') { st.noMapa = true; st.aviso = ''; desenhar(); return; }
+      if (b.id === 'abrir-mapa') { guardarVista('mapa'); st.noMapa = true; st.aviso = ''; desenhar(); return; }
       if (b.dataset.fase) { st.faseAberta = b.dataset.fase; st.aviso = ''; desenhar(); return; }
       if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; if (st.voltarMapa) { st.voltarMapa = false; st.noMapa = true; } desenhar(); return; }
       if (b.id === 'abrir-carteira') { st.naCarteira = true; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }

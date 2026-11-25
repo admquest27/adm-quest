@@ -6,6 +6,7 @@ import { db } from './firebase.js';
 import { situacao } from './fases.js';
 import { FALAS_PADRAO } from './pixel/rosalina.js';
 import { folha } from './avatar.js';
+import { htmlCarregando } from './carregandoMapa.js';
 
 const ler = (k, padrao) => { try { const v = localStorage.getItem(k); return v === null ? padrao : JSON.parse(v); } catch { return padrao; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* aparelho sem armazenamento */ } };
@@ -35,17 +36,28 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
   const raiz = document.createElement('div');
   raiz.className = 'mapa-tela'; raiz.hidden = true;
   document.body.appendChild(raiz);
-  let api = null; let carregando = false; let destruido = false; let ultimo = ''; let extrasAtuais = '[]';
+  let api = null; let carregando = false; let destruido = false; let ultimo = ''; let extrasAtuais = '[]'; let ultimoSt = null;
+  // qualquer botão marcado com data-lista (barra, carregamento, aviso de girar) leva para o menu em lista
+  raiz.addEventListener('click', (e) => { if (e.target.closest('[data-lista]')) aoVoltar(); });
+  // bolinha no botão Menu quando há votação aberta sem voto ou convite de grupo esperando
+  const marcar = (st) => {
+    const voto = (st.votacoes ?? []).some((v) => v.estado === 'aberta' && !st.meusVotos?.[v.id]);
+    const convite = (st.grupos ?? []).some((g) => g.convites?.includes(alvo));
+    raiz.querySelector('#mapa-lista')?.classList.toggle('com-aviso', !ver && (voto || convite));
+  };
   const chave = (k) => `admq-mapa-${k}-${alvo}`;
 
   async function iniciar(st) {
     carregando = true;
-    raiz.innerHTML = '<p class="mapa-carregando">Abrindo o mapa da Vila...</p>';
+    raiz.innerHTML = htmlCarregando();
     const [modulo, seg, folhaAvatar] = await Promise.all([
       import('./mapa/cena.js'),
       getDoc(doc(db, 'segredos', alvo)).catch(() => null),
       folha(st.dados?.avatar, 'walk').catch(() => null),
     ]);
+    if (destruido) return;
+    // deixa a tela de carregamento aparecer antes do trabalho pesado
+    await new Promise((ok) => requestAnimationFrame(() => setTimeout(ok, 60)));
     if (destruido) return;
     raiz.innerHTML = '';
     const { estados, concluidas, fases, fasesExtras } = dadosDoMapa(st);
@@ -68,7 +80,9 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
     const viuCair = ler(chave('castelo'), false);
     if (caiu && !viuCair && !ver) gravar(chave('castelo'), true);
     api = modulo.iniciarMapa(raiz, {
-      botoesBarra: '<button class="mapa-btn" id="mapa-lista" aria-label="Voltar para a lista de fases">Fases</button>',
+      botoesBarra: '<button class="mapa-btn" id="mapa-lista" data-lista aria-label="Menu: lista de fases, carteira e avisos">☰ Menu</button>',
+      verLista: true,
+      aoPronto: () => raiz.querySelector('.cg-mapa')?.remove(),
       urls: { base: `${import.meta.env.BASE_URL}mapa/na/`, lpc: `${import.meta.env.BASE_URL}mapa/lpc/` },
       folhaAvatar,
       nomeMundo: `Mundo ${m.ordem ?? 1} · ${m.nome ?? 'Vila dos Planos'}`,
@@ -87,7 +101,9 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
       aoAbrirFase: (id) => aoAbrirFase(id),
       aoCasteloCair: () => { if (textos.casteloCaiu) api?.falar({ nome: textos.nomes?.barao ?? '', rosto: 'barao', texto: textos.casteloCaiu }); },
     });
-    raiz.querySelector('#mapa-lista')?.addEventListener('click', () => aoVoltar());
+    // a tela de carregamento fica por cima até o primeiro quadro do mapa
+    raiz.insertAdjacentHTML('beforeend', htmlCarregando());
+    marcar(ultimoSt ?? st);
     carregando = false;
     if (raiz.hidden) api.pausar();
   }
@@ -95,7 +111,7 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
   return {
     // abre (ou volta) o mapa e atualiza os estados das fases
     mostrar(st) {
-      const estavaEscondido = raiz.hidden;
+      const estavaEscondido = raiz.hidden; ultimoSt = st; marcar(st);
       raiz.hidden = false;
       if (!api) { if (!carregando) iniciar(st).catch(() => { carregando = false; raiz.innerHTML = '<p class="mapa-carregando">Não consegui abrir o mapa. Confira a internet e tente de novo.</p>'; }); return; }
       if (estavaEscondido) api.retomar();
