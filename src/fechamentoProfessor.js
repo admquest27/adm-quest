@@ -255,7 +255,7 @@ function htmlTextos(st, bim, linhas) {
       <div class="linha-btn"><button class="botao" data-acao="fc-rel-claude">Relatório para o Claude (sem nomes)</button><button class="botao secundario" data-acao="fc-rel-pdf">Para ler ou salvar em PDF (com nomes)</button></div>
       <p class="nota">Na versão do Claude cada aluno vira um código, e os nomes que aparecerem nas anotações são trocados por [nome]. Passe os olhos no arquivo antes de enviar: um apelido escrito de outro jeito pode escapar.</p></section>
     <section class="fc-bloco"><h3>2. Traga os textos de volta</h3>
-      <p class="nota">Anexe o relatório na conversa com o Claude. Depois escolha o arquivo que ele devolver, ou cole a resposta aqui.</p>
+      <p class="nota">Anexe o relatório numa conversa com o Claude: as instruções vão dentro dele. Depois escolha o arquivo que ele devolver, ou cole a resposta aqui. Se vier em partes, importe uma de cada vez.</p>
       <input type="file" id="arq-textos" accept=".json,.txt,.md,application/json">
       <textarea id="fc-colar" class="fc-edita" rows="3" placeholder="Ou cole aqui a resposta do Claude"></textarea>
       <div class="linha-btn"><button class="botao secundario" data-acao="fc-ler-colado">Conferir o texto colado</button></div>
