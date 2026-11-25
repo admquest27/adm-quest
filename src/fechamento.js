@@ -12,7 +12,7 @@ export const MAPA = {
 
 export const compDe = (hab) => hab.slice(0, 8); // EMT1ADM102 -> EMT1ADM1
 export const curto = (cod) => cod.replace('EMT1ADM', '');
-const ordemDaFase = (f) => f?.ordem ?? 0;
+const ordemDaFase = (f) => (Number(String(f?.mundo ?? '').replace(/\D/g, '')) || 0) * 1000 + (f?.ordem ?? 0);
 const minuscula = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : '');
 const semPonto = (s) => (s ?? '').trim().replace(/[.;]+$/, '');
 
@@ -123,7 +123,7 @@ export function impactos(mapa, habs, comps, atitude = 'A') {
 // pode incluir qualquer aluno em qualquer habilidade ("incluída por você").
 export function precisaDeRecuperacao(c, fech) {
   return Object.values(c.habs)
-    .filter((h) => ['PA', 'NA'].includes(h.avaliada) || (h.semEvidencia && h.faltas.length) || fech?.recup?.[h.cod]?.vai)
+    .filter((h) => !fech?.recup?.[h.cod]?.dispensado && (['PA', 'NA'].includes(h.avaliada) || (h.semEvidencia && h.faltas.length) || fech?.recup?.[h.cod]?.vai))
     .map((h) => {
       const sugerida = ['PA', 'NA'].includes(h.avaliada) || (h.semEvidencia && h.faltas.length);
       return { ...h, nivel: !sugerida ? 'incluída por você' : h.avaliada === 'NA' || !h.avaliada ? 'recomendada' : 'opcional' };

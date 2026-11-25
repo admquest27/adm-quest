@@ -188,3 +188,10 @@ body.prof .marcas { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* a folha do PCTD fica dentro da área de conteúdo (a moldura ocupa a esquerda) */
 body.prof .pc-doc-rolagem { width: 100%; left: 0; transform: none; }
+
+/* fechamento e quadro do ano */
+body.prof .fc-grade .fc-ini { border-left: 3px solid var(--marinho-2); }
+body.prof .fc-grade tr[data-acao] { cursor: pointer; }
+body.prof .fc-grade tr.fc-nd td { background: var(--verm-f); }
+body.prof .fc-retirar { float: right; margin: 0 0 6px 8px; }
+body.prof .fc-bloco input[type='file'], body.prof .fc-bloco textarea { margin-bottom: 8px; }

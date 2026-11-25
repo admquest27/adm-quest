@@ -13,7 +13,7 @@ import { htmlEstatisticas } from './estatisticas.js';
 import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas.js';
 import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
 import { htmlVotacaoProfessor, tratarVotacao } from './votacoes.js';
-import { htmlFechamento, tratarFechamento, mudarFechamento } from './fechamentoProfessor.js';
+import { htmlFechamento, htmlAno, tratarFechamento, mudarFechamento, lerArquivoTextos } from './fechamentoProfessor.js';
 import { fazerBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './backup.js';
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
@@ -105,6 +105,10 @@ export function iniciarProfessor(user, opcoes = {}) {
     st.fases = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.ordem - b.ordem);
     desenhar();
   }, () => {}));
+
+  // o fechamento e o quadro do ano olham para as fases de todos os mundos
+  st.fasesTodas = [];
+  paradas.push(onSnapshot(collection(db, 'fases'), (s) => { st.fasesTodas = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); }, () => {}));
 
   paradas.push(onSnapshot(doc(db, 'mundos', MUNDO), (s) => {
     st.mundo = s.exists() ? s.data() : null;
@@ -361,8 +365,8 @@ export function iniciarProfessor(user, opcoes = {}) {
   // ---------- avaliar ----------
   function htmlAvaliar() {
     const vista = st.sub.avaliar;
-    const topo = `<div class="px-cab"><div><h1>Avaliar</h1></div>${abas('sub', vista, [['turma', 'Visão da turma'], ['fechar', 'Fechar o bimestre']])}</div>`;
-    return `${topo}${vista === 'fechar' ? htmlFechamento(st, ativosDaTurma(), turmaAtual()) : htmlEstatisticas(st)}`;
+    const topo = `<div class="px-cab"><div><h1>Avaliar</h1></div>${abas('sub', vista, [['turma', 'Visão da turma'], ['fechar', 'Fechar o bimestre'], ['ano', 'Ano']])}</div>`;
+    return `${topo}${vista === 'fechar' ? htmlFechamento(st, ativosDaTurma(), turmaAtual()) : vista === 'ano' ? htmlAno(st, ativosDaTurma(), turmaAtual()) : htmlEstatisticas(st)}`;
   }
 
   // ---------- ajustes ----------
@@ -616,6 +620,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         if (novo === 'encerrada' && !confirm('Encerrar a fase? Os alunos não poderão mais editar, exceto quem faltou ou quem você liberar.')) { desenhar(); return; }
         await mudarEstado(e.target.dataset.estado, novo);
       }
+      else if (e.target.id === 'arq-textos') { await lerArquivoTextos(e.target.files?.[0], st, ativosDaTurma(), turmaAtual()); e.target.blur(); desenhar(); }
       else if (e.target.id === 'arq') { await lerArquivo(e.target.files?.[0]); }
       else if (e.target.id === 'arq-backup') {
         try { st.previaBackup = await lerArquivoBackup(e.target.files[0]); desenhar(); }
@@ -629,6 +634,7 @@ export function iniciarProfessor(user, opcoes = {}) {
   function trocarTurma(id) {
     gravarPendentes();
     st.turma = id; guardar('turma', id);
+    st.fechImport = null; st.fechFb = null;
     st.salaAluno = null; st.salaFase = null; st.planFase = null; st.fichaUid = null; st.painelVista = null;
     ligarTurma(); desenhar();
   }
