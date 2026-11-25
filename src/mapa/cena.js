@@ -281,7 +281,7 @@ class MapaCena extends Phaser.Scene {
   // Estradas: as que levam a fases abertas aparecem inteiras; as outras, só tracejadas de leve.
   criarEstradas() {
     this.todosPontos = [];
-    const desenhos = desenharEstradas(planta.ESTRADAS.map((e) => e.pontos), this.t);
+    const desenhos = desenharEstradas(planta.ESTRADAS.map((e) => e.pontos), this.t, undefined, planta.SEM_TERRA);
     this.estradas = planta.ESTRADAS.map((e, i) => {
       const pts = pontosDe(e.pontos); this.todosPontos.push(...pts);
       const chave = `estrada-${i}`;
@@ -1114,7 +1114,7 @@ class MapaCena extends Phaser.Scene {
     const livre = (x, y) => x > 1 && y > 1 && x < W - 2 && y < H - 2 && passa[y * W + x] && !this.naEstradaSet.has(y * W + x) && !this.t.agua[y * W + x] && !usados.some(([ux, uy]) => Math.hypot(ux - x, uy - y) < 6);
     // anda pela estrada e põe um poste a cada 8 peças e meia, ora de um lado, ora do outro, em chão livre
     let lado = 1;
-    for (const e of planta.ESTRADAS) {
+    for (const e of planta.POSTES_FIXOS ? [] : planta.ESTRADAS) {
       let acum = 3;
       for (let k = 1; k < e.pontos.length; k++) {
         const [ax, ay] = e.pontos[k - 1]; const [bx, by] = e.pontos[k]; const d = Math.hypot(bx - ax, by - ay); if (!d) continue;
@@ -1128,7 +1128,7 @@ class MapaCena extends Phaser.Scene {
     }
     for (const [x, y] of planta.POSTES ?? []) if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && passa[y * W + x] && !this.t.agua[y * W + x]) usados.push([x, y]);
     for (const [x, y] of usados) {
-      const by = (y + 1) * P - 2; passa[y * W + x] = 0;
+      const by = (y + 1) * P - 2; if (!planta.POSTES_FIXOS) passa[y * W + x] = 0;
       this.add.ellipse(x * P + 8, by, 6, 2, 0x000000, 0.25).setDepth(4);
       const img = this.add.image(x * P + 8, by, 'lpc', 'lampiao').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
       this.chamas.push([img.x, img.y - img.displayHeight + 8]);

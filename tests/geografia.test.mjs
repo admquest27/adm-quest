@@ -82,12 +82,14 @@ test('antes do chefão não se alcança a escada, o platô nem o portão; depois
   assert.equal(aberto[I(geo.ESCADA.x + 1, geo.ESCADA.y)], 1, 'escada alcançável');
 });
 
-test('sem atalho da ponte ao castelo: só o corredor leste liga o sul às fases 6 a 8', () => {
+test('há um atalho da ponte à frente do castelo, e a escada continua fechada', () => {
   const [cx, cy] = geo.ENTRADAS.m1chefao; // frente do castelo
   assert.equal(alcance(comCastelo(false), planta.INICIO)[I(cx, cy)], 1, 'a frente do castelo é alcançável');
   const p = comCastelo(false);
   for (let y = 19; y <= 26; y++) for (let x = 78; x < W; x++) p[I(x, y)] = 0; // fecha o corredor leste
-  assert.equal(alcance(p, planta.INICIO)[I(cx, cy)], 0, 'sem o corredor leste não há caminho: o bosque separador segura');
+  const v = alcance(p, planta.INICIO);
+  assert.equal(v[I(cx, cy)], 1, 'o atalho chega ao castelo sem passar pelo corredor leste');
+  assert.equal(v[I(geo.ESCADA.x + 1, geo.ESCADA.y)], 0, 'a escada só abre depois do chefão');
 });
 
 test('as escarpas e a muralha são sólidas e o resto do platô é chão', () => {
@@ -100,7 +102,7 @@ test('o deserto, a mata e a praça ficam onde a planta manda', () => {
   assert.ok(t.areia[I(12, 10)], 'areia nas dunas');
   assert.ok(!t.areia[I(60, 30)]);
   assert.ok(t.floresta[I(1, 25)] && t.floresta[I(86, 25)] && t.floresta[I(40, 49)], 'mata nas bordas');
-  assert.ok(t.floresta[I(52, 21)], 'bosque separador');
+  assert.ok(t.floresta[I(57, 24)], 'bosque separador (fora do atalho)');
 });
 
 // ---------- etapa 2: estradas, entradas e terrenos vazios ----------

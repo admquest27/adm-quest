@@ -105,7 +105,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
 // arredondados (largura de pouco mais de um quadrado e meio), com a borda mais escura, tufos de grama nas beiradas
 // e pedrinhas. Onde o traçado passa por cima da água, a terra some (quem cobre ali é a ponte).
 const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
-export function desenharEstradas(segmentos, t, largura = 46) {
+export function desenharEstradas(segmentos, t, largura = 46, semTerra = []) {
   const { W, H } = t; const PW = W * Q; const PH = H * Q; const N = PW * PH;
   const dono = new Int8Array(N).fill(-1);
   segmentos.forEach((pontos, n) => {
@@ -125,6 +125,7 @@ export function desenharEstradas(segmentos, t, largura = 46) {
     const d = gm.getImageData(0, 0, bw, bh).data;
     for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
       if (d[(y * bw + x) * 4 + 3] < 128) continue;
+      if (semTerra.some(([ax, ay, bx2, by2]) => x + bx0 >= ax * Q && x + bx0 < bx2 * Q && y + by0 >= ay * Q && y + by0 < by2 * Q)) continue;
       const i = (by0 + y) * PW + bx0 + x; if (dono[i] >= 0) continue;
       if (t.agua[Math.floor((by0 + y) / Q) * W + Math.floor((bx0 + x) / Q)]) continue;
       dono[i] = n;

@@ -23,7 +23,11 @@ export const RIO = { x: 0, w: 0 };
 export const DESERTO = { cx: 0, cy: 0, rx: 0, ry: 0 };
 export const PRACA = { cx: 19.5, cy: 35.5, rx: 7.6, ry: 4.4 };
 // caminhos de pedra que ligam cada porta à praça, pátios, e o que enfeita o chão
+// onde a vila é de pedra a estrada de terra não é desenhada (a pedra assume o caminho)
+export const SEM_TERRA = [[4.5, 28.4, 14.5, 33.5]];
+export const POSTES_FIXOS = true;
 export const TRILHAS = [
+  [[6.5, 28.6], [6.9, 30.8], [9, 31.7], [11.2, 31.4], [12.6, 30.6]], geo.ATALHO,
   [[12.5, 30.4], [13.4, 32.2], [15.5, 33.6]], [[19.5, 31], [19.5, 32.5]], [[27, 28.2], [26, 30.4], [23.6, 32.8]],
   [[8, 38.8], [11, 38.8], [13.5, 36.8]], [[25.5, 34], [29, 34.6], [33.5, 34.8]], [[24.5, 38], [27.5, 41.6], [31.5, 41.8]],
   [[16.5, 38.8], [15.5, 43], [15.8, 46.6]], [[22.5, 39], [24.5, 43], [25, 46.6]], [[31.5, 41.8], [33.6, 42.4], [35.6, 41.4]],
@@ -35,7 +39,13 @@ export const PATIOS = [[36.5, 41.3, 2, 1.3]];
 export const CANTEIROS = [[14.6, 31.8, 2], [22.6, 31.8, 2], [11.4, 40.4, 1.6], [25.8, 39.2, 1.6]];
 export const SEBES = [];
 export const BANCOS = [[13.4, 35.2], [24.2, 35.2], [36.6, 43.2]];
-export const POSTES = [[13, 33], [26, 33], [14, 39], [25, 40], [16, 32], [23, 32], [30, 33], [32, 43], [28, 17]];
+// lampiões escolhidos um a um: praça, portas, esquinas da estrada, ponte e cantos escuros. Não bloqueiam a passagem.
+export const POSTES = [
+  [14, 33], [25, 33], [14, 39], [25, 39], [21, 29], [34, 28], [31, 43], [10, 43],
+  [4, 22], [10, 19], [21, 14], [29, 18], [37, 18], [38, 26], [48, 22], [48, 27],
+  [53, 21], [50, 19], [59, 19], [64, 19], [73, 19], [76, 17], [84, 22], [84, 27],
+  [79, 32], [68, 31], [61, 33], [51, 34], [47, 41], [58, 43], [74, 43],
+];
 export const ESTRADAS = geo.ROTA.map((e) => ({ ...e, pontos: suavizar(e.pontos) }));
 export const LOTES = geo.LOTES;
 export const ENTRADAS = geo.ENTRADAS;

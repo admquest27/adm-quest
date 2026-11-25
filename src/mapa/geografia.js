@@ -31,6 +31,8 @@ export const LIMITE = [
 ];
 
 // Bosque que separa o corredor que sai da ponte do caminho das fases 6 a 8 (impede o atalho ponte-castelo)
+// Atalho (pedido para o fim do bimestre): abre o bosque entre a ponte e a frente do castelo. A escada continua fechada.
+export const ATALHO = [[50.2, 25.4], [51.6, 23], [53, 21], [54.4, 19]];
 export const BOSQUE_SEPARADOR = [
   [46.8, 13], [49, 13], [49, 17], [50.5, 20], [55.8, 21], [59, 22], [60, 26.6], [68, 26.6], [70, 23], [70, 21.4], [81.5, 21.4], [81.5, 22.5], [72, 23.2],
   [70, 27.7], [60, 27.7], [56, 26.5], [54, 24], [50, 22], [47, 20],
@@ -166,6 +168,8 @@ export function montarGeografia(W = LARG, H = ALT) {
   const floresta = new Uint8Array(W * H);
   for (let i = 0; i < floresta.length; i++) if (!dentro[i]) floresta[i] = 1;
   const bosque = mascaraPoligono(BOSQUE_SEPARADOR, W, H); for (let i = 0; i < bosque.length; i++) if (bosque[i]) floresta[i] = 1;
+  // clareira do atalho: da saída da ponte até a estrada do castelo
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let perto = 99; for (let i = 0; i < ATALHO.length - 1; i++) { const [ax, ay] = ATALHO[i]; const [bx, by] = ATALHO[i + 1]; const t = Math.max(0, Math.min(1, ((x + 0.5 - ax) * (bx - ax) + (y + 0.5 - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2))); perto = Math.min(perto, Math.hypot(x + 0.5 - ax - t * (bx - ax), y + 0.5 - ay - t * (by - ay))); } if (perto < 1.7) floresta[y * W + x] = 0; }
   for (let i = 0; i < floresta.length; i++) if (agua[i]) floresta[i] = 0;
   const plato = mascaraPoligono(PLATO, W, H);
   const escarpa = new Uint8Array(W * H);
