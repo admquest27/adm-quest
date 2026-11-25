@@ -384,6 +384,7 @@ class MapaCena extends Phaser.Scene {
       if (aviao && !this.textures.exists('aviao-v02')) this.textures.addCanvas('aviao-v02', desenharAviao());
       if (proc) this.add.ellipse(cx, by - 2, f.w * P * 0.92, 12, 0x0f0c1e, 0.3).setDepth(3.5);
       const img = aviao ? this.add.image(cx, by, 'aviao-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : proc ? this.add.image(cx, by, 'castelo-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
+      if (lpcF?.fumaca) lpcF.fumaca.forEach(([sx, sy], n) => { const x = cx - (img.displayWidth / 2) + sx * Q_ESCALA; const y = by - img.displayHeight + sy * Q_ESCALA; this.time.addEvent({ delay: 520, loop: true, startAt: n * 260, callback: () => { const p = this.add.circle(x + Phaser.Math.Between(-1, 1), y, 2, 0xd8d4e2, 0.7).setDepth(101 + by); this.tweens.add({ targets: p, y: y - 24, x: p.x + Phaser.Math.Between(2, 10), scale: 2.6, alpha: 0, duration: 2000, onComplete: () => p.destroy() }); } }); });
       img.setDepth(aviao ? 100 + by - 24 : 100 + by);
       if (aviao) AVIAO_FUMACA.forEach(([sx, sy], n) => { const x = img.x - img.displayWidth / 2 + sx * Q_ESCALA; const y = img.y - img.displayHeight + sy * Q_ESCALA; this.time.addEvent({ delay: 420, loop: true, startAt: n * 210, callback: () => { const p = this.add.circle(x + Phaser.Math.Between(-2, 2), y, 2, n ? 0x9a96a8 : 0x6c6878, 0.75).setDepth(img.depth + 1); this.tweens.add({ targets: p, y: y - 26, x: p.x + Phaser.Math.Between(2, 12), scale: 3, alpha: 0, duration: 1800, onComplete: () => p.destroy() }); } }); });
       if (lpcF?.luzes || lpcF?.quadro.startsWith('casa-palha')) (this.casasLPC ??= []).push({ img, quadro: lpcF.quadro, luzes: lpcF.luzes });
@@ -396,7 +397,7 @@ class MapaCena extends Phaser.Scene {
     // detalhes de cada fase
     const fx = (id) => this.fases[id];
     if (fx('m1f7') && fx('m1f5') && fx('m1chefao')) { // (na planta V02 ainda sem fases, estes detalhes esperam a etapa 3)
-    const torre = fx('m1f7'); const bt = torre.img.getBounds(); const pl = this.add.image(bt.right - 8, bt.bottom + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y);
+    const torre = fx('m1f7'); const bt = torre.img.getBounds(); if (!planta.GEO) { const pl = this.add.image(bt.right - 8, bt.bottom + 3, 'placaLupa').setOrigin(0.5, 1); pl.setDepth(100 + pl.y); } // na planta nova a lupa faz parte da casa
     const camp = fx('m1f5'); const bc = camp.img.getBounds(); const fog = this.add.sprite(bc.left - 6, bc.bottom - 2, 'lpc', 'fogueira-0').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + bc.bottom);
     let qf = 0; this.time.addEvent({ delay: 120, loop: true, callback: () => { qf = (qf + 1) % 5; fog.setFrame('fogueira-' + qf); } });
     this.add.image(bc.left - 20, bc.bottom + 2, 'acampamento', 'toras').setDepth(100 + bc.bottom + 2);
@@ -627,7 +628,7 @@ class MapaCena extends Phaser.Scene {
   // ---------- Rosalina ----------
   criarRosalina() {
     const [x, y] = centro(planta.PERSONAGENS.rosalina.casa);
-    this.rosa = this.add.sprite(x, y, 'lpc', 'rosa-sentada').setOrigin(0.5, 0.9).setScale(0.75);
+    this.rosa = this.add.sprite(x, y, 'lpc', 'rosa-sentada').setOrigin(0.5, 0.92).setScale(Q_ESCALA);
     this.rosa.ia = { modo: 'senta', ate: 0, rota: [] };
   }
 

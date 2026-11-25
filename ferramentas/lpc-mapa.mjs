@@ -42,7 +42,7 @@ const resultado = await pg.evaluate(async ({ folhas, pecas, compostos, largura }
     }
     tg.putImageData(d, 0, 0); g.drawImage(t, dx, dy);
   };
-  const pintaComposto = (c, noite) => (g, dx, dy) => { for (const l of c.camadas) { if (l[0] === 'cor') { g.fillStyle = l[1]; g.fillRect(dx + l[2], dy + l[3], l[4], l[5]); } else if (l[0] === 'tinge') { tinge(g, imgs[l[1]], l[2], l[3], l[4], l[5], dx + l[6], dy + l[7], l[8], l[9], l[10]); } else { const [f, x, y, w, h, ox, oy] = l; g.drawImage(imgs[f], x, y + (noite && f === 'janelas' ? 96 : 0), w, h, dx + ox, dy + oy, w, h); } } };
+  const pintaComposto = (c, noite) => (g, dx, dy) => { g.save(); g.beginPath(); g.rect(dx, dy, c.w, c.h); g.clip(); /* nada vaza para a peça vizinha */ for (const l of c.camadas) { if (l[0] === 'cor') { g.fillStyle = l[1]; g.fillRect(dx + l[2], dy + l[3], l[4], l[5]); } else if (l[0] === 'tinge') { tinge(g, imgs[l[1]], l[2], l[3], l[4], l[5], dx + l[6], dy + l[7], l[8], l[9], l[10]); } else { const [f, x, y, w, h, ox, oy] = l; g.drawImage(imgs[f], x, y + (noite && f === 'janelas' ? 96 : 0), w, h, dx + ox, dy + oy, w, h); } } g.restore(); };
   for (const [nome, c] of Object.entries(compostos)) {
     itens.push({ nome, w: c.w, h: c.h, pinta: pintaComposto(c, false) });
     // toda composição com janela ganha a versão de noite, com a janela acesa (fica 96 px abaixo na folha de janelas)
