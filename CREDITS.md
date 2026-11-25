@@ -12,6 +12,7 @@ O texto integral das atribuições de cada pacote fica em [public/mapa/lpc/CREDI
 | Prédios coloniais | bluecarrot16, Lanea Zimmerman, Wolthera van Hövell tot Westerflier (TheraHedwig), Guido Bos | CC-BY-SA 3.0 / GPL 3.0+ |
 | Telhados (LPC Roofs v2) e prédios coloniais usados nas casas novas | bluecarrot16, Lanea Zimmerman (Sharm), Michele Bucelli (Buch), Casper Nilsson, Xenodora, keith karnage, NaRNeRZz, Talon (Talosaurus), TheraHedwig, Guido Bos | CC-BY-SA 3.0 / GPL 3.0 |
 | Árvore de decisão (LPC Jungle, árvores com cipós) | bluecarrot16, Lanea Zimmerman (Sharm), Sevarihk, Hyptosis, Emcee Flesher, ansimuz, KnoblePersona, surt, Talosaurus e colaboradores do Open Pixel Project | CC-BY 4.0 |
+| Feira do acampamento (LPC Victorian Town Decorations) | bluecarrot16, Casper Nilsson, Lanea Zimmerman (Sharm), William Thompson, mold, AntumDeluge, Curt, Daniel Eddeland (daneeklu), caeles, George Bailey, Jetrel, Yar, Guido Bos, Ivan Voirol (Silver IV), Stephen Challener (Redshrike), Open Surge team, Arthur Carvalho, Guilherme Vieira (n2liquid), NaRNeRZz, Diarandor, Armando Montero (ArMM1998), Tuomo Untinen (Reemax), Buch | CC-BY-SA 4.0 |
 | Casa de palha e chalé | bluecarrot16, Casper Nilsson | CC-BY-SA 3.0 / GPL 3.0+ |
 | Portas e janelas | bluecarrot16, Lanea Zimmerman, Daniel Armstrong, Casper Nilsson, Anamaris, Krusmira | CC-BY-SA 3.0 / GPL 3.0+ |
 | Pinheiros | bluecarrot16, b_o, Lanea Zimmerman, Johann Charlot, Yar, Jetrel, Zabin, Hyptosis, Surt, KnoblePersona | CC-BY-SA 3.0 / GPL 2.0 / GPL 3.0 |

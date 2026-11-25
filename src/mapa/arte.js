@@ -93,6 +93,7 @@ export const LPC_PECAS = {
   celeiroV2: { quadro: 'celeiro-v2', porta: [101, 214], w: 6, h: 3 },
   arvoreDecisaoV2: { quadro: 'arvore-decisao', porta: [88, 212], w: 3, h: 3 },
   santuario: { quadro: 'santuario', porta: [160, 268], w: 10, h: 5 },
+  feiraGrande: { quadro: 'feira-grande', porta: [116, 156], w: 5, h: 3 },
   raioXV2: { quadro: 'raiox-v2', porta: [64, 184], w: 3, h: 3 },
 };
 
@@ -106,7 +107,7 @@ export const LPC_ENFEITES = {
 export const LPC_OBJETOS = {
   cacto: 'cacto', lapide: 'lapide', escola: 'torre-relogio', feira: 'feira', coreto: 'coreto', impressora: 'mesa-escriba', casinha: 'casinha-cachorro', aviao: 'aviao-caido', quadro: 'quadro-swot', placa404: 'placa-404', porta: 'placa-cafe', ilha: 'ilhota', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
   carroca: 'carroca', fardos: 'fardo', lenha: 'lenha-1',
-  toriiTemplo: 'torii', toroE: 'toro', toroD: 'toro', caoE: 'cao-guardiao', caoD: 'cao-guardiao', cerejeiraA: 'cerejeira-a', cerejeiraB: 'cerejeira-b', toriiTemplo: 'torii',
+  toriiTemplo: 'torii', bancaV: 'banca-vermelha', bancaD: 'banca-dourada', caixasM: 'caixas-mercado', palletM: 'pallet-mercado', toroE: 'toro', toroD: 'toro', caoE: 'cao-guardiao', caoD: 'cao-guardiao', cerejeiraA: 'cerejeira-a', cerejeiraB: 'cerejeira-b', toriiTemplo: 'torii',
 };
 
 // Construções que o professor pode escolher para uma fase extra num terreno vazio (id da planta e nome para a tela).

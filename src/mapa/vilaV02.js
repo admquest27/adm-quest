@@ -32,7 +32,7 @@ export const FASES = [
   { id: 'm1f2', arte: 'aviaoFase', x: 12, y: 10, w: 7, h: 4, entrada: geo.ENTRADAS.m1f2 },
   { id: 'm1f3', arte: 'oficinaV2', x: 33, y: 13, w: 3, h: 3, entrada: geo.ENTRADAS.m1f3 },
   { id: 'm1f4', arte: 'celeiroV2', x: 54, y: 31, w: 6, h: 3, entrada: geo.ENTRADAS.m1f4 },
-  { id: 'm1f5', arte: 'barraca', x: 75, y: 27, w: 3, h: 3, entrada: geo.ENTRADAS.m1f5 },
+  { id: 'm1f5', arte: 'feiraGrande', x: 74, y: 27, w: 5, h: 3, entrada: geo.ENTRADAS.m1f5 },
   { id: 'm1f6', arte: 'arvoreDecisaoV2', x: 78, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f6 },
   { id: 'm1f7', arte: 'raioXV2', x: 66, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f7 },
   // castelo (castelo.js): 7 peças de largura, encostado na rocha das escarpas dos dois lados; o bloqueio vai até a escada (y 10 a 17)
@@ -78,6 +78,11 @@ export const OBJETOS = [
   { id: 'fardos', arte: 'fardo', x: 61, y: 32, w: 2, h: 1, bloqueia: true },
   { id: 'lenha', arte: 'lenha', x: 53, y: 32, bloqueia: true },
   // jardim do Templo Antigo (santuário em 22,22): cães guardiões, lanternas e cerejeiras
+  // feira do acampamento: bancas e mercadorias ao redor da barraca grande
+  { id: 'bancaV', arte: 'banca', x: 69, y: 28, w: 3, h: 1, bloqueia: true },
+  { id: 'bancaD', arte: 'banca', x: 70, y: 35, w: 3, h: 1, bloqueia: true },
+  { id: 'caixasM', arte: 'caixas', x: 72, y: 29, w: 2, h: 1, bloqueia: true },
+  { id: 'palletM', arte: 'caixas', x: 68, y: 35, w: 2, h: 1, bloqueia: true },
   { id: 'caoE', arte: 'cao', x: 23, y: 27, w: 2, h: 1, bloqueia: true },
   { id: 'caoD', arte: 'cao', x: 29, y: 27, w: 2, h: 1, bloqueia: true },
   { id: 'toroE', arte: 'toro', x: 21, y: 27, bloqueia: true },
