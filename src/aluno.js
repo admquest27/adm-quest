@@ -1,11 +1,12 @@
 import { signOut } from 'firebase/auth';
 import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
-import { app, tela, esc, carregando } from './ui.js';
+import { app, tela, esc } from './ui.js';
 import { normalizar, paraSalvar, sortear, PADRAO } from './avatar.js';
 import { htmlCriador, animarPrevia } from './criarAvatar.js';
 import { htmlCartao } from './cartao.js';
 import { criarMapaAluno } from './mapaAluno.js';
+import { htmlCarregando } from './carregandoMapa.js';
 import { calcularCarteira, CONQUISTAS, podeComprar } from './economia.js';
 import { htmlCarteira, visual, avatarComMoldura, conquistasNovas } from './carteira.js';
 import { htmlVotacaoAluno, votar } from './votacoes.js';
@@ -36,13 +37,11 @@ export function iniciarAluno(user, opcoes = {}) {
   };
   let paradasAtivo = [];
   let mapa = null;
-  const vistaSalva = () => { try { return localStorage.getItem(`admq-vista-${alvo}`); } catch { return null; } };
-  const guardarVista = (v) => { try { localStorage.setItem(`admq-vista-${alvo}`, v); } catch { /* sem armazenamento */ } };
 
   const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>` : '');
   const mostrar = (html, classe) => tela(faixa() + html, classe);
 
-  carregando('Procurando o cadastro...');
+  mostrar(htmlCarregando());
 
   const parar = onSnapshot(
     ref,
@@ -165,15 +164,15 @@ export function iniciarAluno(user, opcoes = {}) {
     if (!ver && st.tutorial === null && !jaViu(`admq-tut-${alvo}`)) st.tutorial = 0;
     if (st.tutorial !== null) return mostrar(`<section class="cartao largo">${htmlTutorial(st.tutorial)}</section>`, 'centro alto');
     const rec = st.turma?.recursos ?? {};
-    // o aluno entra direto no mapa; quem escolheu o menu em lista continua nele (a escolha fica no aparelho)
+    // o aluno sempre entra direto no mapa; a lista fica no botão Menu
     if (!st.vistaDecidida) {
-      if (ver || vistaSalva() === 'lista') st.vistaDecidida = true;
+      if (ver) st.vistaDecidida = true;
       else {
         // espera turma, mundo, fases e progresso chegarem, para a lista não piscar e o mapa já abrir certo
         const chegou = ESSENCIAIS.every((k) => st.chegou.has(k));
         if (!chegou && !st.desistiuDeEsperar) {
-          st.espera ??= setTimeout(() => { st.desistiuDeEsperar = true; if (!st.vistaDecidida) desenhar(); }, 8000);
-          return carregando('Abrindo a vila...');
+          st.espera ??= setTimeout(() => { st.desistiuDeEsperar = true; if (!st.vistaDecidida) desenhar(); }, 20000);
+          return mostrar(htmlCarregando());
         }
         clearTimeout(st.espera);
         st.vistaDecidida = true;
@@ -194,9 +193,10 @@ export function iniciarAluno(user, opcoes = {}) {
       mapa = criarMapaAluno({
         alvo, ver, turma: st.dados.turma,
         aoAbrirFase: (id) => { st.faseAberta = id; st.voltarMapa = true; st.noMapa = false; mapa.esconder(); st.aviso = ''; desenhar(); window.scrollTo(0, 0); },
-        aoVoltar: () => { st.noMapa = false; guardarVista('lista'); mapa.esconder(); desenhar(); },
+        aoVoltar: () => { st.noMapa = false; mapa.esconder(); desenhar(); },
       });
     }
+    mostrar(''); // nada fica por baixo do mapa (a tela de carregamento taparia ele)
     mapa.mostrar(st);
   }
 
@@ -433,7 +433,7 @@ export function iniciarAluno(user, opcoes = {}) {
     try {
       if (b.id === 'sair') { mapa?.destruir(); mapa = null; signOut(auth); return; }
       if (b.id === 'sair-ver') { mapa?.destruir(); mapa = null; opcoes.aoSair?.(); return; }
-      if (b.id === 'abrir-mapa') { guardarVista('mapa'); st.noMapa = true; st.aviso = ''; desenhar(); return; }
+      if (b.id === 'abrir-mapa') { st.noMapa = true; st.aviso = ''; desenhar(); return; }
       if (b.dataset.fase) { st.faseAberta = b.dataset.fase; st.aviso = ''; desenhar(); return; }
       if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; if (st.voltarMapa) { st.voltarMapa = false; st.noMapa = true; } desenhar(); return; }
       if (b.id === 'abrir-carteira') { st.naCarteira = true; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }

@@ -49,7 +49,7 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
 
   async function iniciar(st) {
     carregando = true;
-    raiz.innerHTML = htmlCarregando();
+    raiz.innerHTML = htmlCarregando({ botaoLista: true });
     const [modulo, seg, folhaAvatar] = await Promise.all([
       import('./mapa/cena.js'),
       getDoc(doc(db, 'segredos', alvo)).catch(() => null),
@@ -102,7 +102,7 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
       aoCasteloCair: () => { if (textos.casteloCaiu) api?.falar({ nome: textos.nomes?.barao ?? '', rosto: 'barao', texto: textos.casteloCaiu }); },
     });
     // a tela de carregamento fica por cima até o primeiro quadro do mapa
-    raiz.insertAdjacentHTML('beforeend', htmlCarregando());
+    raiz.insertAdjacentHTML('beforeend', htmlCarregando({ botaoLista: true }));
     marcar(ultimoSt ?? st);
     carregando = false;
     if (raiz.hidden) api.pausar();

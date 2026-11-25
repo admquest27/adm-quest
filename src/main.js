@@ -5,10 +5,11 @@ import '@fontsource/pixelify-sans/latin-700.css';
 import '@fontsource/nunito/latin-400.css';
 import '@fontsource/nunito/latin-700.css';
 import '@fontsource/nunito/latin-800.css';
-import { carregando } from './ui.js';
+import { tela } from './ui.js';
 import { mostrarAbertura, erroAbertura } from './abertura.js';
 import { iniciarAluno } from './aluno.js';
 import { iniciarProfessor } from './professor.js';
+import { htmlCarregando } from './carregandoMapa.js';
 
 let parar = null;
 
@@ -78,9 +79,9 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) { telaLogin(); return; }
   const token = await user.getIdTokenResult(true);
   if (token.claims.professor === true) { fecharAbertura(); comoProfessor(user); return; }
-  if (entrouAgora || aberturaVista()) { fecharAbertura(); entrouAgora = false; carregando('O Consultor Cinzento está chegando. Exatamente no prazo.'); parar = iniciarAluno(user); return; }
+  if (entrouAgora || aberturaVista()) { fecharAbertura(); entrouAgora = false; tela(htmlCarregando()); parar = iniciarAluno(user); return; }
   pararAbertura = mostrarAbertura({
     logado: true,
-    aoEntrar: () => { marcarAbertura(); fecharAbertura(); carregando('O Consultor Cinzento está chegando. Exatamente no prazo.'); parar = iniciarAluno(user); },
+    aoEntrar: () => { marcarAbertura(); fecharAbertura(); tela(htmlCarregando()); parar = iniciarAluno(user); },
   });
 });
