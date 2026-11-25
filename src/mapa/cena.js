@@ -389,7 +389,7 @@ class MapaCena extends Phaser.Scene {
           const ops = [add(op('operario1', cx - 26)), add(op('operario2', cx + 26))];
           add(this.time.addEvent({ delay: 2200, loop: true, callback: () => ops.forEach((o, k) => this.emote(o, 'sono', 1600)) }));
         }
-        if (estado === 'cancelada') add(this.add.image(cx, topo + alt / 2, 'embargo').setDepth(img.depth + 1));
+        if (estado === 'cancelada') add(this.add.image(px, py + 9, 'lpc', 'placa-cancelada').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(img.depth + 2)); // placa de aviso na porta
       } else if (feitas.has(id)) {
         f.no.setTexture('no-feito');
       } else {
