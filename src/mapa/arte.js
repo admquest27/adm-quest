@@ -89,12 +89,12 @@ export const LPC_PECAS = {
   arvoreGrande: CASA('arvore-comando', [96, 214]),
   celeiro: { quadro: 'celeiro', porta: [96, 150], w: 6, h: 3 },
   // casas V02 (telhados com volume, pacote LPC Roofs v2)
-  oficinaV2: { quadro: 'oficina-v2', porta: [64, 216], w: 3, h: 3 },
-  celeiroV2: { quadro: 'celeiro-v2', porta: [101, 214], w: 6, h: 3 },
-  arvoreDecisaoV2: { quadro: 'arvore-decisao', porta: [88, 212], w: 3, h: 3 },
-  santuario: { quadro: 'santuario', porta: [160, 268], w: 10, h: 5 },
-  feiraGrande: { quadro: 'feira-grande', porta: [116, 156], w: 5, h: 3 },
-  raioXV2: { quadro: 'raiox-v2', porta: [64, 184], w: 3, h: 3 },
+  oficinaV2: { quadro: 'oficina-v2', porta: [64, 216], w: 3, h: 3, luzes: [[24, 162, 26], [104, 162, 26]] },
+  celeiroV2: { quadro: 'celeiro-v2', porta: [101, 214], w: 6, h: 3, luzes: [[32, 166, 26], [170, 166, 26], [101, 198, 24]] },
+  arvoreDecisaoV2: { quadro: 'arvore-decisao', porta: [88, 212], w: 3, h: 3, luzes: [[88, 200, 26]] },
+  santuario: { quadro: 'santuario', porta: [160, 268], w: 10, h: 5, luzes: [[74, 151, 46, 'luz-lampiao'], [247, 151, 46, 'luz-lampiao'], [160, 185, 34]] },
+  feiraGrande: { quadro: 'feira-grande', porta: [116, 156], w: 5, h: 3, luzes: [[116, 84, 48, 'luz-lampiao']] },
+  raioXV2: { quadro: 'raiox-v2', porta: [64, 184], w: 3, h: 3, luzes: [[24, 146, 28]] },
 };
 
 // Enfeites da planta trocados por peças LPC (com mais de uma opção, o sorteio fixo pela posição escolhe).

@@ -166,7 +166,7 @@ class MapaCena extends Phaser.Scene {
       if (lpcP) {
         const img = this.imagemLPC(e.x, e.y, e.w, e.h, lpcP.quadro);
         (this.telhados ??= []).push(img.getBounds());
-        (this.casasLPC ??= []).push({ img, quadro: lpcP.quadro });
+        (this.casasLPC ??= []).push({ img, quadro: lpcP.quadro, luzes: lpcP.luzes });
         const [px] = this.portaLPC(img, lpcP);
         const i = nCasa++;
         this.interativos.push({ tipo: 'casa', id: i, nome: this.o.textos?.casas?.[i]?.nome, area: img.getBounds(), alvo: [Math.floor(px / P), e.y + e.h] });
@@ -333,7 +333,7 @@ class MapaCena extends Phaser.Scene {
       if (proc) this.add.ellipse(cx, by - 2, f.w * P * 0.92, 12, 0x0f0c1e, 0.3).setDepth(3.5);
       const img = proc ? this.add.image(cx, by, 'castelo-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
       img.setDepth(100 + by);
-      if (lpcF?.quadro.startsWith('casa-palha')) (this.casasLPC ??= []).push({ img, quadro: lpcF.quadro });
+      if (lpcF?.luzes || lpcF?.quadro.startsWith('casa-palha')) (this.casasLPC ??= []).push({ img, quadro: lpcF.quadro, luzes: lpcF.luzes });
       const [nx, ny] = centro(f.entrada);
       const no = this.add.image(nx, ny + 3, 'no-trancado').setDepth(3).setScale(0.7);
       const rotulo = this.add.text(nx, ny + 9, this.o.fases?.[f.id]?.codigo ?? '', { fontFamily: 'Pixelify Sans, Nunito, sans-serif', fontStyle: '700', fontSize: '11px', color: '#fff3c4', stroke: '#120f22', strokeThickness: 4, resolution: 4 }).setOrigin(0.5, 0).setDepth(985).setVisible(false);
@@ -1089,7 +1089,16 @@ class MapaCena extends Phaser.Scene {
     this.luzes = [];
     const brilho = (x, y, k, esc, a) => this.guardaLuz(this.add.image(x, y, k)).setScale(esc).setBlendMode(Phaser.BlendModes.ADD).setAlpha(a * this.luzForca).setDepth(989);
     for (const [x, y] of this.chamas) { this.luzes.push({ x, y: y + 18, r: 58, k: 'luz-lampiao' }); brilho(x, y + 26, 'luz-lampiao', 0.75, 0.22); this.guardaLuz(this.add.image(x, y, 'luz')).setScale(0.16).setTint(0xffd590).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.7 * this.luzForca).setDepth(990); }
-    for (const c of this.casasLPC ?? []) { const b = c.img.getBounds(); this.luzes.push({ x: b.left + 18, y: b.top + 78, r: 26, k: 'luz-janela' }); }
+    for (const c of this.casasLPC ?? []) {
+      const b = c.img.getBounds();
+      if (!c.luzes) { this.luzes.push({ x: b.left + 18, y: b.top + 78, r: 26, k: 'luz-janela' }); continue; }
+      // construções com pontos de luz próprios: [x, y] em pixels da arte, raio e tipo (lanterna ganha também um brilho)
+      for (const [lx, ly, r, k = 'luz-janela'] of c.luzes) {
+        const x = b.left + lx * Q_ESCALA; const y = b.top + ly * Q_ESCALA; this.luzes.push({ x, y, r, k });
+        if (k === 'luz-lampiao') brilho(x, y, k, r / 64, 0.35);
+      }
+    }
+    for (const id of ['toroE', 'toroD']) { const o = this.objetos?.[id]?.img; if (!o) continue; const y = o.y - o.displayHeight + 9; this.luzes.push({ x: o.x, y: y + 8, r: 34, k: 'luz-lampiao' }); brilho(o.x, y, 'luz-lampiao', 0.45, 0.4); }
     const camp = this.fases?.m1f5?.img; if (camp) { const b = camp.getBounds(); this.luzes.push({ x: b.left - 6, y: b.bottom - 8, r: 52, k: 'luz-fogo' }); brilho(b.left - 6, b.bottom - 6, 'luz-fogo', 0.7, 0.3); }
     this.rtLuz = this.guardaLuz(this.add.renderTexture(0, 0, this.t.W * P, this.t.H * P).setOrigin(0).setDepth(988).setBlendMode(Phaser.BlendModes.MULTIPLY));
     this.pincel = this.make.image({ key: 'luz', add: false }).setBlendMode(Phaser.BlendModes.ADD);
