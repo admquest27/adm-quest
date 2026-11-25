@@ -42,7 +42,9 @@ export const PLATO = [[41, 0], [88, 0], [88, 10], [84, 10.4], [78, 9.5], [72, 10
 // Ela corre de x0 a x1 (em quadrados); onde toca o rio, a água manda e a pedra é cortada. No vão do castelo (49 a 60) fica a escada.
 export const ESCARPA_ALTURA = 4.8;
 // O castelo ocupa x 51 a 57. Perto dele a rocha desce até o chão do castelo (a parede cresce), então não sobra vão de grama.
-export const ESCARPA_TRECHOS = [{ x0: 41, x1: 53 }, { x0: 56, x1: 88 }];
+export const ESCARPA_TRECHOS = [{ x0: 2, x1: 39 }, { x0: 42, x1: 53 }, { x0: 56, x1: 88 }];
+// A cachoeira onde o rio desce do alto, entre os dois paredões (em quadrados)
+export const CACHOEIRA = { y0: 7.8, y1: 12.9, alto: [37.6, 41.4], baixo: [40.3, 44.2] };
 export const ESCARPA_CASTELO = { esq: 51, dir: 58, extra: 4.6, rampa: 3.2 };
 // Altura extra da parede (em quadrados) na coluna x: cresce suavemente ao se aproximar do castelo
 export const alturaExtraEscarpa = (x) => {
@@ -50,7 +52,13 @@ export const alturaExtraEscarpa = (x) => {
   const t = x < k.esq ? (x - (k.esq - k.rampa)) / k.rampa : x >= k.dir ? (k.dir + k.rampa - x) / k.rampa : 1;
   const u = Math.max(0, Math.min(1, t)); return k.extra * u * u * (3 - 2 * u);
 };
-export const bordaEscarpa = (x) => 8 + 0.85 * Math.sin(x * 0.31 + 0.4) + 0.5 * Math.sin(x * 0.83 + 2.1) + 0.25 * Math.sin(x * 1.9);
+// A oeste do rio o paredão é alto perto da cachoeira e recua para o norte sobre o deserto, para não encobrir o avião.
+export const bordaEscarpa = (x) => {
+  const onda = 0.85 * Math.sin(x * 0.31 + 0.4) + 0.5 * Math.sin(x * 0.83 + 2.1) + 0.25 * Math.sin(x * 1.9);
+  if (x >= 40) return 8 + onda;
+  const t = Math.max(0, Math.min(1, (x - 23) / 13)); const u = t * t * (3 - 2 * t);
+  return 1.4 + 6.6 * u + onda * (0.35 + 0.25 * u) * (x > 36 ? Math.max(0, (40 - x) / 4) : 1);
+};
 export const MURALHA = { x: 41, y: 4, w: 47, h: 1 };
 export const ESCADA = { x: 53, y: 6, w: 3, h: 6 };
 // Castelo (o corpo de pedra que fecha a única subida) e portão do Mundo 2 na muralha

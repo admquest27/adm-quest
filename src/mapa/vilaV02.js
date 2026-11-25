@@ -13,6 +13,8 @@ export const PONTE = geo.PONTE;
 export const ESCADA = geo.ESCADA;
 export const CASTELO = geo.CASTELO;
 export const PORTAO = geo.PORTAO;
+export const MURALHA = geo.MURALHA;
+export const CACHOEIRA = geo.CACHOEIRA;
 export const CASTELO_PROC = true; // o castelo é desenhado por castelo.js (com volume), não vem do atlas
 export const FLORESTA = [];
 export const MUROS = [];
@@ -44,7 +46,7 @@ export const FASES = [
 export const ENFEITES = [
   ['casaRosaV2', 18, 24], ['casaMostardaV2', 31, 29], ['casaLilasV2', 14, 38], ['padaria', 22, 40], ['santuario', 22, 22], ['casaDiag', 10, 39], ['salaProfessoresV2', 29, 37],
   // dunas
-  ['palmeira', 6, 7], ['palmeira', 21, 6], ['palmeira', 9, 12], ['palmeira', 27, 11], ['palmeira', 23, 16],
+  ['palmeira', 6, 9], ['palmeira', 22, 9], ['palmeira', 9, 12], ['palmeira', 27, 11], ['palmeira', 23, 16],
   // árvores soltas
   ['arvoreRedonda', 9, 21], ['arvoreClara', 35, 26], ['arvoreRosa', 37, 27], ['arvoreRedonda', 4, 31], ['pinheiro', 28, 41], ['arvoreClara', 4, 21],
   ['arvoreRedonda', 46, 29], ['arvoreClara', 62, 29], ['arvoreRosa', 66, 37], ['pinheiro', 72, 33], ['arvoreRedonda', 70, 41], ['arvoreClara', 82, 33],

@@ -8,6 +8,7 @@ let planta = plantaPadrao;
 import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } from './grade.js';
 import { todasAsTexturas, iconesBarra } from './texturas.js';
 import { FOLHAS, ANIMADOS, PESSOAS, RECORTES, DIRECOES, LINHAS, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
+import { desenharMuralha } from './muralha.js';
 import { desenharCastelo } from './castelo.js';
 import { desenharChao, desenharEstradas, pecasDaEstrada } from './chao.js';
 import { MORADORES } from './moradores.js';
@@ -70,6 +71,7 @@ class MapaCena extends Phaser.Scene {
     this.load.atlas('lpc', lpc + 'atlas.png', lpc + 'atlas.json');
     this.load.image('tijolo', lpc + 'tijolo.png');
     this.load.image('rochas', lpc + 'rochas.png');
+    this.load.image('cachoeira', lpc + 'cachoeira.png');
     carregarFazenda(this, lpc);
     this.load.spritesheet('galinhaL', lpc + 'bichos/galinha.png', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('gatoL', lpc + 'bichos/gato.png', { frameWidth: 32, frameHeight: 32 });
@@ -119,6 +121,7 @@ class MapaCena extends Phaser.Scene {
     this.lpc = { img: this.textures.get('lpc').getSourceImage(), quadros: this.quadrosLPC() };
     const naEstrada = new Set(); for (const e of planta.ESTRADAS) for (const i of pecasDaEstrada(e.pontos, W, H)) naEstrada.add(i);
     this.naEstradaSet = naEstrada;
+    if (planta.GEO) this.criarAlto();
     const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { tijolo: this.textures.get('tijolo').getSourceImage(), rochas: this.textures.get('rochas').getSourceImage() });
     this.naAreia = chao.naAreia;
     this.textures.addCanvas('chaoLPC', chao.canvas);
@@ -322,6 +325,51 @@ class MapaCena extends Phaser.Scene {
   defsFases() {
     const extras = (this.o.fasesExtras ?? []).map((e) => { const l = planta.LOTES.find((x) => x.id === e.lote); return l ? { id: e.id, arte: LPC_PECAS[e.modelo] ? e.modelo : 'casaAzul', x: l.x, y: l.y, w: l.w, h: l.h, entrada: l.entrada, extra: true } : null; }).filter(Boolean);
     return [...planta.FASES, ...extras];
+  }
+
+  // Muralha (camada própria, na frente das árvores de trás) e cachoeira animada do planalto
+  criarAlto() {
+    const m = planta.MURALHA; const q = P / Q_ESCALA;
+    if (m && !this.textures.exists('muralha-v02')) {
+      const vao = { x0: (planta.PORTAO.x - m.x) * q, x1: (planta.PORTAO.x + planta.PORTAO.w - m.x) * q };
+      const d = desenharMuralha(m, q, this.textures.get('tijolo').getSourceImage(), vao); this.textures.addCanvas('muralha-v02', d.canvas); this.muralhaDesloc = d.deslocY;
+    }
+    if (m) this.add.image(m.x * P, (m.y - 2) * P - (this.muralhaDesloc ?? 70) * Q_ESCALA, 'muralha-v02').setOrigin(0, 0).setScale(Q_ESCALA).setDepth(100 + (m.y + m.h) * P - 4);
+    const c = planta.CACHOEIRA; if (!c) return;
+    // contorno da queda: segue o rio, com as beiradas irregulares
+    const y0 = c.y0 * P; const y1 = c.y1 * P; const h = y1 - y0;
+    const esq = []; const dir = [];
+    for (let k = 0; k <= 12; k++) {
+      const t = k / 12; const s = t * t * (3 - 2 * t); const tremor = (n) => Math.sin(n * 2.7) * 2.2;
+      esq.push({ x: (c.alto[0] + (c.baixo[0] - c.alto[0]) * s) * P + tremor(k), y: y0 + h * t });
+      dir.push({ x: (c.alto[1] + (c.baixo[1] - c.alto[1]) * s) * P + tremor(k + 5), y: y0 + h * t });
+    }
+    const forma = this.make.graphics({ add: false }); forma.fillStyle(0xffffff).fillPoints([...esq, ...dir.slice().reverse()], true);
+    const mascara = forma.createGeometryMask();
+    const x = c.alto[0] * P - 4; const w = (c.baixo[1] - c.alto[0]) * P + 8;
+    // o miolo do desenho do pacote (64 x 64) repete e escorre para baixo
+    if (!this.textures.exists('queda')) { const t = this.textures.createCanvas('queda', 64, 64); t.getContext().drawImage(this.textures.get('cachoeira').getSourceImage(), 16, 40, 64, 64, 0, 0, 64, 64); t.refresh(); }
+    const camada = (alfa, prof, modo) => { const o = this.add.tileSprite(x, y0, w / Q_ESCALA, h / Q_ESCALA, 'queda').setOrigin(0, 0).setScale(Q_ESCALA).setDepth(prof).setAlpha(alfa).setMask(mascara); if (modo !== undefined) o.setBlendMode(modo); return o; };
+    const agua = camada(1, 3.2); const brilho = camada(0.35, 3.25, Phaser.BlendModes.ADD); brilho.tilePositionX = 23;
+    this.events.on('update', (_t, dt) => { agua.tilePositionY -= dt * 0.1; brilho.tilePositionY -= dt * 0.19; });
+    // fios de água branca caindo
+    const noMeio = (t, f) => { const k = Math.min(11, Math.floor(t * 12)); const r = t * 12 - k; const l = esq[k].x + (esq[k + 1].x - esq[k].x) * r; const d = dir[k].x + (dir[k + 1].x - dir[k].x) * r; return l + (d - l) * f; };
+    for (let i = 0; i < 16; i++) {
+      const f = 0.08 + ((i * 0.37) % 0.84); const fio = this.add.rectangle(noMeio(0, f), y0, i % 3 ? 1 : 2, 7 + (i % 4) * 3, 0xeafcff, 0.75).setOrigin(0.5, 0).setDepth(3.28).setMask(mascara);
+      this.tweens.addCounter({ from: 0, to: 1, duration: 700 + (i % 5) * 120, delay: (i * 97) % 800, repeat: -1, onUpdate: (tw) => { const t = tw.getValue(); fio.setPosition(noMeio(t, f), y0 + h * t).setAlpha(0.8 * (1 - t * 0.5)); } });
+    }
+    const g = this.add.graphics().setDepth(3.3);
+    g.lineStyle(2, 0xdffaff, 0.95).lineBetween(esq[0].x, y0, dir[0].x, y0); g.lineStyle(1, 0x8fe0ee, 0.8).lineBetween(esq[0].x, y0 + 2, dir[0].x, y0 + 2);
+    // pedras molhadas nas duas beiradas (recortes da mesma rocha do paredão)
+    if (!this.textures.exists('pedra-queda')) { const t = this.textures.createCanvas('pedra-queda', 30, 40); const gc = t.getContext(); gc.beginPath(); gc.ellipse(15, 21, 14, 18, 0, 0, Math.PI * 2); gc.clip(); gc.drawImage(this.textures.get('rochas').getSourceImage(), 60, 176, 30, 40, 0, 0, 30, 40); gc.fillStyle = 'rgba(10,40,60,0.18)'; gc.fillRect(0, 0, 30, 40); t.refresh(); }
+    for (const [lista, sinal] of [[esq, -1], [dir, 1]]) for (const k of [1, 4, 7, 10, 12]) this.add.image(lista[k].x + sinal * 3, lista[k].y, 'pedra-queda').setScale(Q_ESCALA * (0.75 + ((k * 7) % 5) / 10)).setFlipX(sinal > 0).setDepth(3.35);
+    // espuma e respingos no pé
+    const pe0 = esq[12].x; const pe1 = dir[12].x;
+    for (let k = 0; k < 34; k++) {
+      const bx = pe0 + 3 + ((k * 37) % Math.max(1, Math.floor(pe1 - pe0 - 6))); const by = y1 - 3 + ((k * 13) % 9);
+      const e = this.add.circle(bx, by, 2 + (k % 3), 0xf2fdff, 0.85).setDepth(3.4);
+      this.tweens.add({ targets: e, y: by - 5 - (k % 4), scale: 1.8, alpha: 0, duration: 620 + (k % 5) * 110, delay: (k * 71) % 600, repeat: -1 });
+    }
   }
 
   criarFases() {

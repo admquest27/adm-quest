@@ -101,7 +101,8 @@ function trechoTexturizado(g, t, tr, rochas) {
   const PWm = t.W * Q; const agua = t.aguaPx;
   const xa = tr.x0 * Q; const xb = Math.min(t.W, tr.x1) * Q; const PW = xb - xa;
   const fundoPx = (x) => topoPx(x) + (ESCARPA_ALTURA + alturaExtraEscarpa(x / Q)) * Q;
-  const Y0 = (8 - 3) * Q - 24; const PH = 16 * Q;
+  let alto = 1e9; let fundo = 0; for (let x = xa; x < xb; x += 4) { alto = Math.min(alto, topoPx(x)); fundo = Math.max(fundo, fundoPx(x)); }
+  const Y0 = Math.max(0, Math.floor(alto) - 30); const PH = Math.ceil(fundo) + 40 - Y0;
   const cv = document.createElement('canvas'); cv.width = PW; cv.height = PH; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
   const FONTES = [28, 60, 92, 214, 238];
   // uma faixa de rocha: fatias de 48 px com 16 de sobreposição, cada uma na altura da borda naquele ponto
@@ -138,7 +139,7 @@ function trechoTexturizado(g, t, tr, rochas) {
   for (let x = 0; x < PW; x++) {
     const pe = Math.floor(fundoPx(xa + x)) - 4;
     if (!(agua && agua[(pe + 14) * PWm + xa + x])) { for (const [d, h, a] of [[4, 10, 0.4], [14, 10, 0.25], [24, 10, 0.12]]) { g.fillStyle = 'rgba(15,12,30,' + a + ')'; g.fillRect(xa + x, pe + d, 1, h); } }
-    const topo = Math.floor(topoPx(xa + x)); g.fillStyle = 'rgba(255,244,190,0.09)'; g.fillRect(xa + x, 5 * Q, 1, Math.max(0, topo - 5 * Q - 4));
+    // (sem faixa clara no alto: ela deixava um degrau de cor na margem do rio)
   }
   g.drawImage(cv, xa, Y0);
   // cerca de madeira na beirada do alto

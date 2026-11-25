@@ -3,7 +3,7 @@
 // A cena desenha o resultado na metade do tamanho, então cada quadrado LPC ocupa uma peça da planta.
 import { semente2 } from './grade.js';
 import { desenharAguas } from './agua.js';
-import { desenharEscarpas, desenharMuralha, desenharEscada } from './escarpa.js';
+import { desenharEscarpas, desenharEscada } from './escarpa.js';
 
 export const Q = 32; // pixels da arte por peça da planta
 
@@ -95,8 +95,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
   }
   if (t.aguaPx) desenharAguas(g, t);
   if (t.escarpa) desenharEscarpas(g, t, extras.rochas);
-  if (t.muralha && extras.tijolo) desenharMuralha(g, t, extras.tijolo);
-  if (planta.ESCADA) desenharEscada(g, planta.ESCADA);
+    if (planta.ESCADA) desenharEscada(g, planta.ESCADA);
   return { canvas: c, naAreia };
 }
 
