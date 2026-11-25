@@ -20,7 +20,7 @@ import { emCanvas } from '../pixel/formas.js';
 import { desenhaPose } from '../pixel/rosalina.js';
 import {
   tocarMusica, pararMusica, alternarSom, efeitoToque, piado, efeitoLetra, efeitoSegredo, efeitoPoof, latido, ganido, croac, cocorico,
-  volumes, definirVolume, efeitoPulo, garantirSom, somLigado, estadoSom, acabouDeLiberar,
+  volumes, definirVolume, efeitoPulo, garantirSom, somLigado, estadoSom, acabouDeLiberar, ambiente, efeitoPasso, calarAmbiente,
 } from '../pixel/som.js';
 
 const P = 16; // peça da planta, em unidades do mundo (a câmera aproxima 2x)
@@ -124,6 +124,7 @@ class MapaCena extends Phaser.Scene {
     const naEstrada = new Set(); for (const e of planta.ESTRADAS) for (const i of pecasDaEstrada(e.pontos, W, H)) naEstrada.add(i);
     this.naEstradaSet = naEstrada;
     if (planta.GEO) this.criarAlto();
+    this.events.once('shutdown', calarAmbiente); this.events.once('destroy', calarAmbiente);
     const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { tijolo: this.textures.get('tijolo').getSourceImage(), rochas: this.textures.get('rochas').getSourceImage() });
     this.naAreia = chao.naAreia;
     this.textures.addCanvas('chaoLPC', chao.canvas);
@@ -283,7 +284,7 @@ class MapaCena extends Phaser.Scene {
   // Estradas: as que levam a fases abertas aparecem inteiras; as outras, só tracejadas de leve.
   criarEstradas() {
     this.todosPontos = [];
-    const desenhos = desenharEstradas(planta.ESTRADAS.map((e) => e.pontos), this.t, undefined, planta.SEM_TERRA, planta.GEO ? this.textures.get('terra').getSourceImage() : null);
+    const desenhos = desenharEstradas(planta.ESTRADAS.map((e) => e.pontos), this.t, undefined, planta.SEM_TERRA, planta.GEO ? this.textures.get('terra').getSourceImage() : null, planta.TRANSICAO);
     this.estradas = planta.ESTRADAS.map((e, i) => {
       const pts = pontosDe(e.pontos); this.todosPontos.push(...pts);
       const chave = `estrada-${i}`;
@@ -372,6 +373,26 @@ class MapaCena extends Phaser.Scene {
       const e = this.add.circle(bx, by, 2 + (k % 3), 0xf2fdff, 0.85).setDepth(3.4);
       this.tweens.add({ targets: e, y: by - 5 - (k % 4), scale: 1.8, alpha: 0, duration: 620 + (k % 5) * 110, delay: (k * 71) % 600, repeat: -1 });
     }
+  }
+
+  // Som do lugar: volumes conforme a distância (em quadrados) e um passo a cada pisada, com o som do chão
+  somDoLugar(time) {
+    const av = this.av; const x = av.x / P; const y = av.y / P;
+    if (this.movendoAv() && !av.pulando && time > (this.proxPasso ?? 0)) {
+      this.proxPasso = time + 270;
+      const i = Math.floor(y) * this.t.W + Math.floor(x); const pr = planta.PRACA; const pt = planta.PONTE;
+      const naPonte = pt && Math.abs(Math.floor(y) - pt.y) <= 1 && x >= pt.x0 && x <= pt.x1 + 1;
+      this.estradaSet ??= new Set((planta.ESTRADAS ?? []).flatMap((e) => [...pecasDaEstrada(e.pontos, this.t.W, this.t.H)]));
+      const naPraca = pr && ((x - pr.cx) / (pr.rx + 1)) ** 2 + ((y - pr.cy) / (pr.ry + 1)) ** 2 < 1;
+      efeitoPasso(naPonte ? 'madeira' : naPraca ? 'pedra' : this.estradaSet.has(i) ? 'terra' : this.t.areia?.[i] ? 'areia' : 'grama');
+    }
+    if (time < (this.proxAmbiente ?? 0)) return;
+    this.proxAmbiente = time + 220;
+    const perto = (px, py, alcance) => Math.max(0, 1 - Math.hypot(x - px, y - py) / alcance) ** 1.5;
+    const q = planta.CACHOEIRA; const f = planta.TANQUE; const of = this.fases?.m1f3?.def; const fg = this.fases?.m1f5?.def;
+    let rio = 0; const W = this.t.W;
+    for (let dx = -6; dx <= 6; dx++) for (let dy = -3; dy <= 3; dy++) { const tx = Math.floor(x) + dx; const ty = Math.floor(y) + dy; if (tx >= 0 && ty >= 0 && tx < W && ty < this.t.H && this.t.agua[ty * W + tx]) rio = Math.max(rio, 1 - Math.hypot(dx, dy) / 7); }
+    ambiente({ cachoeira: q ? perto((q.alto[0] + q.baixo[1]) / 2, (q.y0 + q.y1) / 2, 16) : 0, fonte: f ? perto(f[0], f[1], 8) : 0, rio, forja: of ? perto(of.x + 4, of.y + 3, 9) : 0, fogueira: fg ? perto(fg.x - 1, fg.y + 3, 8) : 0 }, this.modoLuz === 'noite');
   }
 
   criarFases() {
@@ -1222,6 +1243,7 @@ class MapaCena extends Phaser.Scene {
     if (this.o.primeiraVez && !this.introFeita) { this.introFeita = true; this.introducao(); }
     if (this.o.revelar && !this.revelado && !this.emCena) { this.revelado = true; this.revelarCaminho(this.o.revelar); }
     if (this.o.derrotar && !this.derrotou && !this.emCena && !this.o.dialogoAberto?.()) { this.derrotou = true; this.time.delayedCall(700, () => this.derrotarCastelo()); }
+    this.somDoLugar(this.time.now);
     const av = this.av; const k = this.teclas; const seg = this.o.segurando?.() ?? null; const vet = this.o.vetor?.() ?? null;
     // direção desejada: o controle analógico dá a direção e a força; setas, WASD e botões dão as oito direções
     let ix = 0; let iy = 0; let forca = 1;

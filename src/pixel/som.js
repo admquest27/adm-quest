@@ -96,35 +96,60 @@ function chiado(ini, dur, vol, { tipo = 'highpass', corte = 7000, musica = false
 function bumbo(ini) {
   const a = contexto(); const o = a.createOscillator(); const g = a.createGain();
   o.frequency.setValueAtTime(140, ini); o.frequency.exponentialRampToValueAtTime(45, ini + 0.12);
-  g.gain.setValueAtTime(0.22, ini); g.gain.exponentialRampToValueAtTime(0.0001, ini + 0.16);
+  g.gain.setValueAtTime(0.11, ini); g.gain.exponentialRampToValueAtTime(0.0001, ini + 0.16);
   o.connect(g).connect(gMusica); o.start(ini); o.stop(ini + 0.17);
 }
 
-// ---------- tema da abertura (composição própria, dó maior, 138 bpm) ----------
-const A = [['E5', 1], ['G5', 1], ['C6', 2], ['B5', 1], ['A5', 1], ['G5', 2], ['A5', 1], ['F5', 1], ['A5', 2], ['G5', 1], ['E5', 1], ['C5', 2], ['D5', 1], ['E5', 1], ['F5', 1], ['G5', 1], ['A5', 2], ['G5', 2], ['E5', 1], ['D5', 1], ['C5', 2], ['D5', 2], [null, 2]];
-const B = [['E5', 1], ['G5', 1], ['C6', 2], ['B5', 1], ['A5', 1], ['G5', 2], ['A5', 1], ['C6', 1], ['D6', 2], ['C6', 1], ['A5', 1], ['G5', 2], ['F5', 1], ['A5', 1], ['G5', 1], ['E5', 1], ['D5', 2], ['G5', 2], ['C5', 4], [null, 4]];
-const ACORDES = { C: ['C4', 'E4', 'G4'], F: ['F3', 'A3', 'C4'], G: ['G3', 'B3', 'D4'] };
-const BAIXO = { C: ['C2', 'G2'], F: ['F2', 'C3'], G: ['G2', 'D3'] };
-const COMPASSOS = ['C', 'F', 'G', 'C', 'C', 'F', 'G', 'C'];
+// ---------- música da Vila (composição própria, dó maior, 92 bpm) ----------
+// Oito partes de oito compassos, perto de três minutos antes de recomeçar. Cada parte muda a melodia, o instrumento e a
+// percussão, para não enjoar. A cada volta completa a melodia troca de timbre. Cada compasso tem 8 colcheias.
+// Melodia: "NOTA:duração" em colcheias; "-" é pausa.
+const PARTES = [
+  { nome: 'amanhecer', acordes: 'C Am F G C Am F G', bateria: 0, timbre: 'sine', arpejo: 1,
+    melodia: '-:8 -:8 E5:4 C5:4 D5:6 -:2 G5:4 E5:4 C5:4 E5:4 F5:3 E5:1 D5:4 -:8' },
+  { nome: 'passeio', acordes: 'C G Am Em F C Dm G', bateria: 1, timbre: 'pulso', arpejo: 0,
+    melodia: 'E5:2 G5:1 E5:1 C5:4 D5:2 B4:2 G4:4 C5:2 E5:2 A5:3 G5:1 G5:4 E5:4 F5:2 A5:2 C6:2 A5:2 G5:4 E5:2 C5:2 D5:2 F5:2 A5:2 F5:2 G5:6 -:2' },
+  { nome: 'feira', acordes: 'F G Em Am F G C C', bateria: 2, timbre: 'pulso', arpejo: 0,
+    melodia: 'A5:1 A5:1 C6:2 A5:2 F5:2 B5:1 B5:1 D6:2 B5:2 G5:2 G5:2 E5:2 B5:2 G5:2 A5:4 E5:4 F5:2 G5:1 A5:1 C6:2 A5:2 B5:2 A5:1 G5:1 D5:4 E5:2 G5:2 C6:4 -:2 G5:2 E5:2 C5:2' },
+  { nome: 'jardim', acordes: 'Am F C G Am F G G', bateria: 0, timbre: 'triangle', arpejo: 1,
+    melodia: 'A4:3 B4:1 C5:4 A4:2 C5:2 F5:4 E5:3 D5:1 C5:4 D5:6 -:2 C5:3 D5:1 E5:4 F5:2 E5:2 C5:4 B4:4 D5:4 G5:6 -:2' },
+  { nome: 'passeio2', acordes: 'C G Am Em F C Dm G', bateria: 1, timbre: 'triangle', arpejo: 0,
+    melodia: 'G5:3 E5:1 C5:2 E5:2 D5:4 G5:4 E5:3 C5:1 A4:2 C5:2 B4:4 E5:4 A5:3 F5:1 C5:2 F5:2 E5:4 G5:4 F5:2 D5:2 A5:3 F5:1 D5:4 B4:2 -:2' },
+  { nome: 'misterio', acordes: 'Dm Am Dm Am Bb F G G', bateria: 0, timbre: 'sine', arpejo: 1,
+    melodia: 'D5:4 F5:4 E5:6 C5:2 D5:2 E5:2 F5:4 A5:8 A#5:4 F5:4 A5:6 F5:2 G5:4 B5:4 D6:6 -:2' },
+  { nome: 'festa', acordes: 'F G C Am F G C G', bateria: 2, timbre: 'pulso', arpejo: 0,
+    melodia: 'C6:2 A5:2 F5:2 A5:2 D6:2 B5:2 G5:2 B5:2 E6:3 D6:1 C6:2 G5:2 A5:2 C6:2 E6:4 F6:2 E6:1 D6:1 C6:2 A5:2 B5:2 G5:2 D6:4 C6:6 G5:2 B4:2 D5:2 G5:4' },
+  { nome: 'descanso', acordes: 'C F C F Am F G C', bateria: 0, timbre: 'triangle', arpejo: 1,
+    melodia: 'E5:8 F5:8 G5:4 E5:4 A5:6 -:2 C6:4 B5:4 A5:4 F5:4 G5:4 D5:4 C5:8' },
+];
+const ACORDES = { C: ['C4', 'E4', 'G4'], F: ['F3', 'A3', 'C4'], G: ['G3', 'B3', 'D4'], Am: ['A3', 'C4', 'E4'], Em: ['E3', 'G3', 'B3'], Dm: ['D3', 'F3', 'A3'], Bb: ['A#3', 'D4', 'F4'] };
+const BAIXO = { C: ['C2', 'G2'], F: ['F2', 'C3'], G: ['G2', 'D3'], Am: ['A2', 'E3'], Em: ['E2', 'B2'], Dm: ['D2', 'A2'], Bb: ['A#2', 'F3'] };
 const PASSOS = [];
-for (const [secao, base] of [[A, 0], [B, 32]]) { let i = base; for (const [n, d] of secao) { PASSOS[i] = { n, d }; i += d; } }
-const TOTAL = 64; const COLCHEIA = 60 / 138 / 2;
+PARTES.forEach((p, n) => {
+  let q = n * 64; const fim = q + 64;
+  for (const item of p.melodia.split(' ')) { const [nota, d] = item.split(':'); if (q >= fim) break; if (nota !== '-') PASSOS[q] = { n: nota, d: Math.min(Number(d), fim - q) }; q += Number(d); }
+});
+const TOTAL = PARTES.length * 64; const COLCHEIA = 60 / 92 / 2;
 
-let tocando = false; let proximo = 0; let passo = 0; let relogio = null;
+let tocando = false; let proximo = 0; let passo = 0; let relogio = null; let volta = 0;
 function agendar() {
-  while (proximo < ac.currentTime + 0.15) {
-    const p = PASSOS[passo]; const comp = COMPASSOS[Math.floor(passo / 8) % 8]; const noComp = passo % 8;
-    if (p?.n) {
-      const dur = p.d * COLCHEIA * 0.95;
-      tom(freq(p.n), proximo, dur, { vol: 0.05, vibrato: p.d >= 2 ? 0.006 : 0, musica: true });
-      tom(freq(tercaAbaixo(p.n)), proximo, dur, { tipo: 'triangle', vol: 0.03, corte: 2400, musica: true });
+  while (proximo < ac.currentTime + 0.2) {
+    const parte = PARTES[Math.floor(passo / 64)]; const acordes = parte.acordes.split(' ');
+    const p = PASSOS[passo]; const comp = acordes[Math.floor((passo % 64) / 8)]; const noComp = passo % 8;
+    if (p) {
+      const dur = p.d * COLCHEIA * 0.96;
+      const timbre = volta % 2 ? ({ pulso: 'triangle', triangle: 'sine', sine: 'triangle' })[parte.timbre] : parte.timbre;
+      tom(freq(p.n), proximo, dur, { tipo: timbre, vol: timbre === 'pulso' ? 0.032 : 0.055, corte: 3000, vibrato: p.d >= 4 ? 0.005 : 0, ataque: timbre === 'pulso' ? 0.01 : 0.03, musica: true });
     }
-    if (noComp === 0) for (const n of ACORDES[comp]) tom(freq(n), proximo, COLCHEIA * 7.6, { tipo: 'sawtooth', vol: 0.012, corte: 900, ataque: 0.08, musica: true });
-    if (noComp % 2 === 0) tom(freq(BAIXO[comp][noComp % 4 === 0 ? 0 : 1]), proximo, COLCHEIA * 1.7, { tipo: 'triangle', vol: 0.16, corte: 1200, comEco: false, musica: true });
-    if (noComp === 0 || noComp === 4) bumbo(proximo);
-    if (noComp === 2 || noComp === 6) chiado(proximo, 0.12, 0.07, { tipo: 'bandpass', corte: 1800, musica: true });
-    if (noComp % 2 === 1) chiado(proximo, 0.035, 0.025, { musica: true });
-    proximo += COLCHEIA; passo = (passo + 1) % TOTAL;
+    if (noComp === 0) for (const n of ACORDES[comp]) tom(freq(n), proximo, COLCHEIA * 7.8, { tipo: 'triangle', vol: 0.016, corte: 1100, ataque: 0.25, musica: true });
+    if (parte.arpejo) { const a = ACORDES[comp]; const nota = a[[0, 1, 2, 1, 0, 2, 1, 2][noComp]]; tom(freq(nota.replace(/\d$/, (o) => String(Number(o) + 1))), proximo, COLCHEIA * 1.3, { tipo: 'sine', vol: 0.018, musica: true }); }
+    if (noComp === 0 || noComp === 4 || (parte.bateria === 2 && noComp === 7)) tom(freq(BAIXO[comp][noComp === 4 ? 1 : 0]), proximo, COLCHEIA * (noComp === 7 ? 0.8 : 3.2), { tipo: 'triangle', vol: 0.12, corte: 900, comEco: false, musica: true });
+    if (parte.bateria) {
+      if (noComp === 0 || (parte.bateria === 2 && noComp === 4)) bumbo(proximo);
+      if (noComp === 4 || noComp === 2 && parte.bateria === 2 || noComp === 6) chiado(proximo, 0.09, 0.028, { tipo: 'bandpass', corte: 1700, musica: true });
+      if (noComp % 2 === 1) chiado(proximo, 0.03, 0.012, { musica: true });
+    }
+    proximo += COLCHEIA; passo = (passo + 1) % TOTAL; if (passo === 0) volta += 1;
   }
 }
 
@@ -133,7 +158,8 @@ export function tocarMusica() {
   if (!liberado) { musicaPendente = true; return; }
   try { contexto(); tocando = true; proximo = ac.currentTime + 0.06; passo = 0; relogio = setInterval(agendar, 25); } catch { tocando = false; }
 }
-export function pararMusica() { tocando = false; musicaPendente = false; clearInterval(relogio); }
+export function pararMusica() { tocando = false; musicaPendente = false; clearInterval(relogio); calarAmbiente(); }
+export const duracaoMusica = () => Math.round(TOTAL * COLCHEIA);
 export const musicaTocando = () => tocando;
 export function alternarSom() {
   const novo = !somLigado(); guardar(novo);
@@ -167,5 +193,34 @@ export const croac = () => seSom((a) => { tom(freq('C3'), a.currentTime, 0.09, {
 // mugido da vaca: dois tons graves e compridos
 export const mugido = () => seSom((a) => { tom(freq('G2'), a.currentTime, 0.4, { tipo: 'sawtooth', vol: 0.045, corte: 520, comEco: false }); tom(freq('E2'), a.currentTime + 0.32, 0.5, { tipo: 'sawtooth', vol: 0.045, corte: 420, comEco: false }); });
 export const cocorico = () => seSom((a) => ['E6', 'G6', 'E6', 'C7'].forEach((n, i) => tom(freq(n), a.currentTime + i * 0.07, 0.07, { tipo: 'square', vol: 0.025, corte: 2600, comEco: false })));
+// ---------- som ambiente: água, forja e fogueira ficam mais fortes quando se chega perto; pássaros de dia, grilos à noite ----------
+const fontes = {};
+function fonteContinua(nome, tipo, corte, q) {
+  if (!fontes[nome]) {
+    const a = ac; const n = a.sampleRate * 3; const buf = a.createBuffer(1, n, a.sampleRate); const d = buf.getChannelData(0); let ant = 0;
+    for (let k = 0; k < n; k++) { ant = ant * 0.35 + (Math.random() * 2 - 1) * 0.65; d[k] = ant; }
+    const o = a.createBufferSource(); o.buffer = buf; o.loop = true; const f = a.createBiquadFilter(); f.type = tipo; f.frequency.value = corte; f.Q.value = q;
+    const g = a.createGain(); g.gain.value = 0; o.connect(f).connect(g).connect(gEfeitos); o.start(); fontes[nome] = g;
+  }
+  return fontes[nome];
+}
+const AGUAS = { cachoeira: ['lowpass', 1500, 0.4, 0.16], fonte: ['bandpass', 2600, 0.8, 0.07], rio: ['bandpass', 650, 0.7, 0.05] };
+// niveis: 0 a 1 para cada fonte de som, conforme a distância; noite: true ou false
+export function ambiente(niveis = {}, noite = false) {
+  if (!ac || !liberado) return;
+  const ativo = somLigado() && !(typeof document !== 'undefined' && document.hidden);
+  for (const [nome, [tipo, corte, q, vol]] of Object.entries(AGUAS)) { const v = ativo ? (niveis[nome] ?? 0) * vol : 0; if (v > 0 || fontes[nome]) fonteContinua(nome, tipo, corte, q).gain.setTargetAtTime(v, ac.currentTime, 0.25); }
+  if (!ativo) return;
+  const t = ac.currentTime;
+  for (const nome of ['forja', 'fogueira']) if ((niveis[nome] ?? 0) > 0.05 && Math.random() < 0.75) for (let k = 0; k < 3; k++) if (Math.random() < 0.6) chiado(t + Math.random() * 0.2, 0.012 + Math.random() * 0.02, 0.09 * niveis[nome] * Math.random(), { tipo: 'highpass', corte: 1800 + Math.random() * 3000 });
+  if ((niveis.forja ?? 0) > 0.25 && Math.random() < 0.05) { tom(1760, t, 0.18, { tipo: 'triangle', vol: 0.035 * niveis.forja }); tom(2637, t, 0.12, { tipo: 'sine', vol: 0.025 * niveis.forja }); }
+  if (!noite && Math.random() < 0.035) { const base = 2200 + Math.random() * 1500; const n = 2 + Math.floor(Math.random() * 3); for (let k = 0; k < n; k++) tom(base * (1 + (k % 2) * 0.18), t + k * 0.11, 0.07, { tipo: 'sine', vol: 0.012 }); }
+  if (noite && Math.random() < 0.16) for (let k = 0; k < 4; k++) tom(4300, t + k * 0.045, 0.025, { tipo: 'sine', vol: 0.008, comEco: false });
+}
+// passos conforme o chão: 'grama', 'terra', 'pedra', 'areia' ou 'madeira'
+const PISOS = { grama: ['lowpass', 900, 0.05], terra: ['lowpass', 620, 0.07], pedra: ['bandpass', 1900, 0.05], areia: ['highpass', 2600, 0.035], madeira: ['bandpass', 420, 0.12] };
+export const efeitoPasso = (piso = 'grama') => seSom((a) => { const [tipo, corte, vol] = PISOS[piso] ?? PISOS.grama; chiado(a.currentTime, 0.06, vol * (0.75 + Math.random() * 0.4), { tipo, corte: corte * (0.9 + Math.random() * 0.25) }); });
+export function calarAmbiente() { for (const g of Object.values(fontes)) g.gain.value = 0; }
+
 // Para diagnóstico: estado do áudio (suspenso, rodando) e se a música está tocando.
 export const estadoSom = () => ({ estado: ac?.state ?? 'sem contexto', tocando, ligado: somLigado() });

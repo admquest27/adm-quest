@@ -105,7 +105,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
 // arredondados (largura de pouco mais de um quadrado e meio), com a borda mais escura, tufos de grama nas beiradas
 // e pedrinhas. Onde o traçado passa por cima da água, a terra some (quem cobre ali é a ponte).
 const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
-export function desenharEstradas(segmentos, t, largura = 46, semTerra = [], textura = null) {
+export function desenharEstradas(segmentos, t, largura = 46, semTerra = [], textura = null, transicao = null) {
   const { W, H } = t; const PW = W * Q; const PH = H * Q; const N = PW * PH;
   const dono = new Int8Array(N).fill(-1);
   segmentos.forEach((pontos, n) => {
@@ -173,6 +173,24 @@ export function desenharEstradas(segmentos, t, largura = 46, semTerra = [], text
       if (semTerra.some(([ax, ay, bx2, by2]) => x >= ax * Q && x < bx2 * Q && y >= ay * Q && y < by2 * Q)) continue;
       const w = 3 + Math.floor(hash(y, x) * 4);
       for (let dy = 0; dy < 3; dy++) for (let dx = dy ? 0 : 1; dx < w - (dy ? 0 : 1); dx++) { const k = (y + dy) * PW + x + dx; cor[k] = dy === 0 ? [214, 170, 108] : dy === 1 ? [172, 126, 76] : [100, 70, 44]; dn[k] = o; const b = box[o]; b[0] = Math.min(b[0], x + dx); b[1] = Math.min(b[1], y + dy); b[2] = Math.max(b[2], x + dx); b[3] = Math.max(b[3], y + dy); }
+    }
+  }
+  // passagem para o calçamento: pedras soltas cada vez mais juntas, e a terra esfarelando até sumir
+  if (transicao) {
+    const [ax, ay, bx2, by2] = transicao; const cores2 = [[194, 181, 157], [187, 174, 152], [199, 187, 163], [182, 170, 150]];
+    for (let gy = Math.floor(ay * Q); gy < by2 * Q + 12; gy += 11) for (let gx = Math.floor(ax * Q); gx < bx2 * Q; gx += 13) {
+      const avanco = Math.max(0, Math.min(1, (gy - ay * Q) / ((by2 - ay) * Q))); if (hash(gx, gy) > avanco * avanco * 1.25) continue;
+      const cx = gx + Math.floor(hash(gy, gx) * 7) + ((gy / 11) % 2) * 6; const cy = gy + Math.floor(hash(gx + 5, gy) * 5); const rx = 4 + Math.floor(avanco * 3 + hash(cy, cx) * 2); const ry = Math.max(3, rx - 2);
+      const o = viz(cx, cy); if (o < 0) continue; const cor3 = cores2[Math.floor(hash(cx, cy) * 4)];
+      for (let dy = -ry - 1; dy <= ry + 1; dy++) for (let dx = -rx - 1; dx <= rx + 1; dx++) {
+        const dentro = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry); const borda = (dx * dx) / ((rx + 1.4) ** 2) + (dy * dy) / ((ry + 1.4) ** 2); if (borda > 1) continue;
+        const k = (cy + dy) * PW + cx + dx; if (dono[k] !== o) continue; cor[k] = dentro > 1 ? [120, 92, 66] : dy < -ry * 0.3 ? cor3.map((v) => Math.min(255, v + 14)) : dy > ry * 0.4 ? cor3.map((v) => v - 22) : cor3; dn[k] = o;
+      }
+    }
+    // a faixa final da terra se desfaz em torrões, revelando as pedras de baixo
+    for (let y = Math.floor((by2 - 1.6) * Q); y < by2 * Q + 14; y++) for (let x = Math.floor(ax * Q); x < bx2 * Q; x++) {
+      const k = y * PW + x; if (!cor[k]) continue; const some = Math.max(0, Math.min(1, (y - (by2 - 1.6) * Q) / (1.6 * Q))); const grao = hash(x >> 2, y >> 2);
+      if (grao < some && !(cor[k][2] > 130)) cor[k] = null;
     }
   }
   // pedrinhas soltas

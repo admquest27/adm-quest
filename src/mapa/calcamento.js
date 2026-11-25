@@ -49,7 +49,13 @@ export function desenharCalcamento(g, t, planta, Q) {
   const jd = planta.JARDIM; if (jd) {
     const [jx, jy, rx, ry, entrada] = jd; const pt = (a, k) => [jx * Q + Math.cos(a) * rx * k * Q, jy * Q + Math.sin(a) * ry * k * Q];
     const aberto = (a) => Math.abs(Math.atan2(Math.sin(a - entrada), Math.cos(a - entrada))) < 0.5;
-    for (let a = 0; a < Math.PI * 2; a += 0.055) { if (aberto(a)) continue; const [x, y] = pt(a, 1.12); r('rgba(10,25,10,0.3)', x - 6, y + 4, 16, 6); r('#14401c', x - 8, y - 9, 17, 15); r('#2c7a31', x - 6, y - 8, 13, 11); for (let i = 0; i < 4; i++) r(i % 2 ? '#55a844' : '#1f5c28', x - 6 + hash(a * 50, i) * 11, y - 8 + hash(i, a * 50) * 10, 3, 3); }
+    const moita = (x, y, raio, tom) => { const bola = (cx, cy, rr, cor) => { for (let dy = -rr; dy <= rr; dy++) { const m = Math.round(Math.sqrt(rr * rr - dy * dy) * 1.15); r(cor, cx - m, cy + dy, m * 2 + 1, 1); } };
+      bola(x + 4, y + 6, raio, 'rgba(8,20,10,0.4)'); bola(x, y, raio + 2, '#0c2414'); bola(x, y, raio, tom ? '#14502c' : '#1c6030'); bola(x - 2, y - 2, Math.max(2, raio - 3), tom ? '#2f8a3a' : '#48a438'); bola(x - 3, y - 4, Math.max(1, raio - 6), '#a4dc5c');
+      for (let i = 0; i < raio; i++) r(i % 2 ? '#8fd460' : '#245c2a', x - raio + hash(x, i) * raio * 2, y - raio + hash(i, y) * raio * 1.8, 2, 2); };
+    // moitas em grupos, com falhas, para parecer um jardim cuidado e não um muro
+    for (let a = 0, n = 0; a < Math.PI * 2; n++) { const passo = 0.17 + hash(n, 31) * 0.13; a += passo; if (aberto(a) || hash(n, 32) < 0.14) continue; const [x, y] = pt(a, 1.08 + hash(n, 33) * 0.14); const raio = 6 + Math.floor(hash(n, 34) * 6);
+      if ([[0, 0], [raio + 4, 0], [-raio - 4, 0], [0, raio + 4], [0, -raio - 4]].some(([dx, dy]) => dentro(Math.round(x + dx), Math.round(y + dy)))) continue;
+      moita(Math.round(x), Math.round(y), raio, n % 3 === 0); if (hash(n, 35) < 0.35) for (let i = 0; i < 4; i++) r(['#ff9ac0', '#fff3c4', '#ffd23c'][n % 3], x - 6 + hash(n, i) * 12, y - 7 + hash(i, n) * 10, 3, 3); }
     for (let i = 0; i < 260; i++) { const a = hash(i, 11) * Math.PI * 2; if (aberto(a)) continue; const [x, y] = pt(a, 0.68 + hash(i, 12) * 0.3); const grupo = Math.floor(((a + 6.3) * 2.2) % 5); r('#2c7a31', x - 2, y + 2, 8, 5); r(['#e8588a', '#ffd23c', '#fff3c4', '#9a6cf0', '#ff7a4a'][grupo], x, y, 5, 5); r('#fff8dc', x + 1, y + 1, 2, 2); }
   }
   // sebes [x, y, comprimento]

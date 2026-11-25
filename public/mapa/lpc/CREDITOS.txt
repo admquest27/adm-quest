@@ -1544,3 +1544,32 @@ https://opengameart.org/content/the-mana-worldforest-tileset
 
 
 [LPC] Base Assets, tiles/waterfall.png e tiles/dirt.png, por Lanea Zimmerman (Sharm): cachoeira do planalto (mapa/lpc/cachoeira.png) e terra das estradas (mapa/lpc/terra.png). CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0.
+
+
+"[LPC] Farm" by bluecarrot16, Wolthera van Hövell tot Westerflier (TheraHedwig), and Ivan Voirol
+http://opengameart.org/content/lpc-farm
+
+
+Based on:
+
+Slates [32x32px orthogonal tileset by Ivan Voirol]
+Ivan Voirol
+CC-BY 4.0
+https://opengameart.org/content/slates-32x32px-orthogonal-tileset-by-ivan-voirol
+
+LPC compatible Ancient Greek Architecture
+Wolthera van Hövell tot Westerflier (TheraHedwig)
+CC-BY-4.0 / GPL-3.0 / OGA-BY-3.0
+https://opengameart.org/content/lpc-compatible-ancient-greek-architecture
+
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  
+
+Build a farm, in the style of the LPC! Kindly commissioned by Rupil. 
+
+There are several excellent LPC asset packs to do with farming, but this pack should help you build a more complete farm. Contents: 
+- Modular barn, in two colors: red and brown
+- Towers/silos
+- Granary
+- Modular chicken coop and nesting boxe
+(LPC Farm: celeiro e silo da fase 4.)

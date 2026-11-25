@@ -24,14 +24,16 @@ export const DESERTO = { cx: 0, cy: 0, rx: 0, ry: 0 };
 export const PRACA = { cx: 19.5, cy: 35.5, rx: 7.6, ry: 4.4 };
 // caminhos de pedra que ligam cada porta à praça, pátios, e o que enfeita o chão
 // onde a vila é de pedra a estrada de terra não é desenhada (a pedra assume o caminho)
-export const SEM_TERRA = [[4.5, 28.4, 14.5, 33.5]];
+export const SEM_TERRA = [[4.5, 29.8, 14.5, 33.5]];
+// trecho de passagem entre a terra e a pedra: [x0, y0 (só terra), x1, y1 (só pedra)]
+export const TRANSICAO = [4.2, 25.6, 10.5, 30.2];
 export const POSTES_FIXOS = true;
 export const ATALHO = geo.ATALHO;
 export const TRILHAS = [
-  [[6.5, 28.6], [6.9, 30.8], [9, 31.7], [11.2, 31.4], [12.6, 30.6]],
+  [[6.5, 29.7], [6.9, 30.8], [9, 31.7], [11.2, 31.4], [12.6, 30.6]],
   [[12.5, 30.4], [13.4, 32.2], [15.5, 33.6]], [[19.5, 31], [19.5, 32.5]], [[27, 28.2], [26, 30.4], [23.6, 32.8]],
   [[8, 38.8], [11, 38.8], [13.5, 36.8]], [[25.5, 34], [29, 34.6], [33.5, 34.8]], [[24.5, 38], [27.5, 41.6], [31.5, 41.8]],
-  [[16.5, 38.8], [15.5, 43], [15.8, 46.6]], [[22.5, 39], [24.5, 43], [25, 46.6]], [[31.5, 41.8], [33.6, 42.4], [35.6, 41.4]],
+  [[20.2, 39.2], [19.9, 43], [20, 46.2]], [[20, 46.2], [18, 46.8], [15.6, 46.5]], [[20, 46.2], [22.2, 46.8], [25, 46.5]], [[31.5, 41.8], [33.6, 42.4], [35.6, 41.4]],
 ];
 export const TANQUE = [19.5, 36, 2.45, 1.35];
 export const BLOQUEIOS = [{ x: 18, y: 37, w: 3, h: 1 }]; // beirada de baixo do tanque da fonte
@@ -56,9 +58,9 @@ export const INICIO = geo.ENTRADAS.m1f1;
 // Construções das fases
 export const FASES = [
   { id: 'm1f1', arte: 'mansaoPartida', x: 8, y: 25, w: 9, h: 5, entrada: geo.ENTRADAS.m1f1 },
-  { id: 'm1f2', arte: 'aviaoProc', x: 12, y: 10, w: 7, h: 4, entrada: geo.ENTRADAS.m1f2 },
+  { id: 'm1f2', arte: 'aviaoProc', x: 12, y: 9, w: 7, h: 4, entrada: geo.ENTRADAS.m1f2 },
   { id: 'm1f3', arte: 'oficinaV3', x: 32, y: 13, w: 5, h: 3, entrada: geo.ENTRADAS.m1f3 },
-  { id: 'm1f4', arte: 'celeiroV2', x: 54, y: 31, w: 6, h: 3, entrada: geo.ENTRADAS.m1f4 },
+  { id: 'm1f4', arte: 'celeiroFazenda', x: 54, y: 31, w: 8, h: 3, entrada: geo.ENTRADAS.m1f4 },
   { id: 'm1f5', arte: 'feiraGrande', x: 74, y: 27, w: 5, h: 3, entrada: geo.ENTRADAS.m1f5 },
   { id: 'm1f6', arte: 'arvoreDecisaoV2', x: 78, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f6 },
   { id: 'm1f7', arte: 'raioXV3', x: 65, y: 15, w: 5, h: 3, entrada: geo.ENTRADAS.m1f7 },
@@ -71,7 +73,7 @@ export const FASES = [
 export const ENFEITES = [
   ['casaPlanilhaV2', 5, 33], ['casaMostardaV2', 31, 29], ['casaLilasV2', 13, 40], ['padaria', 22, 41], ['santuario', 22, 22], ['casaDiag', 70, 41], ['salaProfessoresV2', 29, 37],
   // dunas
-  ['palmeira', 6, 9], ['palmeira', 22, 9], ['palmeira', 9, 12], ['palmeira', 27, 11], ['palmeira', 23, 16],
+  ['palmeira', 6, 9], ['palmeira', 29, 11], ['palmeira', 9, 12], ['palmeira', 27, 11], ['palmeira', 23, 16],
   // árvores soltas
   ['arvoreRedonda', 9, 21], ['arvoreClara', 35, 26], ['arvoreRosa', 37, 27], ['arvoreRedonda', 4, 31], ['pinheiro', 28, 41], ['arvoreClara', 4, 21],
   ['arvoreRedonda', 46, 29], ['arvoreClara', 62, 29], ['arvoreRosa', 66, 37], ['pinheiro', 72, 33], ['arvoreClara', 82, 33],
@@ -101,7 +103,7 @@ export const OBJETOS = [
   { id: 'poco', arte: 'poco', x: 49, y: 29, w: 2, h: 2, bloqueia: true },
   { id: 'espantalho', arte: 'espantalho', x: 63, y: 38, bloqueia: true, segredo: 'espantalho' },
   { id: 'carroca', arte: 'carroca', x: 9, y: 45, w: 2, h: 2, bloqueia: true },
-  { id: 'fardos', arte: 'fardo', x: 61, y: 32, w: 2, h: 1, bloqueia: true },
+  { id: 'fardos', arte: 'fardo', x: 63, y: 32, w: 2, h: 1, bloqueia: true },
   { id: 'lenha', arte: 'lenha', x: 53, y: 32, bloqueia: true },
   // jardim do Templo Antigo (santuário em 22,22): cães guardiões, lanternas e cerejeiras
   // feira do acampamento: bancas e mercadorias ao redor da barraca grande

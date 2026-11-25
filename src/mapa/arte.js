@@ -102,6 +102,7 @@ export const LPC_PECAS = {
   casaPlanilhaV2: { quadro: 'casa-v2-planilha', porta: [80, 182], w: 5, h: 5, luzes: [[30, 148, 26], [130, 148, 26]] },
   oficinaV3: { quadro: 'oficina-v3', porta: [88, 228], w: 5, h: 3, luzes: [[36, 192, 24], [173, 200, 44, 'luz-lampiao']], fumaca: [[28, 14], [169, 110]] },
   raioXV3: { quadro: 'raiox-v3', porta: [98, 230], w: 5, h: 3, luzes: [[48, 182, 24], [148, 182, 24], [171, 132, 30]], fumaca: [[128, 13]] },
+  celeiroFazenda: { quadro: 'celeiro-fazenda', porta: [96, 228], w: 8, h: 3, luzes: [[96, 112, 26], [96, 200, 34], [222, 150, 20]] },
   raioXV2: { quadro: 'raiox-v2', porta: [64, 184], w: 3, h: 3, luzes: [[24, 146, 28]] },
 };
 
