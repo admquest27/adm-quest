@@ -94,6 +94,10 @@ export const LPC_PECAS = {
   arvoreDecisaoV2: { quadro: 'arvore-decisao', porta: [88, 212], w: 3, h: 3, luzes: [[88, 200, 26]] },
   santuario: { quadro: 'santuario', porta: [160, 268], w: 10, h: 5, luzes: [[74, 151, 46, 'luz-lampiao'], [247, 151, 46, 'luz-lampiao'], [160, 185, 34]] },
   feiraGrande: { quadro: 'feira-grande', porta: [116, 156], w: 5, h: 3, luzes: [[116, 84, 48, 'luz-lampiao']] },
+  casaRosaV2: { quadro: 'casa-v2-rosa', porta: [48, 200], w: 3, h: 6, luzes: [[48, 128, 26]] },
+  casaMostardaV2: { quadro: 'casa-v2-hipped', porta: [80, 190], w: 5, h: 5, luzes: [[30, 156, 26], [130, 156, 26]] },
+  casaLilasV2: { quadro: 'casa-v2-cross', porta: [80, 230], w: 5, h: 6, luzes: [[30, 196, 26], [130, 196, 26]] },
+  salaProfessoresV2: { quadro: 'casa-v2-gambrel', porta: [80, 182], w: 5, h: 4, luzes: [[30, 148, 28], [130, 148, 28]] },
   raioXV2: { quadro: 'raiox-v2', porta: [64, 184], w: 3, h: 3, luzes: [[24, 146, 28]] },
 };
 

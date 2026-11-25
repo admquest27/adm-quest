@@ -42,11 +42,11 @@ export const FASES = [
 // Enfeites. A ordem das casas define os textos (casas[i]): Dona Planilha, Seu Prazo, Juninho, Lojinha, Templo Antigo,
 // casa de palha e, por último, a Sala dos Professores.
 export const ENFEITES = [
-  ['sobradoAzul', 18, 24], ['casaVaranda', 31, 29], ['chaleAlto', 15, 38], ['padaria', 22, 40], ['santuario', 22, 22], ['casaDiag', 10, 39], ['casaCreme', 31, 36],
+  ['casaRosaV2', 18, 24], ['casaMostardaV2', 31, 29], ['casaLilasV2', 14, 38], ['padaria', 22, 40], ['santuario', 22, 22], ['casaDiag', 10, 39], ['salaProfessoresV2', 29, 37],
   // dunas
   ['palmeira', 6, 7], ['palmeira', 21, 6], ['palmeira', 9, 12], ['palmeira', 27, 11], ['palmeira', 23, 16],
   // árvores soltas
-  ['arvoreRedonda', 9, 21], ['arvoreClara', 35, 26], ['arvoreRosa', 35, 31], ['arvoreRedonda', 4, 31], ['pinheiro', 28, 41], ['arvoreClara', 4, 21],
+  ['arvoreRedonda', 9, 21], ['arvoreClara', 35, 26], ['arvoreRosa', 37, 27], ['arvoreRedonda', 4, 31], ['pinheiro', 28, 41], ['arvoreClara', 4, 21],
   ['arvoreRedonda', 46, 29], ['arvoreClara', 62, 29], ['arvoreRosa', 66, 37], ['pinheiro', 72, 33], ['arvoreRedonda', 70, 41], ['arvoreClara', 82, 33],
   ['arvoreRosa', 63, 19], ['arvoreRedonda', 73, 24], ['arvoreClara', 47, 31],
   // plantação da fazenda
@@ -74,7 +74,7 @@ export const OBJETOS = [
   { id: 'fonte', arte: 'fonte', x: 19, y: 32, w: 2, h: 2, bloqueia: true },
   { id: 'poco', arte: 'poco', x: 49, y: 29, w: 2, h: 2, bloqueia: true },
   { id: 'espantalho', arte: 'espantalho', x: 63, y: 38, bloqueia: true, segredo: 'espantalho' },
-  { id: 'carroca', arte: 'carroca', x: 17, y: 36, w: 2, h: 2, bloqueia: true },
+  { id: 'carroca', arte: 'carroca', x: 19, y: 39, w: 2, h: 2, bloqueia: true },
   { id: 'fardos', arte: 'fardo', x: 61, y: 32, w: 2, h: 1, bloqueia: true },
   { id: 'lenha', arte: 'lenha', x: 53, y: 32, bloqueia: true },
   // jardim do Templo Antigo (santuário em 22,22): cães guardiões, lanternas e cerejeiras
