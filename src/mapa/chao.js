@@ -94,7 +94,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
     if (t.agua[i] && !t.aguaPx) autotile(g, img, agua, temAgua, x, y, 0, 0, Math.floor(s * 11) % 3);
   }
   if (t.aguaPx) desenharAguas(g, t);
-  if (t.escarpa) desenharEscarpas(g, t);
+  if (t.escarpa) desenharEscarpas(g, t, extras.rochas);
   if (t.muralha && extras.tijolo) desenharMuralha(g, t, extras.tijolo);
   if (planta.ESCADA) desenharEscada(g, planta.ESCADA);
   return { canvas: c, naAreia };

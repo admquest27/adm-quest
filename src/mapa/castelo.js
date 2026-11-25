@@ -140,7 +140,7 @@ function rocha(g, lado) {
 // Escombros no pé da ruína
 function escombros(g) {
   for (let k = 0; k < 46; k++) {
-    const x = 18 + Math.floor(hash(k, 1) * 190); const y = CASTELO_H - 16 + Math.floor(hash(k, 2) * 14); const w = 4 + Math.floor(hash(k, 3) * 9); const h = 3 + Math.floor(hash(k, 4) * 6);
+    const x = hash(k, 6) < 0.5 ? 14 + Math.floor(hash(k, 1) * 44) : 162 + Math.floor(hash(k, 1) * 44); const y = CASTELO_H - 16 + Math.floor(hash(k, 2) * 14); const w = 4 + Math.floor(hash(k, 3) * 9); const h = 3 + Math.floor(hash(k, 4) * 6);
     g.fillStyle = hash(k, 5) > 0.5 ? '#a89d88' : '#8f8573'; g.fillRect(x, y, w, h); g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(x, y, w, 1); g.fillStyle = 'rgba(20,16,36,0.45)'; g.fillRect(x, y + h - 1, w, 1);
   }
 }
@@ -151,22 +151,25 @@ export function desenharCastelo(ruina = false) {
   const cxE = 52; const cxD = 172; const cxM = 112;
   // muralha central entre as torres, com portão em arco e brasão
   const topoMuro = ruina ? 150 : 118; const base = CASTELO_H - 10;
+  if (!ruina) {
   g.save(); g.beginPath(); g.rect(40, topoMuro, 144, base - topoMuro); g.ellipse(cxM, base, 72, 9, 0, 0, Math.PI); g.clip();
   pedra(g, 40, topoMuro, 144, base - topoMuro + 10); luzVertical(g, 40, topoMuro, 144, base - topoMuro + 10, 0.45);
   g.restore();
-  if (!ruina) ameias(g, 40, 144, topoMuro);
-  else { g.fillStyle = '#9a917f'; for (let x = 40; x < 184; x += 6) g.fillRect(x, topoMuro - 2 - Math.floor(hash(x, 8) * 7), 6, 4 + Math.floor(hash(x, 8) * 7)); }
-  portao(g, cxM, 146, 44, ruina);
-  if (!ruina) brasao(g, cxM, 104);
+  ameias(g, 40, 144, topoMuro);
+  portao(g, cxM, 146, 44, false);
+  brasao(g, cxM, 104);
+  }
   // torres
-  torre(g, cxE, 66, 64, ruina); torre(g, cxD, 66, 64, ruina);
+  if (ruina) { torre(g, 40, 66, 44, true); torre(g, 184, 66, 44, true); } else { torre(g, cxE, 66, 64, false); torre(g, cxD, 66, 64, false); }
   if (!ruina) { telhado(g, cxE, 74, 82, 56); telhado(g, cxD, 74, 82, 56); faixa(g, cxE, 92, 46); faixa(g, cxD, 92, 46); ameias(g, 84, 0, 0); }
   else {
     // topos quebrados e rachaduras
-    for (const cx of [cxE, cxD]) { g.fillStyle = '#a89d88'; for (let x = cx - 32; x < cx + 32; x += 8) { const h = Math.floor(hash(x, 22) * 12); g.fillRect(x, 112 - h, 8, h + 3); } }
+    for (const cx of [40, 184]) { g.fillStyle = '#a89d88'; for (let x = cx - 22; x < cx + 22; x += 8) { const h = Math.floor(hash(x, 22) * 12); g.fillRect(x, 112 - h, 8, h + 3); } }
     escombros(g);
-    // bandeira branca de rendição sobre o arco
-    g.fillStyle = '#6b4a24'; g.fillRect(cxM - 1, 100, 3, 48); g.fillStyle = '#f4f1ea'; g.fillRect(cxM + 2, 102, 22, 14); g.fillStyle = '#d4cfc4'; g.fillRect(cxM + 2, 111, 22, 5); g.fillStyle = '#ffffff'; g.fillRect(cxM + 2, 102, 22, 2); g.fillStyle = OURO; g.fillRect(cxM - 2, 97, 5, 5);
+    g.clearRect(64, 100, 96, CASTELO_H - 100);
+    // arco que ficou de pé: dois pilares nas beiradas do vão e a curva de pedra por cima
+    for (const x of [62, 152]) { pedra(g, x, 134, 10, CASTELO_H - 146); luzHorizontal(g, x, 134, 10, CASTELO_H - 146, 0.5); g.fillStyle = '#e1d7c3'; g.fillRect(x - 1, 132, 12, 4); }
+    for (let a = 0; a <= 40; a++) { const t = Math.PI + (a / 40) * Math.PI; const x = Math.round(112 + Math.cos(t) * 45); const y = Math.round(134 + Math.sin(t) * 30); g.fillStyle = a % 5 === 0 ? MORTEIRO : '#cabca6'; g.fillRect(x - 4, y - 4, 9, 9); }
   }
   // rocha na frente das pontas outra vez (esconde as emendas do muro)
   // corta o que sobrou fora do desenho e deixa as bordas sem meio-tom

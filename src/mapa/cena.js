@@ -69,6 +69,7 @@ class MapaCena extends Phaser.Scene {
     const lpc = this.o.urls.lpc ?? b.replace(/na\/$/, 'lpc/');
     this.load.atlas('lpc', lpc + 'atlas.png', lpc + 'atlas.json');
     this.load.image('tijolo', lpc + 'tijolo.png');
+    this.load.image('rochas', lpc + 'rochas.png');
     carregarFazenda(this, lpc);
     this.load.spritesheet('galinhaL', lpc + 'bichos/galinha.png', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('gatoL', lpc + 'bichos/gato.png', { frameWidth: 32, frameHeight: 32 });
@@ -118,7 +119,7 @@ class MapaCena extends Phaser.Scene {
     this.lpc = { img: this.textures.get('lpc').getSourceImage(), quadros: this.quadrosLPC() };
     const naEstrada = new Set(); for (const e of planta.ESTRADAS) for (const i of pecasDaEstrada(e.pontos, W, H)) naEstrada.add(i);
     this.naEstradaSet = naEstrada;
-    const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { tijolo: this.textures.get('tijolo').getSourceImage() });
+    const chao = desenharChao(this.lpc.img, this.lpc.quadros, this.t, planta, naEstrada, { tijolo: this.textures.get('tijolo').getSourceImage(), rochas: this.textures.get('rochas').getSourceImage() });
     this.naAreia = chao.naAreia;
     this.textures.addCanvas('chaoLPC', chao.canvas);
     this.add.image(0, 0, 'chaoLPC').setOrigin(0).setScale(Q_ESCALA).setDepth(0);
@@ -362,7 +363,9 @@ class MapaCena extends Phaser.Scene {
     this.bandeirasCastelo?.forEach((b) => b.setVisible(!ruina));
     const pr = this.predios?.find((p) => p.img === cf.img); if (pr) pr.off = ruina;
     const d = cf.def.bloqueio ?? cf.def; const { W, passa } = this.t;
-    for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) passa[y * W + x] = ruina ? 1 : 0;
+    // na ruína só o vão do arco abre (as torres continuam de pé), assim o personagem não some atrás da pedra
+    const vao = cf.def.passagem ?? d;
+    for (let y = d.y; y < d.y + d.h; y++) for (let x = d.x; x < d.x + d.w; x++) passa[y * W + x] = ruina && x >= vao.x && x < vao.x + vao.w ? 1 : 0;
   }
 
   aplicarEstados(estados, concluidas) {
@@ -422,10 +425,11 @@ class MapaCena extends Phaser.Scene {
       this.cameras.main.shake(2400, 0.006);
       let k = 1;
       this.time.addEvent({ delay: 380, repeat: 5, callback: () => {
-        img.setTexture(`castelo-cai-${k}`); k += 1;
+        img.setTexture(planta.CASTELO_PROC ? (k % 2 ? 'castelo-v02-ruinas' : 'castelo-v02') : `castelo-cai-${k}`); k += 1;
         for (let i = 0; i < 6; i++) { const p = this.add.circle(img.x + Phaser.Math.Between(-22, 22), img.y - Phaser.Math.Between(0, 16), Phaser.Math.Between(2, 5), 0xd8d2e6, 0.9).setDepth(900); this.tweens.add({ targets: p, y: p.y - 18, alpha: 0, scale: 2, duration: 900, onComplete: () => p.destroy() }); }
       } });
       this.time.delayedCall(2700, () => {
+        if (planta.CASTELO_PROC) this.ruirCastelo(true);
         const b = this.add.sprite(img.x, img.y + 10, 'bandeiraGrande-0').setOrigin(0.15, 1).setDepth(901);
         let fb = 0; this.time.addEvent({ delay: 200, loop: true, callback: () => { fb = (fb + 1) % 3; b.setTexture(`bandeiraGrande-${fb}`); } });
         this.tweens.add({ targets: b, y: img.y - 18, duration: 1800, ease: 'Sine.easeOut' });
@@ -437,7 +441,7 @@ class MapaCena extends Phaser.Scene {
 
   // Castelo que já caiu numa visita anterior: ruínas, bandeira branca e o Barão longe dali
   casteloCaido() {
-    const img = this.fases.m1chefao.img; img.setTexture('castelo-cai-6');
+    const img = this.fases.m1chefao.img; if (planta.CASTELO_PROC) this.ruirCastelo(true); else img.setTexture('castelo-cai-6');
     const b = this.add.sprite(img.x, img.y - 18, 'bandeiraGrande-0').setOrigin(0.15, 1).setDepth(901);
     let fb = 0; this.time.addEvent({ delay: 200, loop: true, callback: () => { fb = (fb + 1) % 3; b.setTexture(`bandeiraGrande-${fb}`); } });
     const barao = this.gente.find((g) => g.quem === 'barao'); if (barao) { barao.spr.setVisible(false); barao.foi = true; }
@@ -1098,6 +1102,7 @@ class MapaCena extends Phaser.Scene {
         if (k === 'luz-lampiao') brilho(x, y, k, r / 64, 0.35);
       }
     }
+    if (planta.ESCADA) { const e = planta.ESCADA; for (const x of [e.x * P - 3, (e.x + e.w) * P + 3]) { const y = e.y * P - 7; this.luzes.push({ x, y: y + 8, r: 40, k: 'luz-lampiao' }); brilho(x, y, 'luz-lampiao', 0.5, 0.4); } }
     for (const id of ['toroE', 'toroD']) { const o = this.objetos?.[id]?.img; if (!o) continue; const y = o.y - o.displayHeight + 9; this.luzes.push({ x: o.x, y: y + 8, r: 34, k: 'luz-lampiao' }); brilho(o.x, y, 'luz-lampiao', 0.45, 0.4); }
     const camp = this.fases?.m1f5?.img; if (camp) { const b = camp.getBounds(); this.luzes.push({ x: b.left - 6, y: b.bottom - 8, r: 52, k: 'luz-fogo' }); brilho(b.left - 6, b.bottom - 6, 'luz-fogo', 0.7, 0.3); }
     this.rtLuz = this.guardaLuz(this.add.renderTexture(0, 0, this.t.W * P, this.t.H * P).setOrigin(0).setDepth(988).setBlendMode(Phaser.BlendModes.MULTIPLY));

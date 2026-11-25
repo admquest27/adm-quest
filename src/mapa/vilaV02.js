@@ -36,7 +36,7 @@ export const FASES = [
   { id: 'm1f6', arte: 'arvoreDecisaoV2', x: 78, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f6 },
   { id: 'm1f7', arte: 'raioXV2', x: 66, y: 15, w: 3, h: 3, entrada: geo.ENTRADAS.m1f7 },
   // castelo (castelo.js): 7 peças de largura, encostado na rocha das escarpas dos dois lados; o bloqueio vai até a escada (y 10 a 17)
-  { id: 'm1chefao', arte: 'casteloProc', x: 51, y: 11, w: 7, h: 7, bloqueio: geo.CASTELO, entrada: geo.ENTRADAS.m1chefao },
+  { id: 'm1chefao', arte: 'casteloProc', x: 51, y: 11, w: 7, h: 7, bloqueio: geo.CASTELO, passagem: { x: geo.ESCADA.x, w: geo.ESCADA.w }, entrada: geo.ENTRADAS.m1chefao },
 ];
 
 // Enfeites. A ordem das casas define os textos (casas[i]): Dona Planilha, Seu Prazo, Juninho, Lojinha, Templo Antigo,

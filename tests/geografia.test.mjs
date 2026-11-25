@@ -167,7 +167,7 @@ const retangulosBloqueados = () => {
 test('construções e objetos não se sobrepõem nem pisam na água, na mata ou na escarpa', () => {
   const rs = retangulosBloqueados();
   rs.forEach((a, i) => {
-    const doTerreno = a.nome === 'ilha' || a.nome === 'portao'; // a ilhota fica na água e o portão faz parte da muralha, de propósito
+    const doTerreno = a.nome === 'ilha' || a.nome === 'portao' || a.nome === 'm1chefao'; // a ilhota fica na água, o portão faz parte da muralha e o castelo se encaixa na rocha, de propósito
     if (!doTerreno) for (let y = a.y; y < a.y + a.h; y++) for (let x = a.x; x < a.x + a.w; x++) {
       assert.ok(!t.agua[I(x, y)] && !t.floresta[I(x, y)] && !t.escarpa[I(x, y)] && !t.muralha[I(x, y)], `${a.nome} em ${x},${y} pisa em água, mata ou pedra`);
     }
