@@ -32,7 +32,7 @@ const peca = (px, py) => [Math.floor(px / P), Math.floor(py / P)];
 const VEL = 64;
 const EMOTES = { susto: 1, feliz: 6, pontos: 20, ex: 21, exVermelho: 22, pergunta: 23, coracao: 27, sono: 28, estrela: 29, bravo: 9 };
 
-const ICONES = { bau: 'disquete', cacto: 'cacto', lapide: 'lapide', 404: 'placa404', professores: 'placaCafe', antena: 'escola', gato: 'impressora', pombo: 'pombo-0', galinhas: 'galinhaBranca', konami: 'consultorDanca-0', espantalho: 'lpc:espantalho', vaca: 'vacaL:4' };
+const ICONES = { bau: 'disquete', cacto: 'cacto', lapide: 'lapide', 404: 'placa404', professores: 'placaCafe', antena: 'lpc:torre-grande', gato: 'lpc:impressora-nova', pombo: 'lpc:pombo-a', galinhas: 'galinhaBranca', konami: 'consultorDanca-0', espantalho: 'lpc:espantalho', vaca: 'vacaL:4' };
 // textos de reserva dos segredos mais novos (o texto de verdade vem do conteúdo importado pelo professor)
 const SEGREDO_RESERVA = {
   espantalho: 'O Espantalho está no mesmo posto há dez anos e nunca pediu aumento. O Consultor Cinzento diz que isso não é um bom exemplo de gestão de pessoas.',
@@ -73,6 +73,7 @@ class MapaCena extends Phaser.Scene {
     this.load.image('tijolo', lpc + 'tijolo.png');
     this.load.image('rochas', lpc + 'rochas.png');
     this.load.image('cachoeira', lpc + 'cachoeira.png');
+    this.load.image('terra', lpc + 'terra.png');
     carregarFazenda(this, lpc);
     this.load.spritesheet('galinhaL', lpc + 'bichos/galinha.png', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('gatoL', lpc + 'bichos/gato.png', { frameWidth: 32, frameHeight: 32 });
@@ -282,7 +283,7 @@ class MapaCena extends Phaser.Scene {
   // Estradas: as que levam a fases abertas aparecem inteiras; as outras, só tracejadas de leve.
   criarEstradas() {
     this.todosPontos = [];
-    const desenhos = desenharEstradas(planta.ESTRADAS.map((e) => e.pontos), this.t, undefined, planta.SEM_TERRA);
+    const desenhos = desenharEstradas(planta.ESTRADAS.map((e) => e.pontos), this.t, undefined, planta.SEM_TERRA, planta.GEO ? this.textures.get('terra').getSourceImage() : null);
     this.estradas = planta.ESTRADAS.map((e, i) => {
       const pts = pontosDe(e.pontos); this.todosPontos.push(...pts);
       const chave = `estrada-${i}`;

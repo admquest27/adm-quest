@@ -105,7 +105,7 @@ export function desenharChao(img, frames, t, planta, evitar = new Set(), extras 
 // arredondados (largura de pouco mais de um quadrado e meio), com a borda mais escura, tufos de grama nas beiradas
 // e pedrinhas. Onde o traçado passa por cima da água, a terra some (quem cobre ali é a ponte).
 const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
-export function desenharEstradas(segmentos, t, largura = 46, semTerra = []) {
+export function desenharEstradas(segmentos, t, largura = 46, semTerra = [], textura = null) {
   const { W, H } = t; const PW = W * Q; const PH = H * Q; const N = PW * PH;
   const dono = new Int8Array(N).fill(-1);
   segmentos.forEach((pontos, n) => {
@@ -151,6 +151,29 @@ export function desenharEstradas(segmentos, t, largura = 46, semTerra = []) {
       if (o >= 0 && hash(x, y) < 0.45) c = hash(x + 3, y) < 0.5 ? '#2d6a2f' : '#3d8a38';
     }
     if (c) { cor[i] = cores(c); dn[i] = o; const b = box[o]; b[0] = Math.min(b[0], x); b[1] = Math.min(b[1], y); b[2] = Math.max(b[2], x); b[3] = Math.max(b[3], y); }
+  }
+  // com a textura do pacote: o miolo repete o desenho de terra; a beirada escurece e esfarela em torrões
+  if (textura) {
+    const [, gt] = tela(textura.width, textura.height); gt.drawImage(textura, 0, 0); const tx = gt.getImageData(0, 0, textura.width, textura.height).data;
+    const amostra = (sx, sy) => { const p = (sy * textura.width + sx) * 4; return [tx[p], tx[p + 1], tx[p + 2]]; };
+    for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) {
+      const i = y * PW + x; const o = dono[i]; if (o < 0) continue;
+      // quadros lisos e com pedrinhas da última fileira da folha, sorteados por quadrado
+      const v = hash(Math.floor(x / 32) + 7, Math.floor(y / 32) + 3) < 0.78 ? 64 : 32;
+      let c = amostra(v + (x % 32), 160 + (y % 32)); const dd = dist[i];
+      const claro = viz(x, y - 3) < 0;
+      if (dd <= 1) c = claro ? [150, 108, 62] : [96, 62, 36]; else if (dd <= 4) c = c.map((q) => Math.round(q * (claro ? 1.06 : 0.82))); else if (dd <= 8) c = c.map((q) => Math.round(q * 0.93));
+      cor[i] = c; dn[i] = o;
+    }
+    // torrões e pedrinhas escapando pela beirada, sobre a grama
+    for (let y = 3; y < PH - 3; y += 3) for (let x = 3; x < PW - 3; x += 3) {
+      const i = y * PW + x; if (dono[i] >= 0 || hash(x, y) > 0.2) continue;
+      const o = Math.max(viz(x - 5, y), viz(x + 5, y), viz(x, y - 5), viz(x, y + 5)); if (o < 0) continue;
+      if (t.agua[Math.floor(y / Q) * W + Math.floor(x / Q)]) continue;
+      if (semTerra.some(([ax, ay, bx2, by2]) => x >= ax * Q && x < bx2 * Q && y >= ay * Q && y < by2 * Q)) continue;
+      const w = 3 + Math.floor(hash(y, x) * 4);
+      for (let dy = 0; dy < 3; dy++) for (let dx = dy ? 0 : 1; dx < w - (dy ? 0 : 1); dx++) { const k = (y + dy) * PW + x + dx; cor[k] = dy === 0 ? [214, 170, 108] : dy === 1 ? [172, 126, 76] : [100, 70, 44]; dn[k] = o; const b = box[o]; b[0] = Math.min(b[0], x + dx); b[1] = Math.min(b[1], y + dy); b[2] = Math.max(b[2], x + dx); b[3] = Math.max(b[3], y + dy); }
+    }
   }
   // pedrinhas soltas
   for (let k = 0; k < N / 900; k++) { const x = Math.floor(hash(k, 1) * PW); const y = Math.floor(hash(k, 2) * PH); const i = y * PW + x; if (dono[i] >= 0 && dist[i] > 7 && dono[i + 1] >= 0) { cor[i] = cores('#8b6a45'); cor[i + 1] = cores('#e6c995'); } }

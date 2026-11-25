@@ -1543,4 +1543,4 @@ https://opengameart.org/content/the-mana-worldforest-tileset
 (LPC Mountains 2: rochas das escarpas do platô, arquivo mapa/lpc/rochas.png.)
 
 
-[LPC] Base Assets, tiles/waterfall.png, por Lanea Zimmerman (Sharm): cachoeira do planalto (mapa/lpc/cachoeira.png). CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0.
+[LPC] Base Assets, tiles/waterfall.png e tiles/dirt.png, por Lanea Zimmerman (Sharm): cachoeira do planalto (mapa/lpc/cachoeira.png) e terra das estradas (mapa/lpc/terra.png). CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0.
