@@ -98,6 +98,7 @@ export const LPC_PECAS = {
   casaMostardaV2: { quadro: 'casa-v2-hipped', porta: [80, 190], w: 5, h: 5, luzes: [[30, 156, 26], [130, 156, 26]] },
   casaLilasV2: { quadro: 'casa-v2-cross', porta: [80, 230], w: 5, h: 6, luzes: [[30, 196, 26], [130, 196, 26]] },
   salaProfessoresV2: { quadro: 'casa-v2-gambrel', porta: [80, 182], w: 5, h: 4, luzes: [[30, 148, 28], [130, 148, 28]] },
+  mansaoPartida: { quadro: 'mansao', porta: [147, 332], w: 9, h: 5, luzes: [[99, 158, 21], [147, 158, 21], [196, 158, 21], [100, 248, 21], [195, 248, 21], [147, 78, 24], [147, 260, 23]] },
   raioXV2: { quadro: 'raiox-v2', porta: [64, 184], w: 3, h: 3, luzes: [[24, 146, 28]] },
 };
 

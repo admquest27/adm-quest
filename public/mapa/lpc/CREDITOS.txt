@@ -1459,3 +1459,6 @@ Castle work:
 
 
 [LPC] Victorian Town Decorations (bluecarrot16, Casper Nilsson, Lanea Zimmerman (Sharm), William Thompson, mold, AntumDeluge, Curt, Daniel Eddeland (daneeklu), caeles, George Bailey, Jetrel, Yar, Guido Bos, Ivan Voirol (Silver IV), Stephen Challener (Redshrike), Open Surge team, Arthur Carvalho, Guilherme Vieira (n2liquid), NaRNeRZz, Diarandor, Armando Montero (ArMM1998), Tuomo Untinen (Reemax), Buch). CC-BY-SA 4.0. Usado nas bancas e mercadorias da feira da fase 5.
+
+
+[LPC] Casper Nilsson, casa vitoriana (CC-BY-SA 3.0 / GPL 3.0+), usada em versão compacta na mansão da fase 1. https://opengameart.org/content/lpc-cnilsson

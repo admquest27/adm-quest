@@ -28,7 +28,7 @@ export const INICIO = geo.ENTRADAS.m1f1;
 
 // Construções das fases
 export const FASES = [
-  { id: 'm1f1', arte: 'casaPartida', x: 8, y: 27, w: 3, h: 6, entrada: geo.ENTRADAS.m1f1 },
+  { id: 'm1f1', arte: 'mansaoPartida', x: 8, y: 25, w: 9, h: 5, entrada: geo.ENTRADAS.m1f1 },
   { id: 'm1f2', arte: 'aviaoFase', x: 12, y: 10, w: 7, h: 4, entrada: geo.ENTRADAS.m1f2 },
   { id: 'm1f3', arte: 'oficinaV2', x: 33, y: 13, w: 3, h: 3, entrada: geo.ENTRADAS.m1f3 },
   { id: 'm1f4', arte: 'celeiroV2', x: 54, y: 31, w: 6, h: 3, entrada: geo.ENTRADAS.m1f4 },
@@ -53,17 +53,17 @@ export const ENFEITES = [
   ...campo(60, 39, 8, 4),
   // flores e plantas
   ['florAmarela', 12, 35], ['florVermelha', 7, 31], ['florBranca', 26, 36], ['florLaranja', 22, 21], ['florAmarela', 37, 21], ['florBranca', 62, 33], ['florVermelha', 56, 29],
-  ['arbusto1', 14, 20], ['arbusto2', 28, 25], ['arbusto3', 38, 14], ['arbusto4', 70, 28], ['mato', 20, 9], ['mato', 31, 33], ['mato', 56, 38],
+  ['arbusto1', 3, 24], ['arbusto2', 28, 25], ['arbusto3', 38, 14], ['arbusto4', 70, 28], ['mato', 20, 9], ['mato', 31, 33], ['mato', 56, 38],
 ].map(([p, x, y]) => enfeite(p, x, y));
 
 // Objetos desenhados para o jogo. Os que guardam segredo têm o id do segredo.
 export const OBJETOS = [
   { id: 'casinha', arte: 'casinha', x: 8, y: 36, bloqueia: true },
-  { id: 'impressora', arte: 'impressora', x: 12, y: 31, w: 2, h: 1, bloqueia: true, segredo: 'gato' },
+  { id: 'impressora', arte: 'impressora', x: 8, y: 33, w: 2, h: 1, bloqueia: true, segredo: 'gato' },
   { id: 'cacto', arte: 'cacto', x: 8, y: 14, bloqueia: true, segredo: 'cacto', toques: 5 },
-  { id: 'escola', arte: 'casaTorre', x: 12, y: 26, w: 2, h: 1, bloqueia: true, segredo: 'antena' },
+  { id: 'escola', arte: 'casaTorre', x: 35, y: 41, w: 2, h: 1, bloqueia: true, segredo: 'antena' },
   { id: 'coreto', arte: 'coreto', x: 24, y: 37, w: 3, h: 1, bloqueia: true },
-  { id: 'feira', arte: 'feira', x: 14, y: 31, w: 2, h: 1, bloqueia: true },
+  { id: 'feira', arte: 'feira', x: 16, y: 36, w: 2, h: 1, bloqueia: true },
   { id: 'porta', arte: 'placaCafe', x: 35, y: 38, bloqueia: true, segredo: 'professores' },
   { id: 'lapide', arte: 'lapide', x: 60, y: 20, bloqueia: true, segredo: 'lapide' },
   { id: 'placa404', arte: 'placa404', x: 6, y: 40, bloqueia: true, segredo: '404' },

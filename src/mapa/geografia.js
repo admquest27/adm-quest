@@ -174,10 +174,10 @@ export function montarGeografia(W = LARG, H = ALT) {
 // Entradas das fases (onde o aluno para na frente de cada construção) e as estradas que ligam uma à outra.
 // 1-1 → 1-2 → 1-3 → ponte → 1-4 → 1-5 → 1-6 → 1-7 → Castelo → portão. Não há estrada da ponte para o castelo.
 export const ENTRADAS = {
-  m1f1: [10, 33], m1f2: [15, 14], m1f3: [34, 16], m1f4: [57, 34], m1f5: [76, 30], m1f6: [79, 18], m1f7: [67, 18], m1chefao: [54, 18],
+  m1f1: [12, 30], m1f2: [15, 14], m1f3: [34, 16], m1f4: [57, 34], m1f5: [76, 30], m1f6: [79, 18], m1f7: [67, 18], m1chefao: [54, 18],
 };
 export const ROTA = [
-  { para: 'm1f2', pontos: [[10, 33], [7, 33], [6, 30], [6, 24], [7, 20], [10, 17], [15, 14]] },
+  { para: 'm1f2', pontos: [[12, 30], [11, 31], [8, 31], [6, 29], [6, 24], [7, 20], [10, 17], [15, 14]] },
   { para: 'm1f3', pontos: [[15, 14], [19, 15], [23, 16], [28, 16], [34, 16]] },
   { para: 'm1f4', pontos: [[34, 16], [36, 19], [38, 23], [40, 24], [48, 24], [51, 26], [52, 30], [52, 34], [57, 34]] },
   { para: 'm1f5', pontos: [[57, 34], [63, 34], [69, 33], [76, 30]] },
