@@ -111,7 +111,7 @@ export const LPC_ENFEITES = {
 };
 // Objetos (pelo id) que já têm versão LPC.
 export const LPC_OBJETOS = {
-  cacto: 'cacto', lapide: 'lapide', escola: 'torre-grande', feira: 'feira', coreto: 'coreto', impressora: 'mesa-escriba', casinha: 'casinha-cachorro', aviao: 'aviao-caido', quadro: 'quadro-swot', placa404: 'placa-404', porta: 'placa-cafe', ilha: 'ilhota', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
+  cacto: 'cacto', lapide: 'lapide', escola: 'torre-grande', feira: 'feira', coreto: 'coreto', impressora: 'impressora-nova', casinha: 'casinha-rosalina', aviao: 'aviao-caido', quadro: 'quadro-swot', placa404: 'placa-404', porta: 'placa-cafe', ilha: 'ilhota-nova', portao: 'portal-mundo2', fonte: 'fonte-0', poco: 'poco', espantalho: 'espantalho',
   carroca: 'carroca', fardos: 'fardo', lenha: 'lenha-1',
   toriiTemplo: 'torii', bancaV: 'banca-vermelha', bancaD: 'banca-dourada', caixasM: 'caixas-mercado', palletM: 'pallet-mercado', toroE: 'toro', toroD: 'toro', caoE: 'cao-guardiao', caoD: 'cao-guardiao', cerejeiraA: 'cerejeira-a', cerejeiraB: 'cerejeira-b', cerejeiraC: 'cerejeira-a', cerejeiraD: 'cerejeira-b', toriiTemplo: 'torii',
 };

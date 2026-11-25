@@ -544,7 +544,7 @@ class MapaCena extends Phaser.Scene {
       const v = this.add.circle(cafe.x - 1 + Phaser.Math.Between(-1, 1), cafe.y - 17, 1, 0xffffff, 0.85).setDepth(cafe.depth + 1);
       this.tweens.add({ targets: v, y: v.y - 7, x: v.x + Phaser.Math.Between(-2, 2), alpha: 0, scale: 1.6, duration: 1000, onComplete: () => v.destroy() });
     } });
-    this.time.addEvent({ delay: 1400, loop: true, callback: () => { const il = this.objetos.ilha.img; il.setFrame(il.frame.name === 'ilhota' ? 'ilhota-brilho' : 'ilhota'); } });
+    this.time.addEvent({ delay: 1400, loop: true, callback: () => { const il = this.objetos.ilha.img; il.setFrame(il.frame.name === 'ilhota-nova' ? 'ilhota-nova-brilho' : 'ilhota-nova'); } });
   }
 
   alvoPerto(x, y, w, h, alcance = 1) {
@@ -804,7 +804,7 @@ class MapaCena extends Phaser.Scene {
     const gal = planta.PERSONAGENS.galinhas; const pom = planta.PERSONAGENS.pombo;
     const nova = (tipo, area, chave) => {
       const x = (area.x + Math.random() * area.w) * P; const y = (area.y + Math.random() * area.h) * P;
-      const spr = this.galinhaSprite(x, y, chave) ?? this.add.sprite(x, y, chave ?? `${tipo}-0`, 0).setOrigin(0.5, 0.85);
+      const spr = tipo === 'pombo' ? this.add.sprite(x, y, 'lpc', 'pombo-a').setScale(Q_ESCALA).setOrigin(0.5, 0.9) : this.galinhaSprite(x, y, chave) ?? this.add.sprite(x, y, chave ?? `${tipo}-0`, 0).setOrigin(0.5, 0.85);
       const b = { tipo, chave, spr, area, alvo: null, pausa: Math.random() * 2000, toque: 0, e: spr.scaleX }; this.bichos.push(b); return b;
     };
     for (let i = 0; i < gal.quantas; i++) nova('galinha', gal.area, i % 2 ? 'galinhaMarrom' : 'galinhaBranca');
@@ -872,7 +872,7 @@ class MapaCena extends Phaser.Scene {
             else if (Math.random() < 0.002) { s.setFlipX(!s.flipX); }
             else if (Math.random() < 0.0008 && this.cameras.main.worldView.contains(s.x, s.y)) { cocorico(); this.emote(s, 'pontos', 900); }
           }
-          else s.setTexture('pombo-0');
+          else s.setTexture('lpc', 'pombo-a');
           continue;
         }
         // espalha os bichos: escolhe um ponto longe dos outros
@@ -883,7 +883,7 @@ class MapaCena extends Phaser.Scene {
       const [tx, ty] = b.alvo; const dx = tx - s.x; const dy = ty - s.y; const d = Math.hypot(dx, dy); const v = (b.fuga ? 70 : b.tipo === 'pombo' ? 14 : 18) * dt / 1000;
       if (d < 1) { b.alvo = null; b.fuga = false; b.pausa = time + 500 + Math.random() * 2600; continue; }
       s.x += (dx / d) * v; s.y += (dy / d) * v; s.setDepth(100 + s.y);
-      if (b.tipo === 'galinha') { s.setFlipX(dx > 0); s.play(b.chave, true); s.setAngle(Math.sin(time / (b.fuga ? 40 : 90)) * (b.fuga ? 10 : 5)); if (b.fuga) s.setScale(b.e ?? 1, (b.e ?? 1) * (1 + Math.abs(Math.sin(time / 50)) * 0.15)); else s.setScale(b.e ?? 1); } else { s.setFlipX(dx < 0); s.setTexture(`pombo-${Math.floor(time / 180) % 2}`); }
+      if (b.tipo === 'galinha') { s.setFlipX(dx > 0); s.play(b.chave, true); s.setAngle(Math.sin(time / (b.fuga ? 40 : 90)) * (b.fuga ? 10 : 5)); if (b.fuga) s.setScale(b.e ?? 1, (b.e ?? 1) * (1 + Math.abs(Math.sin(time / 50)) * 0.15)); else s.setScale(b.e ?? 1); } else { s.setFlipX(dx < 0); s.setTexture('lpc', Math.floor(time / 180) % 2 ? 'pombo-b' : 'pombo-a'); }
       // esbarrar nas galinhas: ela pula, bate as asas, solta penas e foge
       if (b.tipo === 'galinha' && this.movendoAv() && Phaser.Math.Distance.Between(s.x, s.y, this.av.x, this.av.y) < 10 && time > b.toque) {
         b.toque = time + 1200; this.esbarroes += 1; cocorico();
@@ -1130,8 +1130,8 @@ class MapaCena extends Phaser.Scene {
     for (const [x, y] of usados) {
       const by = (y + 1) * P - 2; if (!planta.POSTES_FIXOS) passa[y * W + x] = 0;
       this.add.ellipse(x * P + 8, by, 6, 2, 0x000000, 0.25).setDepth(4);
-      const img = this.add.image(x * P + 8, by, 'lpc', 'lampiao').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
-      this.chamas.push([img.x, img.y - img.displayHeight + 8]);
+      const img = this.add.image(x * P + 8, by + 1, 'lpc', 'poste-luz').setOrigin(0.5, 1).setScale(Q_ESCALA).setDepth(100 + by);
+      this.chamas.push([img.x, img.y - img.displayHeight + 9]);
     }
   }
 

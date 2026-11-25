@@ -27,7 +27,7 @@ export const PRACA = { cx: 19.5, cy: 35.5, rx: 7.6, ry: 4.4 };
 export const SEM_TERRA = [[4.5, 28.4, 14.5, 33.5]];
 export const POSTES_FIXOS = true;
 export const TRILHAS = [
-  [[6.5, 28.6], [6.9, 30.8], [9, 31.7], [11.2, 31.4], [12.6, 30.6]], geo.ATALHO,
+  [[6.5, 28.6], [6.9, 30.8], [9, 31.7], [11.2, 31.4], [12.6, 30.6]],
   [[12.5, 30.4], [13.4, 32.2], [15.5, 33.6]], [[19.5, 31], [19.5, 32.5]], [[27, 28.2], [26, 30.4], [23.6, 32.8]],
   [[8, 38.8], [11, 38.8], [13.5, 36.8]], [[25.5, 34], [29, 34.6], [33.5, 34.8]], [[24.5, 38], [27.5, 41.6], [31.5, 41.8]],
   [[16.5, 38.8], [15.5, 43], [15.8, 46.6]], [[22.5, 39], [24.5, 43], [25, 46.6]], [[31.5, 41.8], [33.6, 42.4], [35.6, 41.4]],
@@ -83,7 +83,7 @@ export const ENFEITES = [
 
 // Objetos desenhados para o jogo. Os que guardam segredo têm o id do segredo.
 export const OBJETOS = [
-  { id: 'casinha', arte: 'casinha', x: 11, y: 35, bloqueia: true },
+  { id: 'casinha', arte: 'casinha', x: 10, y: 35, w: 3, h: 1, bloqueia: true },
   { id: 'impressora', arte: 'impressora', x: 29, y: 31, w: 2, h: 1, bloqueia: true, segredo: 'gato' },
   { id: 'cacto', arte: 'cacto', x: 8, y: 14, bloqueia: true, segredo: 'cacto', toques: 5 },
   { id: 'escola', arte: 'casaTorre', x: 18, y: 30, w: 3, h: 1, bloqueia: true, segredo: 'antena' },

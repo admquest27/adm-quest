@@ -5,7 +5,8 @@ export const MORADORES = {
   barao: { v: 2, pele: 'light', rosto: 'e', nariz: 'grande', sobrancelha: 'grossa', olhos: 'gray', cabelo: 'repartido', corCabelo: 'black', cima: 'cardiga', corCima: 'maroon', baixo: 'social', corBaixo: 'black', pes: 'bota', corPes: 'black', chapeu: 'cartola' },
   senhora: { v: 2, pele: 'taupe', rosto: 'b', nariz: 'botao', sobrancelha: 'fina', olhos: 'brown', cabelo: 'coque', corCabelo: 'white', cima: 'cardiga', corCima: 'lavender', baixo: 'saia', corBaixo: 'purple', pes: 'sapatilha', corPes: 'brown', oculos: 'redondo' },
   crianca: { v: 2, pele: 'bronze', rosto: 'd', nariz: 'botao', sobrancelha: 'fina', olhos: 'black', cabelo: 'baguncado', corCabelo: 'black', cima: 'camiseta', corCima: 'yellow', baixo: 'bermuda', corBaixo: 'blue', pes: 'tenis', corPes: 'red' },
-  monge: { v: 2, pele: 'brown', rosto: 'f', nariz: 'reto', sobrancelha: 'grossa', olhos: 'brown', cabelo: 'raspado', corCabelo: 'black', cima: 'manga', corCima: 'orange', baixo: 'larga', corBaixo: 'orange', pes: 'sandalia', corPes: 'brown' },
+  // Mestre Fayolino: barba e cabelo brancos, manto vinho e chapéu de mestre
+  monge: { v: 2, pele: 'brown', rosto: 'f', nariz: 'grande', sobrancelha: 'grossa', olhos: 'brown', cabelo: 'longo', corCabelo: 'white', cima: 'manga', corCima: 'orange', baixo: 'larga', corBaixo: 'maroon', pes: 'sandalia', corPes: 'brown', chapeu: 'mago', barba: 'barbacheia', capa: 'capa', corCapa: 'maroon', oculos: 'redondo' },
   operario1: { v: 2, pele: 'amber', rosto: 'c', nariz: 'grande', sobrancelha: 'grossa', olhos: 'brown', cabelo: 'raspado', corCabelo: 'dark_brown', cima: 'camiseta', corCima: 'orange', baixo: 'calca', corBaixo: 'navy', pes: 'bota', corPes: 'brown' },
   operario2: { v: 2, pele: 'black', rosto: 'a', nariz: 'reto', sobrancelha: 'grossa', olhos: 'brown', cabelo: 'degrade', corCabelo: 'black', cima: 'regata', corCima: 'orange', baixo: 'larga', corBaixo: 'slate', pes: 'bota', corPes: 'black' },
 };

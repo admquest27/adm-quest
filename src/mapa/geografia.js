@@ -169,7 +169,7 @@ export function montarGeografia(W = LARG, H = ALT) {
   for (let i = 0; i < floresta.length; i++) if (!dentro[i]) floresta[i] = 1;
   const bosque = mascaraPoligono(BOSQUE_SEPARADOR, W, H); for (let i = 0; i < bosque.length; i++) if (bosque[i]) floresta[i] = 1;
   // clareira do atalho: da saída da ponte até a estrada do castelo
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let perto = 99; for (let i = 0; i < ATALHO.length - 1; i++) { const [ax, ay] = ATALHO[i]; const [bx, by] = ATALHO[i + 1]; const t = Math.max(0, Math.min(1, ((x + 0.5 - ax) * (bx - ax) + (y + 0.5 - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2))); perto = Math.min(perto, Math.hypot(x + 0.5 - ax - t * (bx - ax), y + 0.5 - ay - t * (by - ay))); } if (perto < 1.7) floresta[y * W + x] = 0; }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { let perto = 99; for (let i = 0; i < ATALHO.length - 1; i++) { const [ax, ay] = ATALHO[i]; const [bx, by] = ATALHO[i + 1]; const t = Math.max(0, Math.min(1, ((x + 0.5 - ax) * (bx - ax) + (y + 0.5 - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2))); perto = Math.min(perto, Math.hypot(x + 0.5 - ax - t * (bx - ax), y + 0.5 - ay - t * (by - ay))); } if (perto < 1.15) floresta[y * W + x] = 0; }
   for (let i = 0; i < floresta.length; i++) if (agua[i]) floresta[i] = 0;
   const plato = mascaraPoligono(PLATO, W, H);
   const escarpa = new Uint8Array(W * H);
