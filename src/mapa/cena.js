@@ -9,7 +9,7 @@ import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } f
 import { todasAsTexturas, iconesBarra } from './texturas.js';
 import { FOLHAS, ANIMADOS, PESSOAS, RECORTES, DIRECOES, LINHAS, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
 import { desenharMuralha } from './muralha.js';
-import { desenharCastelo } from './castelo.js';
+import { desenharCastelo, CASTELO_LUZES, CASTELO_MASTROS } from './castelo.js';
 import { desenharChao, desenharEstradas, pecasDaEstrada } from './chao.js';
 import { MORADORES } from './moradores.js';
 import { carregarFazenda, criarFazenda, moverFazenda, conversarVaca, criarLotes } from './fazenda.js';
@@ -198,7 +198,7 @@ class MapaCena extends Phaser.Scene {
     this.time.addEvent({ delay: 3800, loop: true, callback: () => this.peixePula() });
 
     this.fases ??= {}; this.objetos ??= {};
-    if (planta.CASTELO_PROC && !this.textures.exists('castelo-v02')) { this.textures.addCanvas('castelo-v02', desenharCastelo(false)); this.textures.addCanvas('castelo-v02-ruinas', desenharCastelo(true)); }
+    if (planta.CASTELO_PROC && !this.textures.exists('castelo-v02')) { const tj = this.textures.get('tijolo').getSourceImage(); this.textures.addCanvas('castelo-v02', desenharCastelo(false, tj)); this.textures.addCanvas('castelo-v02-ruinas', desenharCastelo(true, tj)); }
     if (!planta.SO_TERRENO) { // etapa 1 da V02: só o terreno; fases, objetos e gente voltam nas etapas seguintes
       this.criarFases();
       this.criarObjetos();
@@ -399,7 +399,23 @@ class MapaCena extends Phaser.Scene {
     const cast = fx('m1chefao');
     if (!planta.CASTELO_PROC) this.bandeirasCastelo = [-32, 32].map((dx) => this.add.sprite(cast.img.x + dx, cast.img.y - 80, 'bandeiraVermelha').setOrigin(0.5, 1).setDepth(cast.img.depth + 1).play({ key: 'bandeiraVermelha', delay: dx > 0 ? 200 : 0 }));
     }
+    if (planta.CASTELO_PROC && this.fases.m1chefao) this.bandeirasCastelo = this.bandeirolas(this.fases.m1chefao.img);
     this.aplicarEstados(this.o.estados ?? {}, this.o.concluidas ?? []);
+  }
+
+  // Bandeirolas que tremulam nos mastros do castelo (três quadros desenhados aqui)
+  bandeirolas(img) {
+    for (let q = 0; q < 3; q++) {
+      if (this.textures.exists('flamula-' + q)) continue;
+      const t = this.textures.createCanvas('flamula-' + q, 28, 30); const g = t.getContext();
+      g.fillStyle = '#241d33'; g.fillRect(0, 0, 4, 30); g.fillStyle = '#efc546'; g.fillRect(1, 1, 2, 29);
+      for (let x = 0; x < 22; x++) { const onda = Math.round(Math.sin(x / 3.4 + q * 2.09) * 2.4 * Math.min(1, x / 8)); const alt = 14 - Math.floor(x * 0.4);
+        g.fillStyle = '#241d33'; g.fillRect(4 + x, 2 + onda, 1, alt + 2); g.fillStyle = Math.sin(x / 3.4 + q * 2.09 + 1) > 0 ? '#e0485a' : '#a8243a'; g.fillRect(4 + x, 3 + onda, 1, alt); g.fillStyle = '#efc546'; g.fillRect(4 + x, 3 + onda + Math.floor(alt / 2) - 1, 1, 2); }
+      t.refresh();
+    }
+    if (!this.anims.exists('flamula')) this.anims.create({ key: 'flamula', frames: [0, 1, 2].map((q) => ({ key: 'flamula-' + q })), frameRate: 7, repeat: -1 });
+    const esq = img.x - img.displayWidth / 2; const topo = img.y - img.displayHeight;
+    return CASTELO_MASTROS.map(([x, y], k) => this.add.sprite(esq + x * Q_ESCALA, topo + (y + 2) * Q_ESCALA, 'flamula-0').setOrigin(0.07, 1).setScale(Q_ESCALA).setDepth(img.depth + 1).play({ key: 'flamula', delay: k * 130 }));
   }
 
   // Com o chefão vencido o castelo vira ruína: o arco continua de pé e dá para atravessar até o portão
@@ -409,6 +425,7 @@ class MapaCena extends Phaser.Scene {
     if (planta.CASTELO_PROC) cf.img.setTexture(ruina ? 'castelo-v02-ruinas' : 'castelo-v02');
     else { const [inteiro, ruinas] = planta.CASTELO_QUADROS ?? ['castelo', 'castelo-ruinas']; cf.img.setFrame(ruina ? ruinas : inteiro); }
     this.bandeirasCastelo?.forEach((b) => b.setVisible(!ruina));
+    if (planta.CASTELO_PROC && this.luzes) this.criarLuz(); // as janelas apagam junto com o castelo
     const pr = this.predios?.find((p) => p.img === cf.img); if (pr) pr.off = ruina;
     const d = cf.def.bloqueio ?? cf.def; const { W, passa } = this.t;
     // na ruína só o vão do arco abre (as torres continuam de pé), assim o personagem não some atrás da pedra
@@ -433,8 +450,9 @@ class MapaCena extends Phaser.Scene {
       if (['trancada', 'adiada', 'cancelada'].includes(estado)) {
         f.no.setTexture('no-trancado');
         add(this.add.image(px, py, 'tabuas').setDepth(img.depth + 1));
-        const cad = add(this.add.image(cx, topo - 4, 'cadeado').setDepth(img.depth + 2));
-        add(this.tweens.add({ targets: cad, y: topo - 7, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
+        const cy = f.def.arte === 'casteloProc' ? fundo - 22 : topo - 4; // no castelo o cadeado fica no portão, sem cobrir as torres
+        const cad = add(this.add.image(cx, cy, 'cadeado').setDepth(img.depth + 2));
+        add(this.tweens.add({ targets: cad, y: cy - 3, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
         if (estado === 'adiada') {
           const op = (k, x) => (this.textures.exists('dorme-' + k) ? this.add.sprite(x, fundo + 6, 'dorme-' + k, k === 'operario1' ? 5 : 11).setScale(Q_ESCALA).setOrigin(0.5, 0.88) : this.textures.exists('mor-' + k) ? this.add.sprite(x, fundo + 4, 'mor-' + k, LINHA_LPC.baixo * 9).setScale(Q_ESCALA).setOrigin(0.5, 1) : this.add.sprite(x, fundo + 4, k, 0).setOrigin(0.5, 1)).setDepth(fundo + 108);
           const ops = [add(op('operario1', cx - 26)), add(op('operario2', cx + 26))];
@@ -1151,6 +1169,10 @@ class MapaCena extends Phaser.Scene {
       }
     }
     if (planta.ESCADA) { const e = planta.ESCADA; for (const x of [e.x * P - 3, (e.x + e.w) * P + 3]) { const y = e.y * P - 7; this.luzes.push({ x, y: y + 8, r: 40, k: 'luz-lampiao' }); brilho(x, y, 'luz-lampiao', 0.5, 0.4); } }
+    const cf = this.fases?.m1chefao?.img;
+    if (planta.CASTELO_PROC && cf && !this.castelaRuina) for (const [lx, ly, raio, k = 'luz-janela'] of CASTELO_LUZES) {
+      const x = cf.x - cf.displayWidth / 2 + lx * Q_ESCALA; const y = cf.y - cf.displayHeight + ly * Q_ESCALA; this.luzes.push({ x, y, r: raio, k }); if (k === 'luz-lampiao') brilho(x, y, k, raio / 64, 0.4);
+    }
     for (const id of ['toroE', 'toroD']) { const o = this.objetos?.[id]?.img; if (!o) continue; const y = o.y - o.displayHeight + 9; this.luzes.push({ x: o.x, y: y + 8, r: 34, k: 'luz-lampiao' }); brilho(o.x, y, 'luz-lampiao', 0.45, 0.4); }
     const camp = this.fases?.m1f5?.img; if (camp) { const b = camp.getBounds(); this.luzes.push({ x: b.left - 6, y: b.bottom - 8, r: 52, k: 'luz-fogo' }); brilho(b.left - 6, b.bottom - 6, 'luz-fogo', 0.7, 0.3); }
     this.rtLuz = this.guardaLuz(this.add.renderTexture(0, 0, this.t.W * P, this.t.H * P).setOrigin(0).setDepth(988).setBlendMode(Phaser.BlendModes.MULTIPLY));
