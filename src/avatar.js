@@ -78,6 +78,7 @@ async function montar(av, anim) {
   const corDoGrupo = { cima: av.corCima, baixo: av.corBaixo, pes: av.corPes, capa: av.corCapa ?? 'gray' };
   const pecas = [{ ...cat.fixos.corpo, grupo: 'corpo' }];
   for (const g of ['rosto', 'nariz', 'sobrancelha', 'cabelo', 'cima', 'baixo', 'pes']) {
+    if (g === 'cabelo' && av.cabelo === 'careca') continue; // só os moradores usam
     const lista = cat.grupos[g]; const p = lista.find((x) => x.id === av[g]) ?? lista[0];
     pecas.push({ ...p, grupo: g });
   }

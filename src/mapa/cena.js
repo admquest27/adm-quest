@@ -9,6 +9,7 @@ import { montarTerreno, caminho, livreMaisPerto, conferirSequencia, semente2 } f
 import { todasAsTexturas, iconesBarra } from './texturas.js';
 import { FOLHAS, ANIMADOS, PESSOAS, RECORTES, DIRECOES, LINHAS, LPC_PECAS, LPC_ENFEITES, LPC_OBJETOS } from './arte.js';
 import { desenharMuralha } from './muralha.js';
+import { desenharAviao, AVIAO_FUMACA } from './aviao.js';
 import { desenharCastelo, CASTELO_LUZES, CASTELO_MASTROS } from './castelo.js';
 import { desenharChao, desenharEstradas, pecasDaEstrada } from './chao.js';
 import { MORADORES } from './moradores.js';
@@ -379,9 +380,12 @@ class MapaCena extends Phaser.Scene {
       const cx = f.x * P + (f.w * P) / 2; const by = (f.y + f.h) * P;
       const lpcF = LPC_PECAS[f.arte];
       const proc = f.arte === 'casteloProc';
+      const aviao = f.arte === 'aviaoProc';
+      if (aviao && !this.textures.exists('aviao-v02')) this.textures.addCanvas('aviao-v02', desenharAviao());
       if (proc) this.add.ellipse(cx, by - 2, f.w * P * 0.92, 12, 0x0f0c1e, 0.3).setDepth(3.5);
-      const img = proc ? this.add.image(cx, by, 'castelo-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
-      img.setDepth(100 + by);
+      const img = aviao ? this.add.image(cx, by, 'aviao-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : proc ? this.add.image(cx, by, 'castelo-v02').setOrigin(0.5, 1).setScale(Q_ESCALA) : lpcF ? this.imagemLPC(f.x, f.y, f.w, f.h, lpcF.quadro) : f.arte === 'castelo' ? this.add.image(cx, by, 'castelo').setOrigin(0.5, 1) : this.add.image(f.x * P, f.y * P, RECORTES[f.arte].folha, f.arte).setOrigin(0, 0);
+      img.setDepth(aviao ? 100 + by - 24 : 100 + by);
+      if (aviao) AVIAO_FUMACA.forEach(([sx, sy], n) => { const x = img.x - img.displayWidth / 2 + sx * Q_ESCALA; const y = img.y - img.displayHeight + sy * Q_ESCALA; this.time.addEvent({ delay: 420, loop: true, startAt: n * 210, callback: () => { const p = this.add.circle(x + Phaser.Math.Between(-2, 2), y, 2, n ? 0x9a96a8 : 0x6c6878, 0.75).setDepth(img.depth + 1); this.tweens.add({ targets: p, y: y - 26, x: p.x + Phaser.Math.Between(2, 12), scale: 3, alpha: 0, duration: 1800, onComplete: () => p.destroy() }); } }); });
       if (lpcF?.luzes || lpcF?.quadro.startsWith('casa-palha')) (this.casasLPC ??= []).push({ img, quadro: lpcF.quadro, luzes: lpcF.luzes });
       const [nx, ny] = centro(f.entrada);
       const no = this.add.image(nx, ny + 3, 'no-trancado').setDepth(3).setScale(0.7);
@@ -623,7 +627,7 @@ class MapaCena extends Phaser.Scene {
   // ---------- Rosalina ----------
   criarRosalina() {
     const [x, y] = centro(planta.PERSONAGENS.rosalina.casa);
-    this.rosa = this.add.sprite(x, y, 'rosa-sentada').setOrigin(0.5, 0.85).setScale(0.8);
+    this.rosa = this.add.sprite(x, y, 'lpc', 'rosa-sentada').setOrigin(0.5, 0.9).setScale(0.75);
     this.rosa.ia = { modo: 'senta', ate: 0, rota: [] };
   }
 
@@ -647,7 +651,7 @@ class MapaCena extends Phaser.Scene {
     }
     if (ia.modo === 'conversa' || ia.modo === 'truque') return;
     if (ia.modo === 'medo') {
-      r.setTexture(`rosa-medo-${passo}`).setFlipX(false);
+      r.setTexture('lpc', `rosa-medo-${passo}`).setFlipX(false);
       if (time > ia.ate) {
         // corre para trás do avatar
         const [mx, my] = ia.de; const ang = Math.atan2(this.av.y - my, this.av.x - mx);
@@ -661,14 +665,14 @@ class MapaCena extends Phaser.Scene {
       const v = (ia.vel ?? 42) * dt / 1000; const dx = tx - r.x; const dy = ty - r.y; const d = Math.hypot(dx, dy);
       if (d <= v) { r.setPosition(tx, ty); ia.rota.shift(); } else { r.x += (dx / d) * v; r.y += (dy / d) * v; }
       if (Math.abs(dx) > 0.5) r.setFlipX(dx < 0);
-      r.setTexture(`${ia.modo === 'corda' ? 'rosa-corda' : 'rosa-anda'}-${passo}`);
+      r.setTexture('lpc', `${ia.modo === 'corda' ? 'rosa-corda' : 'rosa-anda'}-${passo}`);
       if (!ia.rota.length && ia.aoChegar) { const fn = ia.aoChegar; ia.aoChegar = null; fn(); return; }
       if (!ia.rota.length && ia.modo === 'corre') { ia.modo = 'senta'; ia.ate = time + 1800; this.emote(r, 'pontos'); }
       return;
     }
     ia.vel = null;
     if (time < ia.ate) {
-      r.setTexture({ cava: `rosa-cava-${passo}`, senta: 'rosa-sentada', dorme: 'rosa-dorme', corda: `rosa-corda-${passo}` }[ia.modo] ?? 'rosa-sentada');
+      r.setTexture('lpc', { cava: `rosa-cava-${passo}`, senta: 'rosa-sentada', dorme: 'rosa-dorme', corda: `rosa-corda-${passo}` }[ia.modo] ?? 'rosa-sentada');
       if (ia.modo === 'cava' && Math.random() < 0.15) { const p = this.add.rectangle(r.x + (r.flipX ? 9 : -9), r.y, 2, 2, 0x8e5638).setDepth(r.depth + 1); this.tweens.add({ targets: p, x: p.x + Phaser.Math.Between(-8, 8), y: p.y - 8, alpha: 0, duration: 450, onComplete: () => p.destroy() }); }
       if (ia.modo === 'dorme' && Math.random() < 0.006) this.emote(r, 'sono');
       return;
@@ -689,7 +693,7 @@ class MapaCena extends Phaser.Scene {
   }
 
   conversarRosalina() {
-    const r = this.rosa; r.ia.modo = 'conversa'; r.ia.rota = []; r.setTexture('rosa-sentada'); r.setFlipX(this.av.x < r.x);
+    const r = this.rosa; r.ia.modo = 'conversa'; r.ia.rota = []; r.setTexture('lpc', 'rosa-sentada'); r.setFlipX(this.av.x < r.x);
     this.o.aoTocarRosalina?.((acao) => this.acaoRosalina(acao));
   }
 
@@ -704,7 +708,7 @@ class MapaCena extends Phaser.Scene {
       return;
     }
     r.ia.modo = 'truque';
-    r.setTexture('rosa-sentada'); this.emote(r, 'coracao', 1500);
+    r.setTexture('lpc', 'rosa-sentada'); this.emote(r, 'coracao', 1500);
     this.tweens.add({ targets: r, y: r.y - 5, duration: 150, yoyo: true, repeat: acao === 'dancar' ? 4 : 1, onComplete: () => { r.ia.modo = 'senta'; r.ia.ate = this.time.now + 1500; } });
     if (acao === 'dancar') latido(2);
   }
@@ -716,7 +720,7 @@ class MapaCena extends Phaser.Scene {
     r.ia.rota = caminho(passa, W, H, peca(r.x, r.y), livreMaisPerto(passa, W, H, casa, 2) ?? casa);
     this.emote(r, 'exVermelho', 900); latido(1);
     r.ia.aoChegar = () => {
-      r.setTexture('rosa-sentada').setFlipX(this.av.x < r.x); latido(2); this.emote(r, 'bravo', 1500);
+      r.setTexture('lpc', 'rosa-sentada').setFlipX(this.av.x < r.x); latido(2); this.emote(r, 'bravo', 1500);
       this.o.aoCasinha?.(() => { r.ia.modo = 'senta'; r.ia.ate = this.time.now + 1500; r.ia.vel = null; });
     };
     if (!r.ia.rota.length) { const fn = r.ia.aoChegar; r.ia.aoChegar = null; fn(); }

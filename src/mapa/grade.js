@@ -41,10 +41,12 @@ export function montarTerreno(planta) {
   for (let i = 0; i < W * H; i++) if (floresta[i] || agua[i]) passa[i] = 0;
   if (geo) for (let i = 0; i < W * H; i++) if (geo.escarpa[i] || geo.muralha[i] || geo.aguaBloqueio[i]) passa[i] = 0;
   for (let x = p.x0; x <= p.x1; x++) passa[idx(x, p.y)] = 1;
+  const at = planta.ATALHO; if (at) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) for (let i = 0; i < at.length - 1; i++) { const [ax, ay] = at[i]; const [bx, by] = at[i + 1]; const k = Math.max(0, Math.min(1, ((x + 0.5 - ax) * (bx - ax) + (y + 0.5 - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2))); const i2 = idx(x, y); if (Math.hypot(x + 0.5 - ax - k * (bx - ax), y + 0.5 - ay - k * (by - ay)) < 2 && !agua[i2] && !(geo && (geo.escarpa[i2] || geo.aguaBloqueio[i2]))) passa[i2] = 1; }
   const bloquear = (x, y, w = 1, h = 1) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (dentro(xx, yy)) passa[idx(xx, yy)] = 0; };
   for (const f of planta.FASES) { const b = f.bloqueio ?? f; bloquear(b.x, b.y, b.w, b.h); }
   for (const e of planta.ENFEITES) if (e.bloqueia) bloquear(e.bx ?? e.x, e.by ?? e.y, e.bw ?? 1, e.bh ?? 1);
   for (const o of planta.OBJETOS) if (o.bloqueia) bloquear(o.x, o.y, o.w ?? 1, o.h ?? 1);
+  for (const b of planta.BLOQUEIOS ?? []) bloquear(b.x, b.y, b.w, b.h);
   for (const m of planta.MUROS ?? []) bloquear(m.x, m.y, m.w, m.h);
   return { W, H, chao, molhado, passa, agua, floresta, aguaPx: geo?.aguaPx ?? null, areia: geo ? areia : null, plato: geo?.plato ?? null, escarpa: geo?.escarpa ?? null, muralha: geo?.muralha ?? null };
 }

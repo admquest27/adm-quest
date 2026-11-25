@@ -26,6 +26,7 @@ export const PRACA = { cx: 19.5, cy: 35.5, rx: 7.6, ry: 4.4 };
 // onde a vila é de pedra a estrada de terra não é desenhada (a pedra assume o caminho)
 export const SEM_TERRA = [[4.5, 28.4, 14.5, 33.5]];
 export const POSTES_FIXOS = true;
+export const ATALHO = geo.ATALHO;
 export const TRILHAS = [
   [[6.5, 28.6], [6.9, 30.8], [9, 31.7], [11.2, 31.4], [12.6, 30.6]],
   [[12.5, 30.4], [13.4, 32.2], [15.5, 33.6]], [[19.5, 31], [19.5, 32.5]], [[27, 28.2], [26, 30.4], [23.6, 32.8]],
@@ -33,6 +34,7 @@ export const TRILHAS = [
   [[16.5, 38.8], [15.5, 43], [15.8, 46.6]], [[22.5, 39], [24.5, 43], [25, 46.6]], [[31.5, 41.8], [33.6, 42.4], [35.6, 41.4]],
 ];
 export const TANQUE = [19.5, 36, 2.45, 1.35];
+export const BLOQUEIOS = [{ x: 18, y: 37, w: 3, h: 1 }]; // beirada de baixo do tanque da fonte
 // o coreto fica num jardim, com a entrada voltada para o caminho que vem da praça
 export const JARDIM = [36.5, 41.2, 3.3, 2.5, 3.5];
 export const PATIOS = [[36.5, 41.3, 2, 1.3]];
@@ -42,8 +44,8 @@ export const BANCOS = [[13.4, 35.2], [24.2, 35.2], [36.6, 43.2]];
 // lampiões escolhidos um a um: praça, portas, esquinas da estrada, ponte e cantos escuros. Não bloqueiam a passagem.
 export const POSTES = [
   [14, 33], [25, 33], [14, 39], [25, 39], [21, 29], [34, 28], [31, 43], [10, 43],
-  [4, 22], [10, 19], [21, 14], [29, 18], [37, 18], [38, 26], [48, 22], [48, 27],
-  [53, 21], [50, 19], [59, 19], [64, 19], [73, 19], [76, 17], [84, 22], [84, 27],
+  [4, 22], [10, 19], [21, 14], [29, 18], [37, 18], [38, 26], [48, 27],
+  [59, 19], [64, 19], [73, 19], [76, 17], [84, 22], [84, 27],
   [79, 32], [68, 31], [61, 33], [51, 34], [47, 41], [58, 43], [74, 43],
 ];
 export const ESTRADAS = geo.ROTA.map((e) => ({ ...e, pontos: suavizar(e.pontos) }));
@@ -54,7 +56,7 @@ export const INICIO = geo.ENTRADAS.m1f1;
 // Construções das fases
 export const FASES = [
   { id: 'm1f1', arte: 'mansaoPartida', x: 8, y: 25, w: 9, h: 5, entrada: geo.ENTRADAS.m1f1 },
-  { id: 'm1f2', arte: 'aviaoFase', x: 12, y: 10, w: 7, h: 4, entrada: geo.ENTRADAS.m1f2 },
+  { id: 'm1f2', arte: 'aviaoProc', x: 12, y: 10, w: 7, h: 4, entrada: geo.ENTRADAS.m1f2 },
   { id: 'm1f3', arte: 'oficinaV2', x: 33, y: 13, w: 3, h: 3, entrada: geo.ENTRADAS.m1f3 },
   { id: 'm1f4', arte: 'celeiroV2', x: 54, y: 31, w: 6, h: 3, entrada: geo.ENTRADAS.m1f4 },
   { id: 'm1f5', arte: 'feiraGrande', x: 74, y: 27, w: 5, h: 3, entrada: geo.ENTRADAS.m1f5 },
