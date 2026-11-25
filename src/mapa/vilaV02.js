@@ -42,11 +42,11 @@ export const FASES = [
 // Enfeites. A ordem das casas define os textos (casas[i]): Dona Planilha, Seu Prazo, Juninho, Lojinha, Templo Antigo,
 // casa de palha e, por último, a Sala dos Professores.
 export const ENFEITES = [
-  ['sobradoAzul', 18, 24], ['casaVaranda', 31, 29], ['chaleAlto', 15, 38], ['padaria', 22, 40], ['torreCasa', 29, 22], ['casaDiag', 10, 39], ['casaCreme', 31, 36],
+  ['sobradoAzul', 18, 24], ['casaVaranda', 31, 29], ['chaleAlto', 15, 38], ['padaria', 22, 40], ['santuario', 22, 22], ['casaDiag', 10, 39], ['casaCreme', 31, 36],
   // dunas
   ['palmeira', 6, 7], ['palmeira', 21, 6], ['palmeira', 9, 12], ['palmeira', 27, 11], ['palmeira', 23, 16],
   // árvores soltas
-  ['arvoreRedonda', 21, 19], ['arvoreClara', 35, 26], ['arvoreRosa', 35, 31], ['arvoreRedonda', 4, 31], ['pinheiro', 28, 41], ['arvoreClara', 4, 21],
+  ['arvoreRedonda', 9, 21], ['arvoreClara', 35, 26], ['arvoreRosa', 35, 31], ['arvoreRedonda', 4, 31], ['pinheiro', 28, 41], ['arvoreClara', 4, 21],
   ['arvoreRedonda', 46, 29], ['arvoreClara', 62, 29], ['arvoreRosa', 66, 37], ['pinheiro', 72, 33], ['arvoreRedonda', 70, 41], ['arvoreClara', 82, 33],
   ['arvoreRosa', 63, 19], ['arvoreRedonda', 73, 24], ['arvoreClara', 47, 31],
   // plantação da fazenda
@@ -61,7 +61,7 @@ export const OBJETOS = [
   { id: 'casinha', arte: 'casinha', x: 8, y: 36, bloqueia: true },
   { id: 'impressora', arte: 'impressora', x: 12, y: 31, w: 2, h: 1, bloqueia: true, segredo: 'gato' },
   { id: 'cacto', arte: 'cacto', x: 8, y: 14, bloqueia: true, segredo: 'cacto', toques: 5 },
-  { id: 'escola', arte: 'casaTorre', x: 25, y: 30, w: 2, h: 1, bloqueia: true, segredo: 'antena' },
+  { id: 'escola', arte: 'casaTorre', x: 12, y: 26, w: 2, h: 1, bloqueia: true, segredo: 'antena' },
   { id: 'coreto', arte: 'coreto', x: 24, y: 37, w: 3, h: 1, bloqueia: true },
   { id: 'feira', arte: 'feira', x: 14, y: 31, w: 2, h: 1, bloqueia: true },
   { id: 'porta', arte: 'placaCafe', x: 35, y: 38, bloqueia: true, segredo: 'professores' },
@@ -77,13 +77,13 @@ export const OBJETOS = [
   { id: 'carroca', arte: 'carroca', x: 17, y: 36, w: 2, h: 2, bloqueia: true },
   { id: 'fardos', arte: 'fardo', x: 61, y: 32, w: 2, h: 1, bloqueia: true },
   { id: 'lenha', arte: 'lenha', x: 53, y: 32, bloqueia: true },
-  // jardim do Templo Antigo (casa-torre em 29,22): cães guardiões nos dois lados da base, lanternas e cerejeiras
-  { id: 'caoE', arte: 'cao', x: 27, y: 28, w: 2, h: 1, bloqueia: true },
-  { id: 'caoD', arte: 'cao', x: 31, y: 28, w: 2, h: 1, bloqueia: true },
-  { id: 'toroE', arte: 'toro', x: 26, y: 29, bloqueia: true },
-  { id: 'toroD', arte: 'toro', x: 33, y: 28, bloqueia: true },
-  { id: 'cerejeiraA', arte: 'cerejeira', x: 23, y: 26, w: 2, h: 1, bloqueia: true },
-  { id: 'cerejeiraB', arte: 'cerejeira', x: 34, y: 26, w: 2, h: 1, bloqueia: true },
+  // jardim do Templo Antigo (santuário em 22,22): cães guardiões, lanternas e cerejeiras
+  { id: 'caoE', arte: 'cao', x: 23, y: 27, w: 2, h: 1, bloqueia: true },
+  { id: 'caoD', arte: 'cao', x: 29, y: 27, w: 2, h: 1, bloqueia: true },
+  { id: 'toroE', arte: 'toro', x: 21, y: 27, bloqueia: true },
+  { id: 'toroD', arte: 'toro', x: 32, y: 27, bloqueia: true },
+  { id: 'cerejeiraA', arte: 'cerejeira', x: 19, y: 22, w: 2, h: 1, bloqueia: true },
+  { id: 'cerejeiraB', arte: 'cerejeira', x: 33, y: 23, w: 2, h: 1, bloqueia: true },
 ];
 
 export const CURRAL = { x: 48, y: 38, w: 8, h: 5, abertura: { lado: 'cima', x: 51 } };

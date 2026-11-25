@@ -77,7 +77,7 @@ export const LOTES = [
 ];
 
 // Enfeites: peça do pacote no canto (x, y). Bloqueiam só a base (a última linha, ou todas nas casas).
-const casa = new Set(['casaLaranja', 'casaBege', 'casaLaranja2', 'casaAzul', 'casaCreme', 'casaAmarela', 'casaVerde', 'casaReta', 'casaDiag', 'loja', 'lojaVerde', 'casaPedra', 'casaFlamV', 'casaFlamC', 'sobradoAzul', 'casaVaranda', 'chaleAlto', 'padaria', 'torreCasa', 'casaPartida']);
+const casa = new Set(['casaLaranja', 'casaBege', 'casaLaranja2', 'casaAzul', 'casaCreme', 'casaAmarela', 'casaVerde', 'casaReta', 'casaDiag', 'loja', 'lojaVerde', 'casaPedra', 'casaFlamV', 'casaFlamC', 'sobradoAzul', 'casaVaranda', 'chaleAlto', 'padaria', 'torreCasa', 'casaPartida', 'santuario']);
 const naoBloqueia = new Set(['florAmarela', 'florLaranja', 'florVermelha', 'florBranca', 'mato', 'trigo', 'arbusto1', 'arbusto2', 'arbusto3', 'arbusto4', 'estandarte1', 'estandarte2', 'estandarte3']);
 export const enfeite = (peca, x, y) => {
   const r = RECORTES[peca] ?? LPC_PECAS[peca] ?? { w: 1, h: 1 }; const fh = casa.has(peca) ? r.h : 1; // casas bloqueiam inteiras (ninguém anda no telhado)

@@ -189,7 +189,7 @@ export const ROTA = [
 ];
 // Três terrenos vazios para fases extras, com acesso por uma trilha curta
 export const LOTES = [
-  { id: 'l1', x: 25, y: 18, w: 7, h: 4, entrada: [28, 17] },
+  { id: 'l1', x: 13, y: 16, w: 7, h: 4, entrada: [16, 20] },
   { id: 'l2', x: 31, y: 42, w: 6, h: 4, entrada: [34, 40] },
   { id: 'l3', x: 61, y: 22, w: 6, h: 4, entrada: [64, 21] },
 ];
