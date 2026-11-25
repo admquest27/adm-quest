@@ -296,7 +296,7 @@ export function linhasParaColar(bim, linhas, { parte = 'mencoes', comNumero = fa
   const ini = parte === 'feedback' ? cols.findIndex((x) => x.tipo === 'fb') : 0;
   const fim = parte === 'feedback' ? cols.findIndex((x) => x.tipo === 'final') : cols.findIndex((x) => x.tipo === 'fb');
   return linhas.map(({ aluno, c, campos }) => [
-    ...(comNumero ? [aluno.numeroChamada ?? '', aluno.apelido] : []),
+    ...(comNumero ? [aluno.numeroChamada ?? '', aluno.nome || aluno.apelido] : []),
     ...linhaPlanilha(bim, c, campos).slice(ini, fim).map((v) => String(v).replace(/[\t\r\n]+/g, ' ')),
   ].join('\t')).join('\n');
 }

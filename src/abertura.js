@@ -34,7 +34,7 @@ export function mostrarAbertura({ aoEntrar, logado = false, erro = '' } = {}) {
           <canvas class="ab-brasao" id="ab-brasao" aria-label="Brasão do ADM Quest"></canvas>
           <button class="btn verde" id="ab-entrar">Entrar no jogo</button>
           <button class="btn claro" id="ab-creditos">Créditos</button>
-          <p class="ab-nota" id="ab-texto">${logado ? 'Bem-vindo de volta!' : 'Você entra com a sua conta Google. O jogo guarda só o seu apelido, o seu progresso e o e-mail da conta; só o professor vê esses dados.'}</p>
+          <p class="ab-nota" id="ab-texto">${logado ? 'Bem-vindo de volta!' : 'Você entra com a sua conta Google. O jogo guarda o seu nome completo, o nome de usuário, o seu progresso e o e-mail da conta. Os colegas veem só o nome de usuário.'}</p>
           <p class="ab-erro" id="ab-erro">${esc(erro)}</p>
         </div>
       </div>

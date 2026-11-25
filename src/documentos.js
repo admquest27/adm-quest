@@ -38,7 +38,7 @@ export function planilhaCoordenacao({ bim, turmaNome, linhas }) {
     const valores = linhaPlanilha(bim, c, campos);
     return [
       { v: aluno.numeroChamada ?? i + 1, s: ESTILO.centro },
-      { v: aluno.apelido ?? '', s: ESTILO.celula },
+      { v: aluno.nome || aluno.apelido || '', s: ESTILO.celula },
       ...valores.map((v, j) => ({ v, s: cols[j].tipo === 'fb' || cols[j].tipo === 'final' ? ESTILO.texto : estiloMencao(v) })),
     ];
   });
@@ -49,7 +49,7 @@ export function planilhaCoordenacao({ bim, turmaNome, linhas }) {
     ['Como usar este arquivo'],
     [''],
     ['1. Este arquivo tem as mesmas colunas da aba de Formação Técnica da planilha de feedback da coordenação.'],
-    ['2. Confira se a ordem dos números de chamada é a mesma da planilha da coordenação. Os nomes aqui são os apelidos do jogo.'],
+    ['2. Confira se a ordem dos números de chamada é a mesma da planilha da coordenação. Os alunos estão em ordem alfabética pelo nome completo.'],
     [`3. Menções: selecione de ${primeira}4 até ${ultimaMencao}${linhas.length + 3}, copie e cole na planilha da coordenação a partir da célula ${primeira}4 (Colar valores).`],
     ['4. Feedback: selecione as cinco colunas de feedback (sem o Feedback Final, que a planilha da coordenação calcula sozinha) e cole na primeira coluna de feedback da coordenação.'],
     [`5. Só as competências do ${bim}º bimestre (em azul) vêm preenchidas; as outras ficam em branco.`],

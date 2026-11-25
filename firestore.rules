@@ -111,6 +111,28 @@ service cloud.firestore {
         && (resource.data.status == 'pendente' || turmaDeTeste(resource.data.get('turma', '')));
     }
 
+    // Nome completo do aluno, separado do cadastro: só o próprio aluno e o professor leem (os colegas, nunca).
+    // O aluno grava ao se cadastrar (junto com o cadastro) ou quando ainda não tinha; depois só corrige
+    // enquanto espera a aprovação.
+    function nomeCompletoValido(uid) {
+      return request.resource.data.keys().hasOnly(['nome', 'turma', 'atualizadoEm'])
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() >= 5 && request.resource.data.nome.size() <= 80
+        && request.resource.data.turma == getAfter(/databases/$(database)/documents/alunos/$(uid)).data.turma
+        && request.resource.data.atualizadoEm == request.time;
+    }
+
+    match /nomes/{uid} {
+      allow read: if ehProfessor() || (logado() && request.auth.uid == uid);
+      allow create: if ehProfessor() || logado() && request.auth.uid == uid
+        && getAfter(/databases/$(database)/documents/alunos/$(uid)).data.status in ['pendente', 'ativo']
+        && nomeCompletoValido(uid);
+      allow update: if ehProfessor() || logado() && request.auth.uid == uid
+        && getAfter(/databases/$(database)/documents/alunos/$(uid)).data.status == 'pendente'
+        && nomeCompletoValido(uid);
+      allow delete: if ehProfessor();
+    }
+
     // Conteúdo do mundo e das fases: o aluno ativo lê, só o professor altera.
     match /mundos/{id} {
       allow read: if ehProfessor() || ativo();

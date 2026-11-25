@@ -1,5 +1,5 @@
 import { signOut } from 'firebase/auth';
-import { collection, doc, getDoc, setDoc, updateDoc, onSnapshot, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, updateDoc, writeBatch, onSnapshot, query, where, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { app, tela, esc } from './ui.js';
 import { normalizar, paraSalvar, sortear, PADRAO } from './avatar.js';
@@ -7,6 +7,7 @@ import { htmlCriador, animarPrevia } from './criarAvatar.js';
 import { htmlCartao } from './cartao.js';
 import { criarMapaAluno } from './mapaAluno.js';
 import { htmlCarregando } from './carregandoMapa.js';
+import { nomeValido } from './alunos.js';
 import { calcularCarteira, CONQUISTAS, podeComprar } from './economia.js';
 import { htmlCarteira, visual, avatarComMoldura, conquistasNovas } from './carteira.js';
 import { htmlVotacaoAluno, votar } from './votacoes.js';
@@ -24,6 +25,7 @@ import {
 const ESSENCIAIS = ['turma', 'mundo', 'fases', 'progresso', 'aval'];
 
 // opcoes.uid + opcoes.aoSair: o professor vê o jogo como um aluno (somente leitura).
+// opcoes.teste + opcoes.aoSair: o professor joga de verdade com o personagem dele na turma de teste.
 export function iniciarAluno(user, opcoes = {}) {
   const alvo = opcoes.uid ?? user.uid;
   const ver = Boolean(opcoes.uid);
@@ -38,10 +40,18 @@ export function iniciarAluno(user, opcoes = {}) {
   let paradasAtivo = [];
   let mapa = null;
 
-  const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>` : '');
+  const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>`
+    : opcoes.teste ? '<div class="ver-faixa">Jogando como teste <button id="sair-ver" class="mini">Voltar ao painel</button></div>' : '');
   const mostrar = (html, classe) => tela(faixa() + html, classe);
 
   mostrar(htmlCarregando());
+
+  // undefined = ainda não sei; false = falta preencher
+  const pararNome = ver || opcoes.teste ? () => {} : onSnapshot(doc(db, 'nomes', alvo), (s) => {
+    const tinha = st.temNome;
+    st.temNome = s.exists();
+    if (st.dados && tinha !== st.temNome) desenhar();
+  }, () => {});
 
   const parar = onSnapshot(
     ref,
@@ -115,26 +125,36 @@ export function iniciarAluno(user, opcoes = {}) {
     mostrar(
       `<section class="cartao">
         <h1>Bem-vindo!</h1>
-        <p class="sub">Digite o código da turma e escolha o seu apelido no jogo.</p>
+        <p class="sub">Digite o código da turma, o seu nome completo e o nome de usuário do jogo.</p>
         <form id="form-entrada" autocomplete="off">
           <label for="codigo">Código da turma</label>
           <input id="codigo" name="codigo" maxlength="10" autocapitalize="characters" required>
-          <label for="apelido">Apelido (2 a 16 letras)</label>
+          <label for="nome-completo">Nome completo (só o professor vê)</label>
+          <input id="nome-completo" maxlength="80" autocapitalize="words" autocomplete="name" required>
+          <label for="apelido">Nome de usuário (2 a 16 letras, é o que os colegas veem)</label>
           <input id="apelido" name="apelido" minlength="2" maxlength="16" required>
           <button class="botao" type="submit">Entrar na turma</button>
         </form>
         <p class="erro" id="msg">${esc(mensagem)}</p>
-        <p class="nota">O jogo guarda só o seu apelido, o seu progresso e o e-mail da conta. Só o professor vê esses dados.</p>
+        <p class="nota">O jogo guarda o seu nome completo, o nome de usuário, o seu progresso e o e-mail da conta. Os colegas veem só o nome de usuário e o avatar.</p>
         <button id="sair" class="botao secundario">Sair</button>
       </section>`,
       'centro'
     );
   }
 
+  function telaNome() {
+    if (document.getElementById('form-nome')) return;
+    mostrar(`<section class="cartao"><h1>Falta o seu nome</h1><p class="sub">Escreva o nome completo, como está na chamada. Só o professor vê.</p>
+      <form id="form-nome" autocomplete="off"><label for="nome-completo">Nome completo</label><input id="nome-completo" maxlength="80" autocapitalize="words" autocomplete="name" required>
+      <button class="botao" type="submit">Salvar</button></form><p class="erro" id="msg"></p><button id="sair" class="botao secundario">Sair</button></section>`, 'centro');
+  }
+
   function desenhar() {
     const d = st.dados;
     if (!d) return;
     if (d.status !== 'ativo') pararDados();
+    if (st.temNome === false && ['ativo', 'pendente'].includes(d.status)) return telaNome();
     switch (d.status) {
       case 'ativo': return telaAtivo();
       case 'saiu':
@@ -517,19 +537,32 @@ export function iniciarAluno(user, opcoes = {}) {
   };
 
   app.onsubmit = async (e) => {
+    if (e.target.id === 'form-nome') {
+      e.preventDefault();
+      const nome = nomeValido(document.getElementById('nome-completo').value);
+      if (!nome) { document.getElementById('msg').textContent = 'Escreva o nome e o sobrenome.'; return; }
+      try { await setDoc(doc(db, 'nomes', alvo), { nome, turma: st.dados.turma, atualizadoEm: serverTimestamp() }); }
+      catch { document.getElementById('msg').textContent = 'Não consegui salvar agora. Tente de novo.'; }
+      return;
+    }
     if (e.target.id !== 'form-entrada') return;
     e.preventDefault();
     const msg = document.getElementById('msg');
+    const nome = nomeValido(document.getElementById('nome-completo').value);
     const cod = document.getElementById('codigo').value.trim().toUpperCase();
     const apelido = document.getElementById('apelido').value.trim();
     if (!/^[A-Z0-9]{4,10}$/.test(cod)) { msg.textContent = 'O código tem de 4 a 10 letras ou números.'; return; }
-    if (apelido.length < 2 || apelido.length > 16) { msg.textContent = 'O apelido precisa ter de 2 a 16 letras.'; return; }
+    if (!nome) { msg.textContent = 'Escreva o nome completo, com sobrenome.'; return; }
+    if (apelido.length < 2 || apelido.length > 16) { msg.textContent = 'O nome de usuário precisa ter de 2 a 16 letras.'; return; }
     msg.textContent = 'Conferindo o código...';
     try {
       const c = await getDoc(doc(db, 'codigos', cod));
       if (!c.exists()) { msg.textContent = 'Não encontrei esse código. Confira com o professor.'; return; }
       if (c.data().aberta !== true) { msg.textContent = 'Esta turma não está recebendo cadastros agora.'; return; }
-      await setDoc(ref, { turma: c.data().turma, codigo: cod, apelido, status: 'pendente', criadoEm: serverTimestamp() });
+      const lote = writeBatch(db);
+      lote.set(ref, { turma: c.data().turma, codigo: cod, apelido, status: 'pendente', criadoEm: serverTimestamp() });
+      lote.set(doc(db, 'nomes', alvo), { nome, turma: c.data().turma, atualizadoEm: serverTimestamp() });
+      await lote.commit();
     } catch {
       msg.textContent = 'Não deu certo. Confira o código e tente de novo.';
     }
@@ -537,6 +570,7 @@ export function iniciarAluno(user, opcoes = {}) {
 
   return () => {
     parar();
+    pararNome();
     pararDados();
     mapa?.destruir(); mapa = null;
     app.onclick = null; app.onchange = null; app.oninput = null; app.onsubmit = null;

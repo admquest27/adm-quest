@@ -99,7 +99,7 @@ function pintar() {
   const m = MARCAS.find((x) => x.id === marca);
   dlg.innerHTML = `
     <div class="form registros">
-      <h2>${esc(a.apelido)}${faseId ? ` <span class="nota">· ${esc(st.fases.find((f) => f.id === faseId)?.codigo ?? '')}</span>` : ''}</h2>
+      <h2>${esc(a.nome || a.apelido)}${faseId ? ` <span class="nota">· ${esc(st.fases.find((f) => f.id === faseId)?.codigo ?? '')}</span>` : ''}</h2>
       <h3>Atitude</h3>
       <div class="marcas">${MARCAS.map((x) => `<button type="button" class="mini ${x.id === marca ? 'ok cheio' : ''}" data-reg="marca" data-id="${x.id}">${esc(x.nome.replace('Atitude ', '').replace('Domínio ', ''))}</button>`).join('')}</div>
       <label class="check"><input type="checkbox" id="reg-visivel" ${visivel ? 'checked' : ''}> Mostrar ao aluno</label>

@@ -1,4 +1,5 @@
 // AdmBux do lado do professor: saldo e extrato de cada aluno, prêmios e rendimento da poupança.
+import { nomeDe, nomeCurto } from './alunos.js';
 import { doc, setDoc, writeBatch, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc } from './ui.js';
@@ -27,7 +28,7 @@ export function abrirAdmBux(st, dlg, uid) {
     const c = carteiraDoAluno(st, uid);
     const textos = { ...CONQUISTAS, ...(st.eco?.conquistas ?? {}) };
     dlg.innerHTML = `<form class="form" id="form-premio">
-      <h2>AdmBux de ${esc(a?.apelido ?? '')}</h2>
+      <h2>AdmBux de ${esc(nomeDe(a))}</h2>
       <p class="saldo-mini ${c.saldo < 0 ? 'erro' : ''}">🪙 <strong>${c.saldo}</strong> AdmBux · entrou ${c.entradas} · saiu ${c.saidas}</p>
       <p class="nota">Conquistas: ${c.conquistas.map((id) => esc(textos[id]?.nome ?? id)).join(', ') || 'nenhuma ainda'}.</p>
       <h3>Dar um prêmio</h3>
@@ -56,7 +57,7 @@ export function abrirAdmBux(st, dlg, uid) {
   dlg.showModal();
 }
 
-// Seção da aba Mais.
+// Seção de Ajustes.
 export function htmlAdmBuxMais(st, ativos) {
   if (!st.eco) {
     return `<h2>AdmBux</h2><p class="nota">A loja ainda não foi carregada no banco. Ela entra com a ferramenta importar-economia.</p>`;
@@ -66,8 +67,8 @@ export function htmlAdmBuxMais(st, ativos) {
   const pagos = saldos.filter((x) => st.carteiras?.[x.a.uid]?.rendimentos?.[MUNDO]);
   const total = saldos.reduce((s, x) => s + Math.max(0, x.c.saldo), 0);
   return `<h2>AdmBux</h2>
-    <p class="nota">${ativos.length} aluno(s) ativo(s) nesta turma, com ${total} AdmBux guardadas no total. O saldo de cada um aparece no botão 🪙 da aba Turma.</p>
-    ${negativos.length ? `<div class="alerta"><strong>Saldo negativo</strong><p>${negativos.map((x) => esc(x.a.apelido)).join(', ')}. Acontece quando uma validação é retirada depois de uma compra. Se for estranho, confira o extrato.</p></div>` : ''}
+    <p class="nota">${ativos.length} aluno(s) ativo(s) nesta turma, com ${total} AdmBux guardadas no total. O saldo de cada um aparece no botão 🪙 em Alunos.</p>
+    ${negativos.length ? `<div class="alerta"><strong>Saldo negativo</strong><p>${negativos.map((x) => esc(nomeCurto(x.a))).join(', ')}. Acontece quando uma validação é retirada depois de uma compra. Se for estranho, confira o extrato.</p></div>` : ''}
     <h3>Rendimento da poupança</h3>
     <p class="nota">No fim do mundo, cada aluno recebe ${Math.round((st.eco.valores?.rendimento ?? 0.1) * 100)}% do saldo guardado. Pague uma vez só, na semana de fechamento.</p>
     ${pagos.length ? `<p class="nota">Já pago para ${pagos.length} aluno(s) neste mundo.</p>` : ''}

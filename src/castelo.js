@@ -64,7 +64,7 @@ export function htmlCasteloProfessor(st, f, turma) {
   return `<h2>Castelo</h2>${htmlBarra(v.vida)}
     <p class="nota">Fases encerradas derrubam ${Math.round(v.parteFases)}% e os baús ${Math.round(v.parteCastelo)}%. ${v.abertos} de ${v.total} baús abertos.</p>
     <button class="botao" data-acao="cs-projetar">Projetar na tela da sala</button>
-    <ul class="lista">${linhas || '<li class="vazio">Nenhuma guilda ainda. As guildas são montadas na aba Turma.</li>'}</ul>
+    <ul class="lista">${linhas || '<li class="vazio">Nenhuma guilda ainda. As guildas são montadas em Alunos, na aba Guildas.</li>'}</ul>
     <details class="roteiro"><summary>Códigos dos baús (só você vê)</summary>
       <p class="nota">Letras e números, sem espaço. O jogo ignora acentos e maiúsculas.</p>
       ${(f.baus ?? []).map((b, i) => `<div class="cod-bau"><strong>${esc(b.nome)}</strong>${enigmas[i] ? `<span class="nota">${esc(enigmas[i].enigma)} · ${esc(enigmas[i].codigo)}</span>` : ''}

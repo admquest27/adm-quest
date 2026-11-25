@@ -71,6 +71,10 @@ function comoProfessor(user) {
       if (parar) parar();
       parar = iniciarAluno(user, { uid, aoSair: () => comoProfessor(user) });
     },
+    jogar: () => {
+      if (parar) parar();
+      parar = iniciarAluno(user, { teste: true, aoSair: () => comoProfessor(user) });
+    },
   });
 }
 

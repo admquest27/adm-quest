@@ -1,5 +1,6 @@
 // Aba "Fechar", em quatro passos: menções (no formato da planilha da coordenação), recuperação, feedback
 // e a planilha da coordenação para baixar (.xlsx) ou copiar. O PCTD fica na Agenda (é planejamento).
+import { nomeDe, ordenarAlunos } from './alunos.js';
 import { doc, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc } from './ui.js';
@@ -10,7 +11,7 @@ import { COMPETENCIAS, HABILIDADES, CAMPOS_FEEDBACK } from './catalogo.js';
 
 export const idFech = (turma, bim, uid) => `${turma}_${bim}_${uid}`;
 const porFase = (mapa, uid) => Object.fromEntries(Object.values(mapa ?? {}).filter((x) => x.uid === uid).map((x) => [x.fase, x]));
-const ordenar = (lista) => [...lista].sort((a, b) => (a.numeroChamada ?? 999) - (b.numeroChamada ?? 999) || a.apelido.localeCompare(b.apelido, 'pt-BR'));
+const ordenar = ordenarAlunos;
 const ms = (ts) => (ts?.toMillis ? ts.toMillis() : ts ? new Date(ts).getTime() : Date.now());
 const bimDe = (st) => st.mundo?.ordem ?? 1;
 const bimestreCal = (st, bim) => st.cal?.bimestres?.find((b) => b.id === bim) ?? null;
@@ -63,16 +64,16 @@ function htmlMencoes(st, bim, linhas) {
         ${gruposDoBim(b).map((g) => `<p class="nota"><strong>Competência ${esc(curto(g.comp))}</strong> · ${esc(COMPETENCIAS[g.comp])}</p>
           <ul class="fc-habs">${g.habs.map((h) => `<li><span class="chip">${esc(curto(h))}</span> ${esc(HABILIDADES[h])}</li>`).join('')}</ul>`).join('')}</div>`).join('')}
       <p class="nota">A trilha de Excel (701) é trabalhada desde o 1º bimestre como evidência interna e lançada no 3º.</p></details>`;
-  const semValidacao = [...new Set(linhas.flatMap((l) => Object.values(l.c.habs).filter((h) => h.semValidacao).map(() => l.aluno.apelido)))];
+  const semValidacao = [...new Set(linhas.flatMap((l) => Object.values(l.c.habs).filter((h) => h.semValidacao).map(() => nomeDe(l.aluno))))];
   const diretas = MAPA[bim].habs.filter((h) => !st.fases.some((f) => (f.habilidades ?? []).includes(h)));
   const blocoDiretas = diretas.map((h) => `<details class="roteiro" ${linhas.some((l) => !l.c.habs[h].final) ? 'open' : ''}><summary>${esc(curto(h))} · ${esc(descCurta(st, h))}: menção direta (nenhuma fase avalia)</summary>
-      <ul class="lista">${linhas.map(({ aluno, fech }) => `<li class="aluno"><span class="num">${aluno.numeroChamada ?? '—'}</span><span class="nome">${esc(aluno.apelido)}</span>
+      <ul class="lista">${linhas.map(({ aluno, fech }) => `<li class="aluno"><span class="num">${aluno.numeroChamada ?? '—'}</span><span class="nome">${esc(nomeDe(aluno))}</span>
         <span class="mencoes-botoes">${['A', 'PA', 'NA'].map((m) => `<button class="mini ${fech?.diretas?.[h] === m ? `m-${m} sel` : ''}" data-acao="fc-direta" data-uid="${esc(aluno.uid)}" data-hab="${esc(h)}" data-m="${m}">${m}</button>`).join('')}</span></li>`).join('')}</ul></details>`).join('');
   const semAv = linhas.filter((l) => !l.c.atitude.confirmada).length;
 
   const cab1 = grupos.map((g) => `<th colspan="${g.habs.length + 2}" class="fc-g">Competência ${esc(curto(g.comp))}</th>`).join('');
   const cab2 = grupos.map((g) => `${g.habs.map((h) => `<th>${esc(curto(h))}</th>`).join('')}<th>AV</th><th class="fc-final">Final</th>`).join('');
-  const linha = ({ aluno, c }) => `<tr data-acao="fc-aluno" data-uid="${esc(aluno.uid)}"><td class="num">${aluno.numeroChamada ?? '—'}</td><td class="fc-nome">${esc(aluno.apelido)}</td>
+  const linha = ({ aluno, c }) => `<tr data-acao="fc-aluno" data-uid="${esc(aluno.uid)}"><td class="num">${aluno.numeroChamada ?? '—'}</td><td class="fc-nome">${esc(nomeDe(aluno))}</td>
       ${grupos.map((g) => `${g.habs.map((h) => `<td>${chipM(c.habs[h].final)}${c.habs[h].origem === 'ajuste' || c.habs[h].origem === 'recuperacao' ? '<sup>*</sup>' : ''}</td>`).join('')}
         <td>${chipM(c.atitude.mencao, c.atitude.confirmada ? '' : 'sugerida')}</td><td class="fc-final">${chipM(c.comps[g.comp].final)}${c.comps[g.comp].ajustada ? '<sup>*</sup>' : ''}</td>`).join('')}</tr>`;
 
@@ -116,7 +117,7 @@ export function abrirAlunoFechamento(st, dlg, uid, ativos, turma) {
         <input data-caj="motivo" data-comp="${esc(k)}" value="${esc(x.motivo)}" placeholder="Motivo, se for diferente da regra"></fieldset>`;
     };
     dlg.innerHTML = `<form class="form editor" id="form-fech">
-      <h2>${aluno.numeroChamada ?? '—'} · ${esc(aluno.apelido)}</h2>
+      <h2>${aluno.numeroChamada ?? '—'} · ${esc(nomeDe(aluno))}</h2>
       <fieldset class="card-ed"><legend>Atitudes e Valores</legend>
         <p class="nota">${av.semRegistro ? 'Nenhum registro de atitude neste bimestre: o jogo sugere A.' : `Neste bimestre: ${av.positivos} registro(s) positivo(s) e ${av.atencao} ponto(s) de atenção. O jogo sugere ${esc(av.sugerida)}.`}${av.destaque ? ` Destaque: ${esc(av.destaque)}.` : ''}${av.desenvolver ? ` A desenvolver: ${esc(av.desenvolver)}.` : ''}</p>
         <div class="mencoes-botoes">${['A', 'PA', 'NA'].map((m) => `<label class="check"><input type="radio" name="av" value="${m}" ${av.mencao === m ? 'checked' : ''}> ${m}</label>`).join('')}</div>
@@ -158,7 +159,7 @@ function htmlRecuperacao(st, bim, linhas) {
   const lista = linhas.map((l) => ({ ...l, itens: precisaDeRecuperacao(l.c, l.fech) })).filter((l) => l.itens.length);
   const recomendada = lista.filter((l) => l.itens.some((i) => i.nivel === 'recomendada')).length;
   const marcados = lista.filter((l) => Object.values(l.fech?.recup ?? {}).some((r) => r?.vai)).length;
-  const cartao = ({ aluno, c, fech, itens }) => `<li class="fc-rec"><div class="fech-topo"><span class="num">${aluno.numeroChamada ?? '—'}</span><strong>${esc(aluno.apelido)}</strong>
+  const cartao = ({ aluno, c, fech, itens }) => `<li class="fc-rec"><div class="fech-topo"><span class="num">${aluno.numeroChamada ?? '—'}</span><strong>${esc(nomeDe(aluno))}</strong>
       ${MAPA[bim].comps.map((k) => `<span class="par">C${esc(curto(k))} ${chipM(c.comps[k].final)}</span>`).join('')}</div>
       ${itens.map((h) => {
         const r = fech?.recup?.[h.cod] ?? {};
@@ -175,7 +176,7 @@ function htmlRecuperacao(st, bim, linhas) {
     <ul class="fech-lista">${lista.map(cartao).join('') || '<li class="vazio">Ninguém precisa de recuperação. 🎉</li>'}</ul>
     <section class="fc-bloco"><h3>Incluir outro aluno na recuperação</h3>
       <p class="nota">Para dar uma nova oportunidade a quem o jogo não apontou: escolha o aluno e a habilidade.</p>
-      <div class="form"><label for="fc-inc-aluno">Aluno</label><select id="fc-inc-aluno">${linhas.map((l) => `<option value="${esc(l.aluno.uid)}">${l.aluno.numeroChamada ?? '—'} · ${esc(l.aluno.apelido)}</option>`).join('')}</select>
+      <div class="form"><label for="fc-inc-aluno">Aluno</label><select id="fc-inc-aluno">${linhas.map((l) => `<option value="${esc(l.aluno.uid)}">${l.aluno.numeroChamada ?? '—'} · ${esc(nomeDe(l.aluno))}</option>`).join('')}</select>
         <label for="fc-inc-hab">Habilidade</label><select id="fc-inc-hab">${MAPA[bim].habs.map((h) => `<option value="${esc(h)}">${esc(curto(h))} · ${esc(descCurta(st, h))}</option>`).join('')}</select></div>
       <div class="linha-btn"><button class="botao secundario" data-acao="fc-incluir">Incluir na recuperação</button></div></section>
     <p class="nota">Quando você lança o resultado, ele substitui a menção da habilidade no quadro e na planilha, e o feedback ganha o texto da recuperação.</p>`;
@@ -191,7 +192,7 @@ function htmlFeedback(st, bim, linhas) {
   const editado = (k) => fb.campos[k] !== fb.rascunho[k];
   return `<p class="nota">Os cinco campos da planilha da coordenação, já com um rascunho no seu estilo: o que ficou adequado e o que ficou parcial em cada fase, a evolução, a recuperação, a participação pelos registros de atitude e o próximo passo. Edite o que quiser: cada campo é salvo ao sair dele. O parágrafo final junta os cinco.</p>
     <div class="fc-nav"><button class="mini" data-acao="fc-fb-ir" data-uid="${esc(ant)}" ${ant ? '' : 'disabled'} aria-label="Aluno anterior">◀</button>
-      <select id="fc-fb-aluno" aria-label="Aluno">${linhas.map((l) => `<option value="${esc(l.aluno.uid)}" ${l.aluno.uid === aluno.uid ? 'selected' : ''}>${l.aluno.numeroChamada ?? '—'} · ${esc(l.aluno.apelido)}${l.fb.revisado ? ' ✓' : ''}</option>`).join('')}</select>
+      <select id="fc-fb-aluno" aria-label="Aluno">${linhas.map((l) => `<option value="${esc(l.aluno.uid)}" ${l.aluno.uid === aluno.uid ? 'selected' : ''}>${l.aluno.numeroChamada ?? '—'} · ${esc(nomeDe(l.aluno))}${l.fb.revisado ? ' ✓' : ''}</option>`).join('')}</select>
       <button class="mini" data-acao="fc-fb-ir" data-uid="${esc(prox)}" ${prox ? '' : 'disabled'} aria-label="Próximo aluno">▶</button></div>
     <p>${MAPA[bim].habs.map((h) => `<span class="par">${esc(curto(h))} ${chipM(c.habs[h].final)}</span>`).join(' ')} <span class="par">AV ${chipM(c.atitude.mencao)}</span> ${MAPA[bim].comps.map((k) => `<span class="par">C${esc(curto(k))} ${chipM(c.comps[k].final)}</span>`).join(' ')}</p>
     <div class="form">${CAMPOS_FEEDBACK.map((k) => `<label for="fb-${k.id}">${esc(k.rotulo)}${editado(k.id) ? ' <span class="nota">(editado)</span>' : ''}</label>
@@ -223,7 +224,7 @@ function htmlBaixar(st, bim, linhas) {
       <p class="nota">Ou copie direto: clique na primeira célula de habilidade do primeiro aluno na planilha da coordenação e cole (Ctrl+V).</p>
       <div class="linha-btn"><button class="botao secundario" data-acao="fc-copiar" data-id="mencoes">Copiar as menções</button><button class="botao secundario" data-acao="fc-copiar" data-id="feedback">Copiar os feedbacks</button></div>
       <p class="nota" id="fc-msg"></p></section>
-    <p class="nota">O PCTD agora fica na aba Agenda, em "PCTD do bimestre", porque é enviado no início do bimestre.</p>`;
+    <p class="nota">O PCTD fica em Planejar, na aba "PCTD", porque é enviado no início do bimestre.</p>`;
 }
 
 // ---------- ações ----------

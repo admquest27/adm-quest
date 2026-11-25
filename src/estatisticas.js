@@ -1,5 +1,6 @@
 // Painel da turma: visão geral, detalhes de cada item e ficha de um aluno. Só para o professor.
 // A vista atual fica em st.painelVista: null (geral) ou { tipo: 'fase' | 'marca' | 'hab' | 'aluno', id }.
+import { nomeDe } from './alunos.js';
 import { esc } from './ui.js';
 import { progId, contarTarefas, situacao, SITUACAO_ROTULO } from './fases.js';
 import { MARCAS } from './registros.js';
@@ -22,7 +23,7 @@ const voltar = '<button class="mini" data-acao="painel-voltar">← Painel</butto
 function contexto(st) {
   const turma = st.turmas.find((t) => t.id === st.turma);
   const ativos = st.alunos.filter((a) => a.turma === st.turma && a.status === 'ativo')
-    .sort((a, b) => (a.numeroChamada ?? 999) - (b.numeroChamada ?? 999) || String(a.apelido).localeCompare(String(b.apelido), 'pt-BR'));
+    .sort((a, b) => nomeDe(a).localeCompare(nomeDe(b), 'pt-BR'));
   const estados = turma?.estadoFases ?? {};
   return { turma, ativos, estados };
 }
@@ -55,7 +56,7 @@ function vistaFase(st, id) {
     const p = st.progresso[pid]; const v = st.aval[pid];
     const sit = situacao(f, p, v, est);
     const { total, feitas } = contarTarefas(f, p);
-    return ver('aluno', a.uid, `<span class="num">${a.numeroChamada ?? '—'}</span>${a.avatar ? imgAvatar(a.avatar, 'avatar p') : ''}<span class="nome">${esc(a.apelido)}</span>
+    return ver('aluno', a.uid, `<span class="num">${a.numeroChamada ?? '—'}</span>${a.avatar ? imgAvatar(a.avatar, 'avatar p') : ''}<span class="nome">${esc(nomeDe(a))}</span>
       <span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]} ${feitas}/${total}</span>${v?.validada ? '<span class="chip m-A">Validada</span>' : ''}${chipsMencao(mencoesDe(st, a.uid).filter((x) => x.fase.id === f.id))}`, 'aluno clicavel');
   }).join('');
   return `${voltar}<h2>${esc(f.codigo)} · ${esc(f.nome)}</h2><p class="nota">Toque num aluno para ver a ficha dele.</p><ul class="lista">${linhas}</ul>`;
@@ -67,7 +68,7 @@ function vistaMarca(st, id) {
   // só alunos ativos da turma entram na conta
   const lista = st.comentarios.filter((c) => c.marca === m.nome && ativos.some((a) => a.uid === c.uid))
     .sort((a, b) => ms(b.criadoEm) - ms(a.criadoEm));
-  const nome = (uid) => ativos.find((a) => a.uid === uid)?.apelido ?? '';
+  const nome = (uid) => ativos.find((a) => a.uid === uid)?.nome || ativos.find((a) => a.uid === uid)?.apelido || '';
   return `${voltar}<h2>${esc(m.nome)}</h2>
     <p class="nota">${lista.filter((c) => c.tipoAtitude !== 'atencao').length} positiva(s) · ${lista.filter((c) => c.tipoAtitude === 'atencao').length} de atenção</p>
     <ul class="lista">${lista.map((c) => `<li class="clicavel-bloco" data-acao="painel-ver" data-tipo="aluno" data-id="${esc(c.uid)}" tabindex="0" role="button">${linhaComentario(c, nome(c.uid), st).replace(/^\s*<li/, '<div').replace(/<\/li>\s*$/, '</div>')}</li>`).join('') || '<li class="vazio">Nenhum registro ainda.</li>'}</ul>`;
@@ -78,7 +79,7 @@ function vistaHab(st, cod) {
   const habs = st.mundo?.habilidades ?? {};
   const linhas = ativos.map((a) => {
     const itens = mencoesDe(st, a.uid).filter((x) => x.cod === cod);
-    return ver('aluno', a.uid, `<span class="num">${a.numeroChamada ?? '—'}</span><span class="nome">${esc(a.apelido)}</span>${itens.length ? itens.map((x) => `<span class="chip m-${esc(x.m)}">${esc(x.fase.codigo)}: ${esc(x.m)}</span>`).join(' ') : '<span class="nota">sem menção</span>'}`, 'aluno clicavel');
+    return ver('aluno', a.uid, `<span class="num">${a.numeroChamada ?? '—'}</span><span class="nome">${esc(nomeDe(a))}</span>${itens.length ? itens.map((x) => `<span class="chip m-${esc(x.m)}">${esc(x.fase.codigo)}: ${esc(x.m)}</span>`).join(' ') : '<span class="nota">sem menção</span>'}`, 'aluno clicavel');
   }).join('');
   return `${voltar}<h2>${esc(cod)}</h2><p class="nota">${esc(habs[cod] ?? '')}</p><ul class="lista">${linhas}</ul>`;
 }
@@ -118,7 +119,7 @@ function fichaAluno(st, uid) {
   const nAt = (t) => comentarios.filter((c) => (t === 'positivo' ? c.tipoAtitude === 'positivo' : t === 'atencao' ? c.tipoAtitude === 'atencao' : !['positivo', 'atencao'].includes(c.tipoAtitude))).length;
   const roscaAt = rosca([{ n: nAt('positivo'), classe: 'b-ok', rotulo: 'Positivas' }, { n: nAt('atencao'), classe: 'b-pa', rotulo: 'De atenção' }, { n: nAt('livre'), classe: 'b-meio', rotulo: 'Livres' }], comentarios.length);
   return `${voltar}
-    <div class="cab-aluno">${a.avatar ? imgAvatar(a.avatar, 'avatar p') : ''}<div><h2>${esc(a.apelido)}</h2><span class="nota">Nº ${a.numeroChamada ?? '—'} · ${esc(a.status)}${a.dataEntrada ? ` · entrou em ${esc(a.dataEntrada)}` : ''}</span></div></div>
+    <div class="cab-aluno">${a.avatar ? imgAvatar(a.avatar, 'avatar p') : ''}<div><h2>${esc(nomeDe(a))}</h2><span class="nota">Nº ${a.numeroChamada ?? '—'} · ${esc(a.status)}${a.dataEntrada ? ` · entrou em ${esc(a.dataEntrada)}` : ''}</span></div></div>
     <div class="linha-btn">
       <button class="mini" data-acao="registros" data-uid="${esc(uid)}">Registrar atitude ou conversa</button>
       <button class="mini" data-acao="ver-aluno" data-uid="${esc(uid)}">Ver como aluno</button>
@@ -243,7 +244,7 @@ export function htmlEstatisticas(st) {
     ], `${pct(geral.validada + geral.concluida, totalSit)}%`)}
     <h3>Participação por aluno</h3>
     <p class="nota">Etapas feitas nas fases abertas, do menor para o maior. Toque para ver a ficha.</p>
-    ${barrasH(part.map((p) => ({ rotulo: `${p.a.numeroChamada ? `${p.a.numeroChamada} · ` : ''}${p.a.apelido}`, valor: p.valor, classe: p.valor < 40 ? 'b-aten' : p.valor < 80 ? 'b-info' : 'b-ok', acao: 'painel-ver', tipo: 'aluno', id: p.a.uid })))}
+    ${barrasH(part.map((p) => ({ rotulo: `${p.a.numeroChamada ? `${p.a.numeroChamada} · ` : ''}${nomeDe(p.a)}`, valor: p.valor, classe: p.valor < 40 ? 'b-aten' : p.valor < 80 ? 'b-info' : 'b-ok', acao: 'painel-ver', tipo: 'aluno', id: p.a.uid })))}
     <h3>Conclusões por dia</h3>
     ${colunas(dias, 'Fases concluídas por dia')}` : '';
 
@@ -252,13 +253,13 @@ export function htmlEstatisticas(st) {
     <p class="nota">${ativos.length} aluno(s) ativo(s). Só você vê esta tela. Toque em qualquer item para ver os detalhes.</p>
     ${graficos}
     <label for="painel-aluno">Ficha de um aluno</label>
-    <select id="painel-aluno"><option value="">Escolha um aluno...</option>${ativos.map((a) => `<option value="${esc(a.uid)}">${a.numeroChamada ? `${a.numeroChamada} · ` : ''}${esc(a.apelido)}</option>`).join('')}</select>
+    <select id="painel-aluno"><option value="">Escolha um aluno...</option>${ativos.map((a) => `<option value="${esc(a.uid)}">${a.numeroChamada ? `${a.numeroChamada} · ` : ''}${esc(nomeDe(a))}</option>`).join('')}</select>
     <h3>Por fase</h3>
     <ul class="lista">${linhasFase || '<li class="vazio">Nenhuma fase aberta ainda.</li>'}</ul>
     <h3>Menções por habilidade</h3>
     <ul class="lista">${linhasHab || '<li class="vazio">Nenhuma menção registrada ainda.</li>'}</ul>
     <h3>Para olhar com atenção</h3>
-    <ul class="lista">${olhar.length ? olhar.map((o) => ver('aluno', o.a.uid, `<span class="num">${o.a.numeroChamada ?? '—'}</span><span class="nome">${esc(o.a.apelido)}</span>${o.nas ? `<span class="chip m-NA">${o.nas} NA</span>` : ''}${o.pend ? `<span class="chip sit-naoconcluida">${o.pend} fase(s) pendente(s)</span>` : ''}`, 'aluno clicavel')).join('') : '<li class="vazio">Ninguém com NA ou fase pendente.</li>'}</ul>
+    <ul class="lista">${olhar.length ? olhar.map((o) => ver('aluno', o.a.uid, `<span class="num">${o.a.numeroChamada ?? '—'}</span><span class="nome">${esc(nomeDe(o.a))}</span>${o.nas ? `<span class="chip m-NA">${o.nas} NA</span>` : ''}${o.pend ? `<span class="chip sit-naoconcluida">${o.pend} fase(s) pendente(s)</span>` : ''}`, 'aluno clicavel')).join('') : '<li class="vazio">Ninguém com NA ou fase pendente.</li>'}</ul>
     <h3>Atitudes registradas</h3>
     <ul class="lista">${marcas.map((m) => ver('marca', m.id, `<span class="nome">${esc(m.nome)}</span><span class="chip m-A">${m.pos} positivas</span><span class="chip m-PA">${m.atn} de atenção</span>`, 'aluno clicavel')).join('')}</ul>`;
 }

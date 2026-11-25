@@ -6,7 +6,7 @@ import { esc } from './ui.js';
 
 export const COLECOES = [
   'turmas', 'codigos', 'alunos', 'mundos', 'fases', 'fasesProfessor', 'progresso', 'avaliacoes', 'comentarios', 'anotacoes',
-  'calendario', 'planos', 'economia', 'carteiras', 'compras', 'perfis', 'grupos', 'vagas', 'votacoes', 'votos', 'chaves', 'acertos', 'fechamentos',
+  'calendario', 'planos', 'economia', 'carteiras', 'compras', 'perfis', 'grupos', 'vagas', 'votacoes', 'votos', 'chaves', 'acertos', 'fechamentos', 'nomes',
 ];
 // coleções em que o id do documento é a própria turma
 const ID_E_TURMA = new Set(['turmas', 'planos']);

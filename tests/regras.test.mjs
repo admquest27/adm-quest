@@ -542,3 +542,34 @@ test('aluno guarda os próprios segredos do mapa, sem apagar nem mexer nos dos o
   await assertFails(getDoc(doc(aluno('outro1'), 'segredos/ativo1')));
   await assertFails(setDoc(doc(aluno('pend1'), 'segredos/pend1'), { turma: '1A', achados: [], atualizadoEm: serverTimestamp() }));
 });
+
+test('nome completo: o aluno grava o próprio junto do cadastro; colega não lê', async () => {
+  const db = aluno('novo9');
+  const lote = writeBatch(db);
+  lote.set(doc(db, 'alunos/novo9'), novo());
+  lote.set(doc(db, 'nomes/novo9'), { nome: 'Pessoa de Teste', turma: '1A', atualizadoEm: serverTimestamp() });
+  await assertSucceeds(lote.commit());
+  await assertSucceeds(getDoc(doc(db, 'nomes/novo9')));
+  await assertSucceeds(getDoc(doc(prof(), 'nomes/novo9')));
+  await assertSucceeds(getDocs(collection(prof(), 'nomes')));
+  await assertFails(getDoc(doc(aluno('ativo1'), 'nomes/novo9')));
+  await assertFails(getDocs(collection(aluno('ativo1'), 'nomes')));
+});
+
+test('nome completo: aluno ativo completa uma vez, não altera depois nem grava o de outro', async () => {
+  const dados = (turma = '1A') => ({ nome: 'Ana de Teste', turma, atualizadoEm: serverTimestamp() });
+  await assertFails(setDoc(doc(aluno('ativo1'), 'nomes/outro1'), dados('1B')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'nomes/ativo1'), dados('1B')));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'nomes/ativo1'), { ...dados(), extra: 1 }));
+  await assertSucceeds(setDoc(doc(aluno('ativo1'), 'nomes/ativo1'), dados()));
+  await assertFails(setDoc(doc(aluno('ativo1'), 'nomes/ativo1'), { ...dados(), nome: 'Outro Nome' }));
+  await assertFails(setDoc(doc(aluno('semcadastro'), 'nomes/semcadastro'), dados()));
+});
+
+test('professor joga como teste: cria o próprio personagem e marca progresso na turma de teste', async () => {
+  const db = prof();
+  await assertSucceeds(setDoc(doc(db, 'alunos/prof'), { turma: 'TESTE', apelido: 'Professor', status: 'ativo', criadoEm: serverTimestamp() }));
+  await assertSucceeds(setDoc(doc(db, 'progresso/prof_m1f1'), { uid: 'prof', turma: 'TESTE', fase: 'm1f1', tarefas: {}, concluida: false, atualizadoEm: serverTimestamp() }));
+  await assertSucceeds(deleteDoc(doc(db, 'progresso/prof_m1f1')));
+  await assertSucceeds(deleteDoc(doc(db, 'alunos/prof')));
+});

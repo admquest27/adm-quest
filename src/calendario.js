@@ -369,7 +369,7 @@ function configurar(p) {
 }
 
 export function htmlAgenda(st) {
-  if (!st.turma) return '<p class="vazio">Crie uma turma primeiro, na aba Mais.</p>';
+  if (!st.turma) return '<p class="vazio">Crie uma turma primeiro, em Ajustes.</p>';
   if (!st.cal) {
     return `<h2>Agenda</h2><div class="alerta"><strong>Calendário oficial ainda não carregado</strong>
       <p>Escolha o arquivo do calendário (por exemplo, calendario-2027.json).</p><input type="file" id="arq-cal" accept=".json,application/json"></div>`;

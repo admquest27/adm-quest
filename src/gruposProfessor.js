@@ -1,5 +1,6 @@
 // Guildas e grupos do lado do professor: configurar a atividade, sortear, montar, corrigir,
 // menção e registro para o grupo inteiro, e aprovar nome e escudo das guildas.
+import { nomeCurto } from './alunos.js';
 import { doc, collection, writeBatch, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc } from './ui.js';
@@ -7,7 +8,7 @@ import { progId } from './fases.js';
 import { MARCAS } from './registros.js';
 import { MODOS, ATV_GUILDA, configDaFase, configGuilda, atividadeDaFase, sortear, svgEscudo, nomeGuilda } from './grupos.js';
 
-const apelido = (st, uid) => st.alunos.find((a) => a.uid === uid)?.apelido ?? '(saiu)';
+const apelido = (st, uid) => { const a = st.alunos.find((x) => x.uid === uid); return a ? nomeCurto(a) : '(saiu)'; };
 const grupos = (st, atv) => (st.grupos ?? []).filter((g) => g.atividade === atv);
 const semGrupo = (st, atv, ativos) => {
   const dentro = new Set(grupos(st, atv).flatMap((g) => g.membros));
@@ -43,7 +44,7 @@ export function htmlGrupos(st, { atv, cfg, faseId, ativos, titulo, mostrarConfig
     ${config}
     <ul class="lista grupos-lista">${lista.map(cartaoGrupo).join('') || '<li class="vazio">Nenhum grupo ainda.</li>'}</ul>
     ${sem.length ? `<h4>Sem grupo <span class="nota">(só você vê)</span></h4>
-      <ul class="sem-grupo">${sem.map((a) => `<li><label class="check"><input type="checkbox" data-semgrupo="${esc(atv)}" value="${esc(a.uid)}"> ${esc(a.apelido)}</label></li>`).join('')}</ul>
+      <ul class="sem-grupo">${sem.map((a) => `<li><label class="check"><input type="checkbox" data-semgrupo="${esc(atv)}" value="${esc(a.uid)}"> ${esc(nomeCurto(a))}</label></li>`).join('')}</ul>
       <div class="linha-btn"><button class="mini ok" data-acao="gr-sortear" data-atv="${esc(atv)}">Sortear grupos com quem está sem grupo</button><button class="mini" data-acao="gr-novo" data-atv="${esc(atv)}">Novo grupo com os marcados</button></div>
       <p class="nota">Marque alunos e use "+ marcados" num grupo para completar.</p>` : ''}</details>`;
 }
@@ -55,7 +56,7 @@ export function htmlGruposDaFase(st, f, turma, ativos) {
   if (!cfg) return `<h2>Grupos</h2>${tipoSel}`;
   if (cfg.tipo === 'guilda') {
     return `<h2>Grupos</h2>${tipoSel}${htmlGrupos(st, { atv: ATV_GUILDA, cfg: configGuilda(turma), faseId: f.id, ativos, titulo: 'Guildas nesta fase', mostrarConfig: false })}
-      <p class="nota">As guildas são montadas na aba Turma.</p>`;
+      <p class="nota">As guildas são montadas em Alunos, na aba Guildas.</p>`;
   }
   return `<h2>Grupos</h2>${tipoSel}${htmlGrupos(st, { atv: atividadeDaFase(cfg, f), cfg, faseId: f.id, ativos, titulo: 'Grupos desta fase' })}`;
 }

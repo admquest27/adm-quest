@@ -1,9 +1,10 @@
 // Respostas dos alunos aos campos das etapas: leitura da turma e arquivo anônimo para análise.
+import { nomeDe, ordenarAlunos } from './alunos.js';
 import { esc, hoje } from './ui.js';
 import { etapasDe, progId } from './fases.js';
 
 function ordenar(alunos) {
-  return [...alunos].sort((a, b) => (a.numeroChamada ?? 999) - (b.numeroChamada ?? 999) || String(a.apelido).localeCompare(String(b.apelido), 'pt-BR'));
+  return ordenarAlunos(alunos);
 }
 
 function coletar(st, f) {
@@ -14,7 +15,7 @@ function coletar(st, f) {
     const p = st.progresso[progId(a.uid, f.id)];
     for (const { etapa, campo } of campos) {
       const resp = (p?.respostas?.[etapa.id]?.[campo.id] ?? '').trim();
-      linhas.push({ anonimo: `Aluno ${a.numeroChamada ?? i + 1}`, apelido: a.apelido, etapa: etapa.texto, campo: campo.rotulo, resposta: resp });
+      linhas.push({ anonimo: `Aluno ${a.numeroChamada ?? i + 1}`, apelido: nomeDe(a), etapa: etapa.texto, campo: campo.rotulo, resposta: resp });
     }
   });
   return { campos, linhas, alunos };
@@ -80,7 +81,7 @@ export function abrirRespostasAluno(st, dlg, faseId, uid) {
   const blocos = etapasDe(f).filter((e) => e.campos?.length).map((e) => `
     <h3>${esc(e.texto)}</h3>
     ${e.campos.map((c) => `<p><strong>${esc(c.rotulo)}</strong><br>${esc(p?.respostas?.[e.id]?.[c.id] || '(sem resposta)')}</p>`).join('')}`).join('');
-  dlg.innerHTML = `<div class="form"><h2>${esc(a?.apelido ?? '')} · respostas</h2>${blocos || '<p class="nota">Esta fase não tem campos de resposta.</p>'}<button class="botao" type="button" id="r-fechar">Fechar</button></div>`;
+  dlg.innerHTML = `<div class="form"><h2>${esc(nomeDe(a))} · respostas</h2>${blocos || '<p class="nota">Esta fase não tem campos de resposta.</p>'}<button class="botao" type="button" id="r-fechar">Fechar</button></div>`;
   dlg.onclick = (e) => { if (e.target.id === 'r-fechar') dlg.close(); };
   dlg.showModal();
 }

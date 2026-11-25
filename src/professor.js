@@ -4,7 +4,6 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import { app, tela, esc, hoje, guardar, ler } from './ui.js';
-import { imgAvatar } from './avatar.js';
 import {
   MUNDO, ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno,
   etapasDe, normMateriais, liberado, COMO, DIAS_FASE, diaDe,
@@ -15,7 +14,7 @@ import { abrirRespostasTurma, abrirRespostasAluno, temCampos } from './respostas
 import { carteiraDoAluno, abrirAdmBux, htmlAdmBuxMais, pagarRendimento } from './admbuxProfessor.js';
 import { htmlVotacaoProfessor, tratarVotacao } from './votacoes.js';
 import { htmlFechamento, tratarFechamento, mudarFechamento } from './fechamentoProfessor.js';
-import { fazerBackup, htmlAvisoBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './backup.js';
+import { fazerBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './backup.js';
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
 import { ATV_GUILDA, configGuilda } from './grupos.js';
@@ -23,10 +22,16 @@ import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase
 import { htmlPctd, tratarPctd, mudarPctd } from './pctdProfessor.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
 import { htmlTerrenos, abrirTerreno } from './terrenosProfessor.js';
+import { formatar } from './agenda.js';
+import { htmlSala, tratarSala, faseDaSala, gravarPendentes } from './salaProfessor.js';
+import { htmlHoje } from './hojeProfessor.js';
+import { nomeDe, comNomes, nomeValido, ordenarAlunos } from './alunos.js';
+import { icone, abas, resumoFase, rosto, aviso } from './professorComum.js';
+import './professor.css';
 
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const ROTULO = { pendente: 'Pendente', ativo: 'Ativo', saiu: 'Saiu', bloqueado: 'Bloqueado' };
-const ABAS = ['turma', 'fases', 'agenda', 'painel', 'mais'];
+const ABAS = ['hoje', 'sala', 'alunos', 'planejar', 'avaliar', 'ajustes'];
 
 function codigoAleatorio() {
   const n = new Uint32Array(5);
@@ -37,14 +42,6 @@ function codigoAleatorio() {
 function numeroOuNulo(v) {
   const n = parseInt(v, 10);
   return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-function ordenar(alunos) {
-  const peso = { pendente: 0, ativo: 1, bloqueado: 2, saiu: 3 };
-  return [...alunos].sort((a, b) =>
-    (peso[a.status] ?? 9) - (peso[b.status] ?? 9)
-    || (a.numeroChamada ?? 999) - (b.numeroChamada ?? 999)
-    || String(a.apelido).localeCompare(String(b.apelido), 'pt-BR'));
 }
 
 const linhasDe = (txt) => String(txt ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
@@ -61,7 +58,9 @@ const deLinks = (lista) => (lista ?? []).map((l) => `${l.titulo} | ${l.url}`).jo
 
 export function iniciarProfessor(user, opcoes = {}) {
   const st = {
-    aba: ABAS.includes(ler('aba')) ? ler('aba') : (['turmas', 'conteudo'].includes(ler('aba')) ? 'mais' : 'turma'),
+    aba: ABAS.includes(ler('aba')) ? ler('aba') : 'hoje',
+    sub: { alunos: 'lista', planejar: 'fases', avaliar: 'turma', ajustes: 'turmas' },
+    salaFase: null, salaAluno: null, salaFiltro: 'todos', salaNotas: {}, planFase: null, fichaUid: null, nomes: {},
     cal: null, plano: null, calBim: null,
     turma: ler('turma') || '',
     turmas: [], alunos: [], fases: [], mundo: null,
@@ -91,10 +90,16 @@ export function iniciarProfessor(user, opcoes = {}) {
   }, () => { st.aviso = 'Não consegui ler as turmas.'; desenhar(); }));
 
   paradas.push(onSnapshot(collection(db, 'alunos'), (s) => {
-    st.alunos = s.docs.map((d) => ({ uid: d.id, ...d.data() }));
+    st.alunos = comNomes(s.docs.map((d) => ({ uid: d.id, ...d.data() })), st.nomes);
     st.carregou.alunos = true;
     desenhar();
   }, () => { st.aviso = 'Não consegui ler os alunos.'; desenhar(); }));
+
+  paradas.push(onSnapshot(collection(db, 'nomes'), (s) => {
+    st.nomes = Object.fromEntries(s.docs.map((d) => [d.id, d.data()]));
+    st.alunos = comNomes(st.alunos, st.nomes);
+    desenhar();
+  }, () => {}));
 
   paradas.push(onSnapshot(query(collection(db, 'fases'), where('mundo', '==', MUNDO)), (s) => {
     st.fases = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.ordem - b.ordem);
@@ -169,137 +174,69 @@ export function iniciarProfessor(user, opcoes = {}) {
 
   const turmaAtual = () => st.turmas.find((t) => t.id === st.turma);
   const estadoDe = (faseId) => turmaAtual()?.estadoFases?.[faseId] ?? 'trancada';
-  const alunosDaTurma = () => ordenar(st.alunos.filter((a) => a.turma === st.turma));
+  const alunosDaTurma = () => ordenarAlunos(st.alunos.filter((a) => a.turma === st.turma));
   const ativosDaTurma = () => alunosDaTurma().filter((a) => a.status === 'ativo');
   const pendentesTotal = () => st.alunos.filter((a) => a.status === 'pendente').length;
 
-  // Agenda em duas vistas: o calendário e o PCTD do bimestre (planejamento enviado à coordenação).
   const planoAgenda = () => (st.cal && st.turma ? planejar(st) : null);
-  function htmlAgendaComPctd() {
-    const vista = st.agVista === 'pctd' ? 'pctd' : 'cal';
-    const topo = `<div class="fc-passos">${[['cal', 'Calendário'], ['pctd', 'PCTD do bimestre']].map(([id, r]) => `<button class="mini ${vista === id ? 'ok cheio' : ''}" data-acao="ag-vista" data-id="${id}">${r}</button>`).join('')}</div>`;
-    const p = vista === 'pctd' ? planoAgenda() : null;
-    if (!p) return htmlAgenda(st).replace('<h2>Agenda</h2>', `<h2>Agenda</h2>${topo}`);
-    return `<h2>Agenda</h2>${topo}${seletorBimestre(p)}${htmlPctd(st, p)}`;
-  }
 
   // ---------- telas ----------
+  const SECOES = [['hoje', 'Hoje'], ['sala', 'Sala'], ['alunos', 'Alunos'], ['planejar', 'Planejar'], ['avaliar', 'Avaliar']];
+
+  function corpoDaTela() {
+    if (st.aba === 'sala') return htmlSala(st, htmlControlesSala());
+    if (st.aba === 'alunos') return htmlAlunos();
+    if (st.aba === 'planejar') return htmlPlanejar();
+    if (st.aba === 'avaliar') return htmlAvaliar();
+    if (st.aba === 'ajustes') return htmlAjustes();
+    return htmlHoje(st);
+  }
+
   function desenhar() {
     if (!st.carregou.turmas || !st.carregou.alunos) {
       tela('<p class="carregando">Conferindo a turma...</p>', 'centro');
       return;
     }
+    // não redesenha enquanto o professor escreve (perderia o foco e o texto)
     const ativo = document.activeElement;
-    if (st.aba === 'mais' && ativo && ativo.closest && ativo.closest('#form-turma')) return;
-    // não redesenhar enquanto o professor escreve um feedback, uma recuperação ou os dados do PCTD
-    if ((st.aba === 'fechar' || st.aba === 'agenda') && ativo?.closest?.('.fc-edita')) return;
-    const faseProj = st.projetando && st.fases.find((x) => x.id === st.faseSel && x.tipo === 'chefao');
-    if (faseProj) { tela(htmlProjecao(st, faseProj, turmaAtual()), 'pagina projetar'); return; }
-    const pend = pendentesTotal();
-    const aba = st.aba;
-    const corpo = aba === 'turma' ? htmlTurma() : aba === 'fases' ? htmlFases() : aba === 'agenda' ? htmlAgendaComPctd() : aba === 'painel' ? htmlEstatisticas(st) : aba === 'fechar' ? htmlFechamento(st, ativosDaTurma(), turmaAtual()) : `${htmlRecursos()}<hr>${htmlTurmas()}<hr>${htmlAdmBuxMais(st, ativosDaTurma())}<hr>${htmlSecaoBackup(st.cfgBackup, st.previaBackup)}<hr>${htmlConteudo()}`;
-    const nav = [['turma', `Turma${pend ? ` <span class="bolha">${pend}</span>` : ''}`], ['fases', 'Fases'], ['agenda', 'Agenda'], ['painel', 'Painel'], ['fechar', 'Fechar'], ['mais', 'Mais']];
-    tela(
-      `<header class="topo">
-        <strong>ADM Quest</strong>
-        <select id="sel-turma" aria-label="Turma">
-          ${st.turmas.length ? st.turmas.map((t) => `<option value="${esc(t.id)}" ${t.id === st.turma ? 'selected' : ''}>${esc(t.nome || t.id)}${t.teste ? ' (teste)' : ''}</option>`).join('') : '<option value="">Sem turmas</option>'}
-        </select>
-        <button id="sair" class="mini">Sair</button>
-      </header>
-      ${st.aviso ? `<p class="aviso">${esc(st.aviso)}</p>` : ''}
-      ${htmlAvisoBackup(st.cfgBackup)}
-      <main class="corpo">${corpo}</main>
-      <nav class="abas" aria-label="Seções">
-        ${nav.map(([id, rot]) => `<button data-acao="aba" data-v="${id}" class="${aba === id ? 'sel' : ''}">${rot}</button>`).join('')}
-      </nav>`,
-      'pagina'
-    );
-  }
-
-  function htmlRadar() {
-    const radar = calcularRadar(st);
-    if (!radar.length) return '';
-    return `<details class="radar"><summary>Radar: ${radar.length} aluno(s) sem comentário ou conversa há mais de duas semanas</summary>
-      <ul class="lista">${radar.map((r) => `<li class="aluno"><span class="num">${r.aluno.numeroChamada ?? '—'}</span><span class="nome">${esc(r.aluno.apelido)}</span><span class="nota">${r.nunca ? 'nunca registrado' : `${r.dias} dias`}</span><button class="mini" data-acao="registros" data-uid="${esc(r.aluno.uid)}">Registrar</button></li>`).join('')}</ul></details>`;
-  }
-
-  function htmlTurma() {
-    if (!st.turmas.length) return '<p class="vazio">Você ainda não tem turmas. Crie a primeira na aba Mais.</p>';
-    const lista = alunosDaTurma();
-    const ativos = lista.filter((a) => a.status === 'ativo').length;
-    const linhas = lista.map((a) => `
-      <li class="aluno" data-acao="editar" data-uid="${esc(a.uid)}">
-        <span class="num">${a.numeroChamada ?? '—'}</span>
-        ${a.avatar ? imgAvatar(a.avatar, 'avatar p') : '<span class="avatar p vazio-av"></span>'}
-        <span class="nome">${esc(a.apelido)}</span>
-        <span class="chip ${esc(a.status)}">${esc(ROTULO[a.status] ?? a.status)}</span>
-        ${a.status === 'pendente' ? `<button class="mini ok" data-acao="aprovar" data-uid="${esc(a.uid)}">Aprovar</button><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Recusar</button>` : ''}
-        ${a.status === 'ativo' ? `<span class="acoes-aluno"><button class="mini" data-acao="admbux" data-uid="${esc(a.uid)}" aria-label="AdmBux">🪙 ${carteiraDoAluno(st, a.uid).saldo}</button><button class="mini" data-acao="registros" data-uid="${esc(a.uid)}">Registros</button><button class="mini" data-acao="ver-aluno" data-uid="${esc(a.uid)}">Ver como aluno</button></span>` : ''}
-      </li>`).join('');
-    const orfaos = st.alunos.filter((a) => !a.turma);
-    const htmlOrfaos = orfaos.length ? `<h2>Cadastros sem turma (testes antigos)</h2>
-      <ul class="lista">${orfaos.map((a) => `<li class="aluno"><span class="nome">Cadastro de teste</span><span class="chip">${esc(ROTULO[a.status] ?? a.status)}</span><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Apagar</button></li>`).join('')}</ul>` : '';
-    const guildas = htmlGrupos(st, { atv: ATV_GUILDA, cfg: configGuilda(turmaAtual()), faseId: null, ativos: ativosDaTurma(), titulo: 'Guildas deste mundo' });
-    return `<h2>${lista.length} cadastro(s) · ${ativos} ativo(s)</h2>
-      ${htmlRadar()}
-      ${guildas}
-      <p class="nota">Toque no aluno para editar, mover de turma ou marcar que saiu.</p>
-      <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ainda. Passe o código da turma.</li>'}</ul>${htmlOrfaos}`;
-  }
-
-  function resumoFase(f) {
-    const ativos = ativosDaTurma();
-    let concluidas = 0, faltas = 0, validadas = 0, presentes = 0;
-    for (const a of ativos) {
-      const id = progId(a.uid, f.id);
-      const concluiu = st.progresso[id]?.concluida === true;
-      const faltou = st.aval[id]?.faltou === true;
-      if (concluiu) concluidas++;
-      if (faltou) faltas++;
-      if (st.aval[id]?.validada) validadas++;
-      if (!faltou || concluiu) presentes++;
-    }
-    return { total: ativos.length, concluidas, faltas, validadas, presentes };
-  }
-
-  function htmlFases() {
-    if (!st.turma) return '<p class="vazio">Crie uma turma primeiro, na aba Mais.</p>';
-    if (!st.fases.length) return '<p class="vazio">Ainda não há fases. Importe o conteúdo do Mundo 1 na aba Mais.</p>';
+    if (ativo?.closest?.('#form-turma, .fc-edita') || ativo?.matches?.('[data-sl="nota"], #conf-rest')) { st.redesenhoPendente = true; return; }
+    st.redesenhoPendente = false;
+    // cada seção lembra a própria fase aberta
+    if (st.aba === 'sala') st.faseSel = st.salaFase = faseDaSala(st);
+    else st.faseSel = st.aba === 'planejar' && st.sub.planejar === 'fases' ? st.planFase : null;
     ligarProf();
-    if (st.faseSel) return htmlPainelFase();
-    const linha = (f) => {
-      const est = estadoDe(f.id);
-      const r = resumoFase(f);
-      return `<li class="fase-prof">
-        <button class="nome-fase" data-acao="fase" data-id="${esc(f.id)}">
-          <span class="cod">${esc(f.codigo)}</span> <strong>${esc(f.nome)}</strong>
-          <span class="nota">${r.concluidas} de ${r.presentes} concluíram${r.faltas ? ` · ${r.faltas} faltou` : ''}</span>
-        </button>
-        <select data-estado="${esc(f.id)}" aria-label="Estado da fase ${esc(f.nome)}">
-          ${ESTADOS.map((e) => `<option value="${e}" ${e === est ? 'selected' : ''}>${ESTADO_ROTULO[e]}</option>`).join('')}
-        </select>
-      </li>`;
-    };
-    const normais = st.fases.filter((f) => f.tipo !== 'excel' && !f.arquivada);
-    const excel = st.fases.filter((f) => f.tipo === 'excel' && !f.arquivada);
-    return `<h2>${esc(st.mundo?.nome ?? 'Mundo 1')}</h2>
-      <p class="nota">Só você libera as fases. O aluno vê "em obra" até você abrir. Aberta: os alunos trabalham. Encerrada: ninguém edita, só quem faltou ou quem você liberar.</p>
-      <ul class="lista">${normais.map(linha).join('')}</ul>
-      ${excel.length ? `<h3>Trilha de Excel</h3><p class="nota">Uma por segunda. Abra no dia, pelo roteiro da Agenda ou aqui.</p><ul class="lista">${excel.map(linha).join('')}</ul>` : ''}
-      <hr>
-      ${htmlTerrenos(st)}`;
+    const faseProj = st.projetando && st.fases.find((x) => x.id === st.faseSel && x.tipo === 'chefao');
+    if (faseProj) { document.body.classList.remove('prof'); tela(htmlProjecao(st, faseProj, turmaAtual()), 'pagina projetar'); return; }
+    document.body.classList.add('prof');
+    const pend = pendentesTotal();
+    const botao = (id, rot) => `<button type="button" class="px-nav" data-acao="ir" data-v="${id}" ${st.aba === id ? 'aria-current="page"' : ''}>${icone(id)}<span>${rot}</span>${id === 'alunos' && pend ? `<b class="px-bolha">${pend}</b>` : ''}</button>`;
+    const turmas = st.turmas.length > 1 && st.turmas.length <= 4
+      ? `<div class="px-turmas" role="group" aria-label="Turma">${st.turmas.map((t) => `<button type="button" data-acao="turma" data-v="${esc(t.id)}" aria-pressed="${t.id === st.turma}" title="${esc(t.nome || t.id)}">${esc(t.teste ? 'Teste' : t.id)}</button>`).join('')}</div>`
+      : st.turmas.length ? `<select id="sel-turma" class="px-turma-sel" aria-label="Turma">${st.turmas.map((t) => `<option value="${esc(t.id)}" ${t.id === st.turma ? 'selected' : ''}>${esc(t.nome || t.id)}${t.teste ? ' (teste)' : ''}</option>`).join('')}</select>` : '';
+    // mantém a rolagem da ficha e dos filtros ao redesenhar
+    const rolFicha = st.salaTopo ? 0 : app.querySelector('.px-ficha')?.scrollTop ?? 0;
+    const rolFiltros = app.querySelector('.px-filtros')?.scrollLeft ?? 0;
+    const abertos = new Set([...app.querySelectorAll('details[data-guarda][open]')].map((d) => d.dataset.guarda));
+    st.salaTopo = false;
+    tela(
+      `<aside class="px-lado" aria-label="Seções"><span class="px-marca">ADM Quest</span>${SECOES.map((x) => botao(...x)).join('')}<span class="px-mola"></span>
+        <button type="button" class="px-nav jogar" data-acao="jogar">${icone('jogar')}<span>Jogar como teste</span></button>${botao('ajustes', 'Ajustes')}</aside>
+      <header class="px-topo"><span class="px-marca">ADM Quest</span>${turmas}
+        <button type="button" class="px-ic" data-acao="jogar" aria-label="Jogar como teste" title="Jogar como teste">${icone('jogar')}</button>
+        <button type="button" class="px-ic" data-acao="ir" data-v="ajustes" aria-label="Ajustes">${icone('ajustes')}</button></header>
+      ${st.aviso ? `<p class="px-faixa" role="alert">${esc(st.aviso)}</p>` : ''}
+      <main class="px-corpo px-${st.aba}">${corpoDaTela()}</main>
+      <nav class="px-base" aria-label="Seções">${SECOES.map((x) => botao(...x)).join('')}</nav>`,
+      'prof-tela'
+    );
+    const fichaNova = app.querySelector('.px-ficha'); if (fichaNova) fichaNova.scrollTop = rolFicha;
+    const filtrosNovos = app.querySelector('.px-filtros'); if (filtrosNovos) filtrosNovos.scrollLeft = rolFiltros;
+    abertos.forEach((k) => { const d = app.querySelector(`details[data-guarda="${k}"]`); if (d) d.open = true; });
   }
 
-  function htmlPainelFase() {
-    const f = st.fases.find((x) => x.id === st.faseSel);
-    if (!f) { st.faseSel = null; return htmlFases(); }
-    const est = estadoDe(f.id);
-    const r = resumoFase(f);
-    const pct = r.presentes ? Math.round((100 * r.concluidas) / r.presentes) : 0;
+  // o que se libera durante a aula: a parte de segunda inteira, etapas travadas e materiais
+  function htmlLiberar(f) {
     const turmaDoc = turmaAtual();
-
-    // o que você libera durante a aula: a parte de segunda inteira, etapas travadas e materiais
     const temSeg = etapasDe(f).some((e) => e.dia === 'seg');
     const travaveis = [
       ...(temSeg ? [{ id: 'seg', rotulo: 'Parte de segunda (laboratório)', lib: turmaDoc?.liberacoes?.[f.id]?.seg === true }] : []),
@@ -307,67 +244,138 @@ export function iniciarProfessor(user, opcoes = {}) {
         .filter((x) => x.item.travada === true).map((x) => ({ id: x.item.id, rotulo: x.rotulo, lib: liberado(turmaDoc, f.id, x.item, 'travada') })),
       ...normMateriais(f).filter((m) => m.travado === true).map((m) => ({ id: m.id, rotulo: `Material: ${m.titulo || m.url}`, lib: liberado(turmaDoc, f.id, m, 'travado') })),
     ];
-    const htmlLiberar = travaveis.length ? `<h2>Liberar durante a aula</h2>
+    return travaveis.length ? `<h3>Liberar durante a aula</h3>
       <ul class="lista">${travaveis.map((x) => `<li class="aluno"><span class="nome">${esc(x.rotulo)}</span><button class="mini ${x.lib ? 'ok' : ''}" data-acao="liberar" data-item="${esc(x.id)}">${x.lib ? 'Liberada ✓ (tocar para travar)' : 'Liberar para a turma'}</button></li>`).join('')}</ul>` : '';
+  }
 
-    // um roteiro só: o mesmo da Agenda
-    const roteiroDia = (tipo, titulo) => `<details class="roteiro"><summary>${titulo}</summary>
+  const ferramentasDaFase = (f) => `${htmlLiberar(f)}${htmlVotacaoProfessor(st, f, ativosDaTurma())}${htmlCasteloProfessor(st, f, turmaAtual())}${htmlGruposDaFase(st, f, turmaAtual(), ativosDaTurma())}`;
+
+  function htmlControlesSala() {
+    const f = st.fases.find((x) => x.id === st.faseSel);
+    if (!f) return '';
+    const dentro = ferramentasDaFase(f);
+    return `<details class="px-controles" data-guarda="controles"><summary>Controles da aula <small>liberar etapas, grupos${f.tipo === 'chefao' ? ', baús' : ''}, votação e respostas</small></summary>
+      <div class="linha-btn">${temCampos(f) ? `<button class="mini" data-acao="respostas-turma" data-id="${esc(f.id)}">Respostas da turma</button>` : ''}
+        <button class="mini" data-acao="ir-fase" data-id="${esc(f.id)}">Roteiro, material e edição</button></div>
+      ${dentro}</details>`;
+  }
+
+  // ---------- alunos ----------
+  function htmlAlunos() {
+    if (!st.turmas.length) return '<p class="px-vazio">Crie a primeira turma em Ajustes.</p>';
+    if (st.fichaUid) {
+      const a = st.alunos.find((x) => x.uid === st.fichaUid);
+      if (a) {
+        const ficha = htmlEstatisticas({ ...st, painelVista: { tipo: 'aluno', id: a.uid } }).replace(/<button class="mini" data-acao="painel-voltar">← Painel<\/button>/, '');
+        return `<div class="linha-btn"><button class="px-btn" data-acao="ficha-voltar">← Alunos</button><button class="px-btn" data-acao="editar" data-uid="${esc(a.uid)}">Editar cadastro</button><button class="px-btn" data-acao="admbux" data-uid="${esc(a.uid)}">🪙 ${carteiraDoAluno(st, a.uid).saldo} AdmBux</button></div><div class="px-card">${ficha}</div>`;
+      }
+      st.fichaUid = null;
+    }
+    const lista = alunosDaTurma();
+    const ativos = ativosDaTurma();
+    const pendentes = lista.filter((a) => a.status === 'pendente');
+    const fora = lista.filter((a) => a.status === 'saiu' || a.status === 'bloqueado');
+    const radar = new Map(calcularRadar(st).map((x) => [x.aluno.uid, x]));
+    const vista = st.sub.alunos;
+    const topo = `<div class="px-cab"><div><h1>Alunos</h1><p class="px-sub">${ativos.length} ativo(s)${pendentes.length ? ` · ${pendentes.length} esperando aprovação` : ''}</p></div>
+      ${abas('sub', vista, [['lista', 'Turma'], ['radar', `Sem registro (${radar.size})`], ['guildas', 'Guildas']])}</div>`;
+    if (vista === 'guildas') return `${topo}${htmlGrupos(st, { atv: ATV_GUILDA, cfg: configGuilda(turmaAtual()), faseId: null, ativos, titulo: 'Guildas deste mundo' })}`;
+    const estados = turmaAtual()?.estadoFases ?? {};
+    const abertas = st.fases.filter((f) => !f.arquivada && ['aberta', 'encerrada'].includes(estados[f.id]));
+    const outras = pendentesTotal() - pendentes.length;
+    const pedidos = pendentes.map((a) => `<li class="px-pend ambar"><div><strong>${esc(nomeDe(a))}</strong><small>Quer entrar · nome de usuário: ${esc(a.apelido)}</small></div><div class="px-linha"><button class="px-btn cheio" data-acao="aprovar" data-uid="${esc(a.uid)}">Aprovar</button><button class="px-btn" data-acao="recusar" data-uid="${esc(a.uid)}">Recusar</button></div></li>`).join('');
+    const mostrados = vista === 'radar' ? ativos.filter((a) => radar.has(a.uid)) : ativos;
+    const linhas = mostrados.map((a) => {
+      let feitas = 0; let pendencias = 0;
+      for (const f of abertas) { const p = st.progresso[progId(a.uid, f.id)]; if (p?.concluida) feitas++; else if (estados[f.id] === 'encerrada' || st.aval[progId(a.uid, f.id)]?.faltou) pendencias++; }
+      const r = radar.get(a.uid);
+      return `<li class="px-linha-aluno">
+        <button type="button" class="px-quem" data-acao="ficha-aluno" data-uid="${esc(a.uid)}">${rosto(a)}<span><strong>${esc(nomeDe(a))}</strong><small>${esc(a.apelido)}${a.numeroChamada ? ` · nº ${a.numeroChamada}` : ''}${a.nome ? '' : ' · falta o nome completo'}</small></span></button>
+        <span class="px-info"><span class="px-tag">${feitas}/${abertas.length} fases</span>${pendencias ? `<span class="px-tag verm">${pendencias} pendente(s)</span>` : ''}${r ? `<span class="px-tag ambar">${r.nunca ? 'nunca registrado' : `${r.dias} dias sem registro`}</span>` : ''}</span>
+        <span class="px-linha"><button class="px-btn" data-acao="registros" data-uid="${esc(a.uid)}">Registrar</button><button class="px-btn leve" data-acao="admbux" data-uid="${esc(a.uid)}" aria-label="AdmBux">🪙 ${carteiraDoAluno(st, a.uid).saldo}</button><button class="px-btn leve" data-acao="editar" data-uid="${esc(a.uid)}">Editar</button></span></li>`;
+    }).join('');
+    const orfaos = st.alunos.filter((a) => !a.turma);
+    const simples = (a, rot) => `<li class="px-linha-aluno"><button type="button" class="px-quem" data-acao="editar" data-uid="${esc(a.uid)}">${rosto(a)}<span><strong>${esc(nomeDe(a))}</strong><small>${rot}</small></span></button></li>`;
+    return `${topo}
+      ${outras ? `<p class="px-faixa">Há ${outras} cadastro(s) esperando em outra turma.</p>` : ''}
+      ${vista === 'lista' && pedidos ? `<ul class="px-pends">${pedidos}</ul>` : ''}
+      <ul class="px-lista">${linhas || `<li class="px-vazio">${vista === 'radar' ? 'Todos têm registro recente.' : 'Nenhum aluno ainda. Passe o código da turma, em Ajustes.'}</li>`}</ul>
+      ${vista === 'lista' && fora.length ? `<details data-guarda="fora"><summary>Fora da turma ou bloqueados (${fora.length})</summary><ul class="px-lista">${fora.map((a) => simples(a, ROTULO[a.status])).join('')}</ul></details>` : ''}
+      ${orfaos.length ? `<h2>Cadastros sem turma (testes antigos)</h2><ul class="lista">${orfaos.map((a) => `<li class="aluno"><span class="nome">${esc(nomeDe(a) || 'Cadastro de teste')}</span><button class="mini ruim" data-acao="recusar" data-uid="${esc(a.uid)}">Apagar</button></li>`).join('')}</ul>` : ''}`;
+  }
+
+  // ---------- planejar ----------
+  function htmlPlanejar() {
+    if (!st.turma) return '<p class="px-vazio">Crie uma turma primeiro, em Ajustes.</p>';
+    if (st.sub.planejar === 'fases' && st.planFase) return htmlPainelFase();
+    const vista = st.sub.planejar;
+    const topo = `<div class="px-cab"><div><h1>Planejar</h1><p class="px-sub">${esc(st.mundo?.nome ?? 'Mundo 1')}</p></div>${abas('sub', vista, [['fases', 'Fases'], ['calendario', 'Calendário'], ['pctd', 'PCTD'], ['terrenos', 'Terrenos']])}</div>`;
+    if (vista === 'calendario') return `${topo}${htmlAgenda(st).replace('<h2>Agenda</h2>', '')}`;
+    if (vista === 'pctd') { const p = planoAgenda(); return `${topo}${p ? `${seletorBimestre(p)}${htmlPctd(st, p)}` : '<p class="px-vazio">Carregue o calendário primeiro.</p>'}`; }
+    if (vista === 'terrenos') return `${topo}${htmlTerrenos(st)}`;
+    if (!st.fases.length) return `${topo}<p class="px-vazio">Ainda não há fases. Importe o conteúdo em Ajustes.</p>`;
+    const p = st.cal ? planejar({ ...st, calBim: null }) : null;
+    const datas = (id) => {
+      const it = (t) => p?.ag.itens.find((i) => i.faseId === id && i.din)?.[t];
+      return [it('din'), it('cons')].filter(Boolean).map((d) => formatar(d)).join(' e ');
+    };
+    const linha = (f) => {
+      const est = estadoDe(f.id);
+      const r = resumoFase(st, f);
+      const quando = datas(f.id);
+      return `<li class="px-fase ${est}"><button type="button" data-acao="ir-fase" data-id="${esc(f.id)}"><span class="px-cod">${esc(f.codigo)}</span><span><strong>${esc(f.nome)}</strong><small>${quando ? `${quando} · ` : ''}${r.concluidas} de ${r.presentes} concluíram${r.faltas ? ` · ${r.faltas} falta(s)` : ''}</small></span></button>
+        <select data-estado="${esc(f.id)}" class="px-estado ${est}" aria-label="Estado da fase ${esc(f.nome)}">${ESTADOS.map((e) => `<option value="${e}" ${e === est ? 'selected' : ''}>${ESTADO_ROTULO[e]}</option>`).join('')}</select></li>`;
+    };
+    const visiveisFases = st.fases.filter((f) => !f.arquivada);
+    return `${topo}<p class="px-sub">Só você libera as fases. O aluno vê "em obra" até você abrir. Encerrada: só edita quem faltou ou quem você liberar.</p>
+      <ul class="px-lista">${visiveisFases.map(linha).join('')}</ul>`;
+  }
+
+  function htmlPainelFase() {
+    const f = st.fases.find((x) => x.id === st.planFase);
+    if (!f) { st.planFase = null; return htmlPlanejar(); }
+    const est = estadoDe(f.id);
+    const turmaDoc = turmaAtual();
+    const roteiroDia = (tipo, titulo) => `<details class="roteiro" data-guarda="rot-${tipo}"><summary>${titulo}</summary>
       <ul class="nota">${resumoTurmas(st, roteiroDaFase(st, f, tipo), tipo)}</ul>
       ${htmlBlocos(roteiroDaFase(st, f, tipo), turmaDoc, horarioDoTipo(st.plano, tipo))}
       <button class="mini" data-acao="cal-roteiro" data-id="${esc(f.id)}" data-k="${tipo}">Editar este roteiro</button></details>`;
     const prof = st.profFase?.professor ?? {};
-    const material = Object.entries(prof).filter(([k]) => !['cronograma'].includes(k)).map(([k, v]) => {
+    const material = Object.entries(prof).filter(([k]) => !['cronograma', 'codigos'].includes(k)).map(([k, v]) => {
       const nome = { paraVoce: 'Notas', cartas: 'Cartas de acontecimento', dossies: 'Dossiês', cartasFuncoes: 'Cartas de funções', cartasCrise: 'Cartas de crise', baus: 'Baús e enigmas' }[k] ?? k;
       const item = (x) => (typeof x === 'string' ? esc(x) : Object.entries(x).map(([kk, vv]) => `<strong>${esc(kk)}:</strong> ${esc(vv)}`).join(' · '));
       const lista = Array.isArray(v) ? v.map((x) => `<li>${item(x)}</li>`).join('') : typeof v === 'object' ? Object.entries(v).map(([kk, vv]) => `<li><strong>${esc(kk)}:</strong> ${esc(vv)}</li>`).join('') : `<li>${esc(v)}</li>`;
       return `<h4>${esc(nome)}</h4><ul>${lista}</ul>`;
     }).join('');
-
-    const campos = temCampos(f);
-    const linhas = ativosDaTurma().map((a) => {
-      const id = progId(a.uid, f.id);
-      const p = st.progresso[id];
-      const v = st.aval[id];
-      const sit = situacao(f, p, v, est);
-      const { total, feitas } = contarTarefas(f, p);
-      const cont = ['andamento', 'afazer', 'naoconcluida'].includes(sit) && total ? ` ${feitas}/${total}` : '';
-      const mencoes = Object.entries(v?.mencoes ?? {}).filter(([, m]) => m).map(([c, m]) => `<span class="chip m-${esc(m)}">${esc(c.replace('EMT1ADM', ''))}: ${esc(m)}</span>`).join('');
-      return `<li class="aluno">
-        <span class="num">${a.numeroChamada ?? '—'}</span>
-        ${a.avatar ? imgAvatar(a.avatar, 'avatar p') : '<span class="avatar p vazio-av"></span>'}
-        <span class="nome">${esc(a.apelido)}</span>
-        <span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}${cont}</span>
-        <div class="acoes-aluno">
-          <button class="mini ${v?.faltou ? 'ruim' : ''}" data-acao="faltou" data-uid="${esc(a.uid)}">${v?.faltou ? 'Faltou ✓' : 'Faltou?'}</button>
-          <button class="mini ${v?.validada ? 'ok cheio' : ''}" data-acao="validar" data-uid="${esc(a.uid)}">${v?.validada ? 'Validada ✓' : 'Validar'}</button>
-          ${(f.habilidades ?? []).length ? `<button class="mini mencao" data-acao="mencao" data-uid="${esc(a.uid)}">${mencoes || 'Menção'}</button>` : ''}
-          ${est === 'encerrada' && !p?.concluida ? `<button class="mini ${v?.liberado ? 'ok' : ''}" data-acao="liberar-aluno" data-uid="${esc(a.uid)}">${v?.liberado ? 'Liberado ✓' : 'Liberar p/ fazer'}</button>` : ''}
-          ${campos ? `<button class="mini" data-acao="respostas" data-uid="${esc(a.uid)}">Respostas</button>` : ''}
-          <button class="mini" data-acao="registros-fase" data-uid="${esc(a.uid)}">Registros</button>
-          <button class="mini" data-acao="ver-aluno" data-uid="${esc(a.uid)}">Ver como aluno</button>
-        </div>
-      </li>`;
-    }).join('');
-
-    return `<button class="mini" data-acao="voltar-fases">← Fases</button>
-      <h2>${esc(f.codigo)} · ${esc(f.nome)}</h2>
-      <div class="linha-btn">
-        <select data-estado="${esc(f.id)}" aria-label="Estado da fase">
-          ${ESTADOS.map((e) => `<option value="${e}" ${e === est ? 'selected' : ''}>${ESTADO_ROTULO[e]}</option>`).join('')}
-        </select>
-        <button class="mini" data-acao="editar-fase" data-id="${esc(f.id)}">Editar fase</button>
-        ${campos ? `<button class="mini" data-acao="respostas-turma" data-id="${esc(f.id)}">Respostas da turma</button>` : ''}
-      </div>
+    return `<div class="linha-btn"><button class="px-btn" data-acao="voltar-fases">← Fases</button></div>
+      <div class="px-cab"><div><h1>${esc(f.codigo)} · ${esc(f.nome)}</h1></div>
+        <div class="px-linha"><select data-estado="${esc(f.id)}" class="px-estado ${est}" aria-label="Estado da fase">${ESTADOS.map((e) => `<option value="${e}" ${e === est ? 'selected' : ''}>${ESTADO_ROTULO[e]}</option>`).join('')}</select>
+        <button class="px-btn cheio" data-acao="ir-sala" data-id="${esc(f.id)}">Acompanhar na sala</button>
+        <button class="px-btn" data-acao="editar-fase" data-id="${esc(f.id)}">Editar fase</button>
+        ${temCampos(f) ? `<button class="px-btn" data-acao="respostas-turma" data-id="${esc(f.id)}">Respostas da turma</button>` : ''}</div></div>
       ${f.tipo === 'chefao' ? roteiroDia('din', 'Roteiro do dia do castelo') : `${roteiroDia('din', 'Roteiro da terça (dinâmica, na sala)')}${roteiroDia('cons', 'Roteiro da segunda (laboratório)')}`}
-      ${material ? `<details class="roteiro"><summary>Material do professor (só você vê)</summary>${material}</details>` : ''}
-      ${htmlLiberar}
-      ${htmlVotacaoProfessor(st, f, ativosDaTurma())}
-      ${htmlCasteloProfessor(st, f, turmaDoc)}
-      ${htmlGruposDaFase(st, f, turmaDoc, ativosDaTurma())}
-      <p class="resumo"><strong>${r.concluidas}</strong> de <strong>${r.presentes}</strong> presentes concluíram (${pct}%)${pct >= 80 ? ' · meta de 80% atingida' : ''}<br>
-        <span class="nota">${r.validadas} validada(s) · ${r.faltas} faltou · ${r.total} aluno(s) ativo(s)</span></p>
-      <button class="mini" data-acao="validar-todos">Validar todos que concluíram</button>
-      <ul class="lista">${linhas || '<li class="vazio">Nenhum aluno ativo nesta turma.</li>'}</ul>`;
+      ${material ? `<details class="roteiro" data-guarda="material"><summary>Material do professor (só você vê)</summary>${material}</details>` : ''}
+      ${ferramentasDaFase(f)}`;
+  }
+
+  // ---------- avaliar ----------
+  function htmlAvaliar() {
+    const vista = st.sub.avaliar;
+    const topo = `<div class="px-cab"><div><h1>Avaliar</h1></div>${abas('sub', vista, [['turma', 'Visão da turma'], ['fechar', 'Fechar o bimestre']])}</div>`;
+    return `${topo}${vista === 'fechar' ? htmlFechamento(st, ativosDaTurma(), turmaAtual()) : htmlEstatisticas(st)}`;
+  }
+
+  // ---------- ajustes ----------
+  function htmlAjustes() {
+    const vista = st.sub.ajustes;
+    const topo = `<div class="px-cab"><div><h1>Ajustes</h1></div>${abas('sub', vista, [['turmas', 'Turmas'], ['recursos', 'Recursos'], ['admbux', 'AdmBux'], ['backup', 'Backup'], ['conteudo', 'Conteúdo'], ['conta', 'Teste e conta']])}</div>`;
+    const teste = st.turmas.find((t) => t.teste);
+    const corpo = vista === 'recursos' ? htmlRecursos() : vista === 'admbux' ? htmlAdmBuxMais(st, ativosDaTurma())
+      : vista === 'backup' ? htmlSecaoBackup(st.cfgBackup, st.previaBackup) : vista === 'conteudo' ? htmlConteudo()
+        : vista === 'conta' ? `<section class="px-card"><h2>Jogar como teste</h2><p class="px-sub">Você entra no jogo como um aluno da turma de teste${teste ? ` (${esc(teste.nome || teste.id)})` : ''}. O que fizer lá é gravado só nessa turma, que fica fora de relatórios e backups.</p>
+            <div class="px-linha"><button class="px-btn cheio" data-acao="jogar">Jogar agora</button>${teste ? '<button class="px-btn" data-acao="zerar-teste">Zerar meu personagem de teste</button>' : ''}</div></section>
+          <section class="px-card"><h2>Conta</h2><p class="px-sub">${esc(user.email ?? '')}</p><button class="px-btn" data-acao="sair">Sair da conta</button></section>` : htmlTurmas();
+    return `${topo}${corpo}`;
   }
 
   // Recursos do jogo que aparecem aos poucos para os alunos, um de cada vez, quando você ligar.
@@ -429,6 +437,32 @@ export function iniciarProfessor(user, opcoes = {}) {
       <p class="erro" id="msg-cont"></p>`;
   }
 
+  // ---------- jogar como teste ----------
+  // O professor ganha um personagem na turma de teste e joga de verdade, sem mexer nas turmas reais.
+  async function jogarComoTeste() {
+    const teste = st.turmas.find((t) => t.teste);
+    if (!teste) { st.aba = 'ajustes'; st.sub.ajustes = 'turmas'; falha('Crie uma turma marcada como "Turma de teste" para poder jogar.'); return; }
+    const meu = st.alunos.find((a) => a.uid === user.uid);
+    if (!meu) await setDoc(doc(db, 'alunos', user.uid), { turma: teste.id, apelido: 'Professor', status: 'ativo', dataEntrada: hoje(), criadoEm: serverTimestamp() });
+    else if (meu.turma !== teste.id || meu.status !== 'ativo') await updateDoc(doc(db, 'alunos', user.uid), { turma: teste.id, status: 'ativo' });
+    opcoes.jogar?.();
+  }
+
+  async function zerarTeste() {
+    if (!confirm('Apagar o seu personagem de teste e tudo o que ele fez? As turmas reais não são afetadas.')) return;
+    const meu = st.alunos.find((a) => a.uid === user.uid);
+    if (!meu) { aviso('Você ainda não tem personagem de teste.'); return; }
+    if (st.turmas.find((t) => t.id === meu.turma)?.teste !== true) { falha('O seu personagem não está na turma de teste.'); return; }
+    const lote = writeBatch(db);
+    (await docsDoAluno(user.uid)).forEach((d) => lote.delete(d.ref));
+    for (const c of ['segredos', 'compras', 'carteiras', 'perfis', 'nomes']) {
+      const d = await getDoc(doc(db, c, user.uid)); if (d.exists()) lote.delete(d.ref);
+    }
+    lote.delete(doc(db, 'alunos', user.uid));
+    await lote.commit();
+    aviso('Personagem de teste zerado');
+  }
+
   // ---------- ações ----------
   function falha(texto) {
     st.aviso = texto; desenhar();
@@ -463,11 +497,6 @@ export function iniciarProfessor(user, opcoes = {}) {
     await setDoc(refAval(uid), { ...baseAval(uid), liberado: !atual }, { merge: true });
   }
 
-  async function alternarFalta(uid) {
-    const atual = st.aval[progId(uid, st.faseSel)]?.faltou === true;
-    await setDoc(refAval(uid), { ...baseAval(uid), faltou: !atual }, { merge: true });
-  }
-
   async function alternarLiberacaoItem(itemId, faseId) {
     const f = st.fases.find((x) => x.id === (faseId ?? st.faseSel));
     const atual = turmaAtual()?.liberacoes?.[f.id]?.[itemId] === true;
@@ -481,14 +510,23 @@ export function iniciarProfessor(user, opcoes = {}) {
     await updateDoc(doc(db, 'turmas', st.turma), campos);
   }
 
+  const irPara = (aba, sub) => {
+    gravarPendentes();
+    st.aba = aba; if (sub) st.sub[aba] = sub;
+    st.salaAluno = null; st.planFase = null; st.fichaUid = null; st.painelVista = null;
+    guardar('aba', aba); desenhar(); window.scrollTo(0, 0);
+  };
+
   app.onclick = async (e) => {
-    if (e.target.id === 'sair') { signOut(auth); return; }
+    // sair do campo de texto ao tocar em outra coisa, para a tela voltar a se atualizar
+    const campo = document.activeElement;
+    if (campo?.matches?.('[data-sl="nota"], #conf-rest') && !e.target.closest('textarea, input')) campo.blur();
     const b = e.target.closest('[data-acao]');
     if (!b) return;
     const acao = b.dataset.acao;
     try {
       if (acao.startsWith('cal-')) {
-        await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, alternarSegunda: (id) => alternarLiberacaoItem('seg', id), irParaFase: (id) => { st.aba = 'fases'; st.faseSel = id; guardar('aba', 'fases'); ligarProf(); desenhar(); } });
+        await tratarAgenda(acao, b, { st, dlg, desenhar, mudarEstado, alternarSegunda: (id) => alternarLiberacaoItem('seg', id), irParaFase: (id) => { irPara('planejar', 'fases'); st.planFase = id; desenhar(); } });
         return;
       }
       if (acao === 'backup' || acao === 'backup-pasta') {
@@ -505,7 +543,19 @@ export function iniciarProfessor(user, opcoes = {}) {
         falha(`Backup restaurado: ${n} documento(s).`);
         return;
       }
-      if (acao === 'ag-vista') { st.agVista = b.dataset.id; desenhar(); return; }
+      if (acao.startsWith('sl-')) { await tratarSala(acao, b, { st, desenhar }); return; }
+      if (acao === 'sair') { signOut(auth); return; }
+      if (acao === 'ir') { irPara(b.dataset.v, b.dataset.sub); return; }
+      if (acao === 'sub') { st.sub[st.aba] = b.dataset.v; st.planFase = null; st.painelVista = null; desenhar(); return; }
+      if (acao === 'turma') { trocarTurma(b.dataset.v); return; }
+      if (acao === 'ir-sala') { irPara('sala'); st.salaFase = b.dataset.id; st.salaFiltro = b.dataset.filtro ?? 'todos'; desenhar(); return; }
+      if (acao === 'ir-fase') { irPara('planejar', 'fases'); st.planFase = b.dataset.id; desenhar(); return; }
+      if (acao === 'ir-radar') { irPara('alunos', 'radar'); return; }
+      if (acao === 'abrir-fase') { if (confirm('Abrir esta fase para a turma?')) await mudarEstado(b.dataset.id, 'aberta'); return; }
+      if (acao === 'ficha-aluno') { irPara('alunos'); st.fichaUid = b.dataset.uid; desenhar(); return; }
+      if (acao === 'ficha-voltar') { st.fichaUid = null; desenhar(); return; }
+      if (acao === 'jogar') { await jogarComoTeste(); return; }
+      if (acao === 'zerar-teste') { await zerarTeste(); return; }
       if (acao.startsWith('pc-')) { const p = planoAgenda(); if (p) await tratarPctd(acao, b, { st, p, desenhar, turma: turmaAtual() }); return; }
       if (acao.startsWith('fc-')) { await tratarFechamento(acao, b, { st, dlg, ativos: ativosDaTurma(), turma: turmaAtual(), desenhar }); return; }
       if (acao.startsWith('vt-')) { await tratarVotacao(acao, b, st); return; }
@@ -514,11 +564,11 @@ export function iniciarProfessor(user, opcoes = {}) {
       if (acao === 'recurso') { const r = turmaAtual()?.recursos?.[b.dataset.id] === true; await updateDoc(doc(db, 'turmas', st.turma), { [`recursos.${b.dataset.id}`]: !r }); return; }
       if (acao === 'exportar-painel') { abrirExportacao(st, dlg); return; }
       if (acao === 'exportar-aluno') { exportarAluno(st, b.dataset.uid); return; }
-      if (acao === 'aba') { st.aba = b.dataset.v; st.faseSel = null; st.painelVista = null; guardar('aba', st.aba); ligarProf(); desenhar(); }
+      if (acao === 'aba') { irPara(b.dataset.v); }
       else if (acao === 'aprovar') { e.stopPropagation(); await updateDoc(doc(db, 'alunos', b.dataset.uid), { status: 'ativo', dataEntrada: hoje() }); }
       else if (acao === 'recusar') {
         e.stopPropagation();
-        if (confirm('Recusar este cadastro? O aluno poderá se cadastrar de novo.')) await deleteDoc(doc(db, 'alunos', b.dataset.uid));
+        if (confirm('Recusar este cadastro? O aluno poderá se cadastrar de novo.')) { const lote = writeBatch(db); lote.delete(doc(db, 'alunos', b.dataset.uid)); if (st.nomes[b.dataset.uid]) lote.delete(doc(db, 'nomes', b.dataset.uid)); await lote.commit(); }
       }
       else if (acao === 'editar') { abrirEdicao(b.dataset.uid); }
       else if (acao === 'admbux') { e.stopPropagation(); abrirAdmBux(st, dlg, b.dataset.uid); }
@@ -528,12 +578,9 @@ export function iniciarProfessor(user, opcoes = {}) {
       else if (acao === 'ver-aluno') { e.stopPropagation(); opcoes.verComoAluno?.(b.dataset.uid); }
       else if (acao === 'painel-ver') { st.painelVista = { tipo: b.dataset.tipo, id: b.dataset.id }; desenhar(); window.scrollTo(0, 0); }
       else if (acao === 'painel-voltar') { st.painelVista = null; desenhar(); }
-      else if (acao === 'fase') { st.faseSel = b.dataset.id; ligarProf(); desenhar(); }
-      else if (acao === 'voltar-fases') { st.faseSel = null; ligarProf(); desenhar(); }
-      else if (acao === 'faltou') { await alternarFalta(b.dataset.uid); }
+      else if (acao === 'voltar-fases') { st.planFase = null; desenhar(); }
       else if (acao === 'validar') { await alternarValidada(b.dataset.uid); }
       else if (acao === 'validar-todos') { await validarTodos(); }
-      else if (acao === 'mencao') { abrirMencao(b.dataset.uid); }
       else if (acao === 'respostas') { abrirRespostasAluno(st, dlg, st.faseSel, b.dataset.uid); }
       else if (acao === 'respostas-turma') { abrirRespostasTurma(st, dlg, b.dataset.id); }
       else if (acao === 'liberar') { await alternarLiberacaoItem(b.dataset.item); }
@@ -561,7 +608,9 @@ export function iniciarProfessor(user, opcoes = {}) {
       if (e.target.dataset?.pc && (await mudarPctd(e.target, st, planoAgenda()))) return;
       const fc = await mudarFechamento(e.target, st);
       if (fc) { if (fc === 'desenhar') desenhar(); return; }
-      if (e.target.id === 'sel-turma') { st.turma = e.target.value; guardar('turma', st.turma); st.faseSel = null; ligarTurma(); ligarProf(); desenhar(); }
+      if (e.target.id === 'sel-turma') { trocarTurma(e.target.value); }
+      else if (e.target.dataset?.sl === 'fase') { st.salaFase = e.target.value; st.salaAluno = null; e.target.blur(); desenhar(); }
+      else if (e.target.dataset?.sl === 'mostrar') { st.salaMostrar = e.target.checked; }
       else if (e.target.dataset?.estado) {
         const novo = e.target.value;
         if (novo === 'encerrada' && !confirm('Encerrar a fase? Os alunos não poderão mais editar, exceto quem faltou ou quem você liberar.')) { desenhar(); return; }
@@ -576,6 +625,18 @@ export function iniciarProfessor(user, opcoes = {}) {
       else if (e.target.id === 'painel-aluno') { if (e.target.value) { st.painelVista = { tipo: 'aluno', id: e.target.value }; desenhar(); window.scrollTo(0, 0); } }
     } catch { falha('Não consegui salvar essa alteração. Tente de novo.'); }
   };
+
+  function trocarTurma(id) {
+    gravarPendentes();
+    st.turma = id; guardar('turma', id);
+    st.salaAluno = null; st.salaFase = null; st.planFase = null; st.fichaUid = null; st.painelVista = null;
+    ligarTurma(); desenhar();
+  }
+
+  // o texto da anotação fica guardado enquanto se digita; o redesenho adiado acontece ao sair do campo
+  app.oninput = (e) => { if (e.target.dataset?.sl === 'nota') st.salaNotas[e.target.dataset.uid] = e.target.value; };
+  app.onfocusout = () => { setTimeout(() => { if (st.redesenhoPendente) desenhar(); }, 250); };
+  window.addEventListener('pagehide', gravarPendentes);
 
   app.onsubmit = async (e) => {
     if (e.target.id !== 'form-turma') return;
@@ -693,8 +754,10 @@ export function iniciarProfessor(user, opcoes = {}) {
     const outras = st.turmas.filter((t) => t.id !== a.turma);
     dlg.innerHTML = `
       <form method="dialog" class="form" id="form-aluno">
-        <h2>${esc(a.apelido)}</h2>
-        <label for="e-apelido">Apelido</label>
+        <h2>${esc(nomeDe(a))}</h2>
+        <label for="e-nome">Nome completo (só você vê)</label>
+        <input id="e-nome" maxlength="80" value="${esc(a.nome ?? '')}" placeholder="Nome e sobrenome">
+        <label for="e-apelido">Nome de usuário (o que os colegas veem)</label>
         <input id="e-apelido" maxlength="16" value="${esc(a.apelido)}" required>
         <label for="e-num">Número de chamada</label>
         <input id="e-num" type="number" min="1" inputmode="numeric" value="${a.numeroChamada ?? ''}">
@@ -723,6 +786,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       try {
         const lote = writeBatch(db);
         lote.update(doc(db, 'alunos', a.uid), { turma: destino, numeroChamada: null });
+        if (st.nomes[a.uid]) lote.update(doc(db, 'nomes', a.uid), { turma: destino });
         (await docsDoAluno(a.uid)).forEach((d) => lote.update(d.ref, { turma: destino }));
         await lote.commit();
         dlg.close();
@@ -735,6 +799,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         const lote = writeBatch(db);
         (await docsDoAluno(a.uid)).forEach((d) => lote.delete(d.ref));
         lote.delete(doc(db, 'alunos', a.uid));
+        if (st.nomes[a.uid]) lote.delete(doc(db, 'nomes', a.uid));
         await lote.commit();
         dlg.close();
       } catch { document.getElementById('e-msg').textContent = 'Não consegui apagar agora.'; }
@@ -751,48 +816,19 @@ export function iniciarProfessor(user, opcoes = {}) {
         const outro = st.alunos.find((x) => x.turma === a.turma && x.uid !== a.uid && x.numeroChamada === numero);
         if (outro) { msg.textContent = `O número ${numero} já é de ${outro.apelido}.`; return; }
       }
+      const nomeDigitado = document.getElementById('e-nome').value.trim();
+      const nomeNovo = nomeDigitado ? nomeValido(nomeDigitado) : null;
+      if (nomeDigitado && !nomeNovo) { msg.textContent = 'Escreva o nome completo, com sobrenome.'; return; }
       const campos = { apelido, status, numeroChamada: numero, dataEntrada: entrada || null };
       if (status === 'saiu' && a.status !== 'saiu') campos.dataSaida = hoje();
-      try { await updateDoc(doc(db, 'alunos', a.uid), campos); dlg.close(); }
+      try {
+        const lote = writeBatch(db);
+        lote.update(doc(db, 'alunos', a.uid), campos);
+        if (nomeNovo && nomeNovo !== a.nome) lote.set(doc(db, 'nomes', a.uid), { nome: nomeNovo, turma: a.turma, atualizadoEm: serverTimestamp() });
+        await lote.commit(); dlg.close();
+      }
       catch { msg.textContent = 'Não consegui salvar agora.'; }
     };
-    dlg.showModal();
-  }
-
-  // menção: cada escolha é salva na hora, sem botão de salvar
-  function abrirMencao(uid) {
-    const f = st.fases.find((x) => x.id === st.faseSel);
-    const a = st.alunos.find((x) => x.uid === uid);
-    if (!f || !a) return;
-    const v = st.aval[progId(uid, f.id)] ?? {};
-    const habs = st.mundo?.habilidades ?? {};
-    const campos = (f.habilidades ?? []).map((cod) => `
-      <label for="m-${esc(cod)}">${esc(cod)} <span class="nota">${esc(habs[cod] ?? '')}${(f.porGrupo ?? []).includes(cod) ? ' · menção de grupo' : ''}</span></label>
-      <div class="mencoes-botoes" data-hab="${esc(cod)}">
-        ${[['A', 'A'], ['PA', 'PA'], ['NA', 'NA'], ['', 'Limpar']].map(([o, rot]) => `<button type="button" class="mini ${o ? `m-${o}` : ''} ${(v.mencoes?.[cod] ?? '') === o ? 'sel' : ''}" data-m="${o}">${rot}</button>`).join('')}
-      </div>
-      <details class="mais"><summary>Critérios</summary><dl><dt>A</dt><dd>${esc(f.criterios?.[cod]?.A ?? '')}</dd><dt>PA</dt><dd>${esc(f.criterios?.[cod]?.PA ?? '')}</dd><dt>NA</dt><dd>${esc(f.criterios?.[cod]?.NA ?? '')}</dd></dl></details>`).join('');
-    dlg.onclick = null;
-    dlg.innerHTML = `
-      <div class="form">
-        <h2>${esc(a.apelido)} · ${esc(f.codigo)}</h2>
-        ${campos}
-        <p class="nota" id="m-estado">Cada escolha é salva na hora. O aluno só vê a menção depois que você valida a fase.</p>
-        <button class="botao" type="button" id="m-fechar">Fechar</button>
-      </div>`;
-    document.getElementById('m-fechar').onclick = () => dlg.close();
-    dlg.querySelectorAll('.mencoes-botoes').forEach((grupo) => {
-      grupo.onclick = async (ev) => {
-        const b = ev.target.closest('[data-m]');
-        if (!b) return;
-        const out = document.getElementById('m-estado');
-        try {
-          await setDoc(refAval(uid), { ...baseAval(uid), mencoes: { [grupo.dataset.hab]: b.dataset.m || null } }, { merge: true });
-          grupo.querySelectorAll('[data-m]').forEach((x) => x.classList.toggle('sel', x === b));
-          out.textContent = 'Salvo ✓';
-        } catch { out.textContent = 'Não consegui salvar.'; }
-      };
-    });
     dlg.showModal();
   }
 
@@ -940,7 +976,14 @@ export function iniciarProfessor(user, opcoes = {}) {
   // O evento "close" chega depois; se outra janela já abriu no lugar (Agenda → Editar o roteiro), não apaga os botões dela.
   dlg.addEventListener('close', () => { if (dlg.open) return; dlg.onclick = null; dlg.onsubmit = null; dlg.onchange = null; dlg.oninput = null; });
 
+  desenhar();
+
   return () => {
+    gravarPendentes();
+    window.removeEventListener('pagehide', gravarPendentes);
+    document.body.classList.remove('prof');
+    document.getElementById('px-aviso')?.remove();
+    app.oninput = null; app.onfocusout = null;
     paradas.forEach((p) => p());
     paradasTurma.forEach((p) => p());
     if (paraProf) paraProf();

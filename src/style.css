@@ -916,3 +916,8 @@ button.mapa-segredos { font: inherit; color: var(--ouro); background: none; bord
 .mapa-btn.com-aviso { position: relative; }
 .mapa-btn.com-aviso::after { content: ''; position: absolute; top: -6px; right: -6px; width: 12px; height: 12px; border-radius: 50%; background: #e03a3a; border: 2px solid #fff; }
 .mapa-girar .btn { margin-top: 18px; }
+
+/* nomes e botões do cartão do aluno quebram de linha em telas estreitas */
+.cab-aluno { flex-wrap: wrap; }
+.cab-aluno > div:not(.cab-botoes) { min-width: 120px; }
+.cab-aluno > .cab-botoes { flex: 1 1 auto; }

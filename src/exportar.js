@@ -22,7 +22,7 @@ const dia = (ts) => (ts?.toMillis ? new Date(ts.toMillis()).toISOString().slice(
 
 function alunosDaTurma(st) {
   return st.alunos.filter((a) => a.turma === st.turma && a.status === 'ativo')
-    .sort((a, b) => (a.numeroChamada ?? 999) - (b.numeroChamada ?? 999) || String(a.apelido).localeCompare(String(b.apelido), 'pt-BR'));
+    .sort((a, b) => (a.nome || a.apelido).localeCompare(b.nome || b.apelido, 'pt-BR'));
 }
 
 // anonimizar = true usa "Aluno N" (número de chamada) no lugar do apelido
@@ -30,7 +30,7 @@ export function montarDados(st, { anonimizar, uids }) {
   const turma = st.turmas.find((t) => t.id === st.turma);
   const estados = turma?.estadoFases ?? {};
   const alunos = alunosDaTurma(st).filter((a) => !uids || uids.includes(a.uid));
-  const nome = (a, i) => (anonimizar ? `Aluno ${a.numeroChamada ?? i + 1}` : a.apelido);
+  const nome = (a, i) => (anonimizar ? `Aluno ${a.numeroChamada ?? i + 1}` : a.nome || a.apelido);
   const fases = [];
   const mencoes = [];
   const atitudes = [];
