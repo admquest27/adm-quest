@@ -131,7 +131,7 @@ export const PERSONAGENS = {
     { quem: 'crianca', area: { x: 14, y: 35, w: 8, h: 4 } },
     { quem: 'monge', area: { x: 28, y: 13, w: 8, h: 4 } },
   ],
-  pombo: { area: { x: 15, y: 33, w: 7, h: 4 }, segredo: 'pombo' },
+  pombo: { area: { x: 15, y: 32.5, w: 9, h: 2 }, segredo: 'pombo' }, // passeia acima da fonte, sempre em chão onde o aluno chega
   galinhas: { area: { x: 56, y: 36, w: 6, h: 3 }, quantas: 5, segredo: 'galinhas', esbarroes: 6 },
   peixes: { rio: { x0: 0, x1: 0 }, lagos: true },
 };
