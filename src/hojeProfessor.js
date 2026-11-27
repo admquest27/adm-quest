@@ -49,7 +49,7 @@ export function htmlHoje(st) {
   if (!st.turmas.length) return '<h1>Bem-vindo</h1><section class="px-card"><h2>Comece criando uma turma</h2><button type="button" class="px-btn cheio" data-acao="ir" data-v="ajustes" data-sub="turmas">Criar turma</button></section>';
   const turma = turmaAtual(st);
   const lista = [];
-  const pend = st.alunos.filter((a) => a.status === 'pendente');
+  const pend = st.alunos.filter((a) => a.status === 'pendente' && !st.arquivadas?.some((t) => t.id === a.turma));
   const daqui = pend.filter((a) => a.turma === st.turma);
   if (pend.length) lista.push(pendencia('ambar', `${pend.length} cadastro(s) esperando aprovação`, daqui.length === pend.length ? daqui.map((a) => esc(nomeCurto(a))).join(', ') : `${daqui.length} nesta turma e ${pend.length - daqui.length} em outra`, 'Revisar', 'data-acao="ir" data-v="alunos"'));
   for (const f of st.fases.filter((x) => !x.arquivada && ['aberta', 'encerrada'].includes(estadoDe(st, x.id)))) {

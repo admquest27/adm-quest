@@ -44,7 +44,11 @@ export function iniciarAluno(user, opcoes = {}) {
   const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>`
     : opcoes.teste ? '<div class="ver-faixa">Jogando como teste <button id="sair-ver" class="mini">Voltar ao painel</button></div>' : '');
   // as telas do jogo (com o menu) usam a classe "jogo"; as de entrada continuam como cartões
-  const mostrar = (html, classe) => tela(faixa() + html, html.startsWith('<div class="jg">') ? 'jogo' : classe);
+  const mostrar = (html, classe) => {
+    tela(faixa() + html, html.startsWith('<div class="jg">') ? 'jogo' : classe);
+    // bolinha no botão Guilda quando há convite para a guilda esperando resposta
+    if (!ver && !grupoDe(st.grupos, ATV_GUILDA, alvo) && convitesPara(st.grupos, ATV_GUILDA, alvo).length) app.querySelector('.jg-menu [data-nav="guilda"]')?.classList.add('com-aviso');
+  };
 
   mostrar(htmlCarregando());
 
@@ -198,13 +202,13 @@ export function iniciarAluno(user, opcoes = {}) {
         }
         clearTimeout(st.espera);
         st.vistaDecidida = true;
-        if (rec.mapa && st.mundo && st.fases.length) st.noMapa = true;
+        if (st.mundo && st.fases.length) st.noMapa = true;
       }
     }
     if (st.naCarteira) return telaCarteira();
     if (st.naGuilda && rec.guildas) return telaGuilda();
     if (st.faseAberta) return telaCartao();
-    if (st.noMapa && rec.mapa) return telaMapa();
+    if (st.noMapa) return telaMapa();
     mapa?.esconder();
     return telaLista();
   }
@@ -452,7 +456,6 @@ export function iniciarAluno(user, opcoes = {}) {
     try {
       if (b.id === 'sair') { mapa?.destruir(); mapa = null; signOut(auth); return; }
       if (b.id === 'sair-ver') { mapa?.destruir(); mapa = null; opcoes.aoSair?.(); return; }
-      if (b.id === 'abrir-mapa') { st.noMapa = true; st.aviso = ''; desenhar(); return; }
       if (b.dataset.nav) {
         const destino = b.dataset.nav;
         st.faseAberta = null; st.voltarMapa = false; st.montando = null; st.aviso = '';

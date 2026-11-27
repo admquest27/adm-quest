@@ -18,6 +18,7 @@ import { fazerBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './bac
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
 import { ATV_GUILDA, configGuilda } from './grupos.js';
+import { podeExcluir, excluirTurma, arquivarTurma, reativarTurma } from './turmasProfessor.js';
 import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO, planejar, seletorBimestre } from './calendario.js';
 import { htmlPctd, tratarPctd, mudarPctd } from './pctdProfessor.js';
 import { abrirExportacao, exportarAluno } from './exportar.js';
@@ -63,7 +64,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     salaFase: null, salaAluno: null, salaFiltro: 'todos', salaNotas: {}, planFase: null, fichaUid: null, nomes: {},
     cal: null, plano: null, calBim: null,
     turma: ler('turma') || '',
-    turmas: [], alunos: [], fases: [], mundo: null,
+    turmas: [], arquivadas: [], alunos: [], fases: [], mundo: null,
     progresso: {}, aval: {}, comentarios: [], anotacoes: [], profFase: null,
     faseSel: null, importacao: null, aviso: '', painelVista: null,
     carregou: { turmas: false, alunos: false },
@@ -82,7 +83,10 @@ export function iniciarProfessor(user, opcoes = {}) {
 
   // ---------- dados em tempo real ----------
   paradas.push(onSnapshot(collection(db, 'turmas'), (s) => {
-    st.turmas = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
+    const todas = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
+    // as arquivadas saem do seletor e das telas; aparecem só em Ajustes
+    st.turmas = todas.filter((t) => t.arquivada !== true);
+    st.arquivadas = todas.filter((t) => t.arquivada === true);
     if (!st.turmas.some((t) => t.id === st.turma)) st.turma = st.turmas[0]?.id ?? '';
     st.carregou.turmas = true;
     ligarTurma();
@@ -180,7 +184,7 @@ export function iniciarProfessor(user, opcoes = {}) {
   const estadoDe = (faseId) => turmaAtual()?.estadoFases?.[faseId] ?? 'trancada';
   const alunosDaTurma = () => ordenarAlunos(st.alunos.filter((a) => a.turma === st.turma));
   const ativosDaTurma = () => alunosDaTurma().filter((a) => a.status === 'ativo');
-  const pendentesTotal = () => st.alunos.filter((a) => a.status === 'pendente').length;
+  const pendentesTotal = () => st.alunos.filter((a) => a.status === 'pendente' && !st.arquivadas.some((t) => t.id === a.turma)).length;
 
   const planoAgenda = () => (st.cal && st.turma ? planejar(st) : null);
 
@@ -391,8 +395,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       <p class="nota">Tudo é novo para os alunos. Ligue cada recurso quando a turma estiver pronta; o que acontece antes continua contando.</p>
       <ul class="lista">
         ${item('admbux', 'AdmBux, loja e conquistas', 'As moedas já são contadas desde a primeira fase validada; ao ligar, o aluno vê o saldo acumulado.')}
-        ${item('guildas', 'Guildas', 'Botão "Guilda" no topo: integrantes, nome e escudo. Os grupos de cada fase funcionam mesmo desligado.')}
-        ${item('mapa', 'Mapa da Vila', 'Botão "Abrir o mapa da Vila" na tela de fases: o aluno anda pela Vila, entra nas fases pelo mapa e procura os segredos. A lista continua disponível.')}
+        ${item('guildas', 'Guildas', 'Botão "Guilda" no menu: integrantes, nome e escudo. Os grupos de cada fase funcionam mesmo desligado.')}
       </ul>`;
   }
 
@@ -404,10 +407,12 @@ export function iniciarProfessor(user, opcoes = {}) {
         <div class="linha-btn">
           <button class="mini ${t.aberta ? 'ok' : 'ruim'}" data-acao="aberta" data-id="${esc(t.id)}">${t.aberta ? 'Aberta para cadastros' : 'Fechada'}</button>
           <button class="mini" data-acao="codigo" data-id="${esc(t.id)}">Trocar código</button>
+          ${podeExcluir(t, st.alunos) ? `<button class="mini ruim" data-acao="turma-excluir" data-id="${esc(t.id)}">Excluir</button>` : `<button class="mini" data-acao="turma-arquivar" data-id="${esc(t.id)}">Arquivar</button>`}
         </div>
       </li>`).join('');
     return `<h2>Turmas</h2>
       <ul class="lista">${cartoes || '<li class="vazio">Nenhuma turma ainda.</li>'}</ul>
+      ${st.arquivadas.length ? `<details data-guarda="arquivadas"><summary>Turmas arquivadas (${st.arquivadas.length})</summary><ul class="lista">${st.arquivadas.map((t) => `<li class="turma-card"><div><strong>${esc(t.nome || t.id)}</strong> <span class="nota">(${esc(t.id)}) · nada foi apagado</span></div><div class="linha-btn"><button class="mini" data-acao="turma-reativar" data-id="${esc(t.id)}">Reativar</button></div></li>`).join('')}</ul></details>` : ''}
       <h2>Nova turma</h2>
       <form id="form-turma" class="form" autocomplete="off">
         <label for="t-id">Identificação (ex.: 1A)</label>
@@ -552,6 +557,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       if (acao === 'ir') { irPara(b.dataset.v, b.dataset.sub); return; }
       if (acao === 'sub') { st.sub[st.aba] = b.dataset.v; st.planFase = null; st.painelVista = null; desenhar(); return; }
       if (acao === 'turma') { trocarTurma(b.dataset.v); return; }
+      if (acao.startsWith('turma-')) { await acaoTurma(acao, b.dataset.id); return; }
       if (acao === 'ir-sala') { irPara('sala'); st.salaFase = b.dataset.id; st.salaFiltro = b.dataset.filtro ?? 'todos'; desenhar(); return; }
       if (acao === 'ir-fase') { irPara('planejar', 'fases'); st.planFase = b.dataset.id; desenhar(); return; }
       if (acao === 'ir-radar') { irPara('alunos', 'radar'); return; }
@@ -654,6 +660,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     const teste = document.getElementById('t-teste').checked;
     if (!/^[A-Z0-9_-]{1,12}$/.test(id)) { msg.textContent = 'A identificação usa só letras, números, - ou _.'; return; }
     if (!/^[A-Z0-9]{4,10}$/.test(codigo)) { msg.textContent = 'O código tem de 4 a 10 letras ou números.'; return; }
+    if (st.arquivadas.some((t) => t.id === id)) { msg.textContent = 'Há uma turma arquivada com essa identificação. Reative-a ou use outra.'; return; }
     if (st.turmas.some((t) => t.id === id)) { msg.textContent = 'Já existe uma turma com essa identificação.'; return; }
     try {
       if ((await getDoc(doc(db, 'codigos', codigo))).exists()) { msg.textContent = 'Esse código já está em uso. Escolha outro.'; return; }
@@ -664,6 +671,25 @@ export function iniciarProfessor(user, opcoes = {}) {
       st.turma = id; guardar('turma', id);
     } catch { msg.textContent = 'Não consegui criar a turma agora.'; }
   };
+
+  async function acaoTurma(acao, id) {
+    const t = [...st.turmas, ...st.arquivadas].find((x) => x.id === id);
+    if (!t) return;
+    const nome = t.nome || t.id;
+    if (acao === 'turma-reativar') { await reativarTurma(t); aviso(`${nome} reativada, fechada para cadastros`); return; }
+    if (acao === 'turma-arquivar') {
+      if (!confirm(`Arquivar ${nome}? Ela sai das telas e o código para de aceitar cadastros. Nada é apagado e você pode reativar.`)) return;
+      await arquivarTurma(t); aviso(`${nome} arquivada`); return;
+    }
+    const quantos = st.alunos.filter((a) => a.turma === t.id).length;
+    const unica = t.teste && st.turmas.filter((x) => x.teste).length === 1;
+    const alerta = t.teste ? ` Os ${quantos} cadastro(s) de teste e tudo o que fizeram serão apagados.${unica ? ' É a única turma de teste: o "Jogar como teste" deixa de funcionar até você criar outra.' : ''}` : '';
+    const digitado = prompt(`Excluir ${nome}?${alerta} Isso não pode ser desfeito.\n\nPara confirmar, digite o nome da turma: ${nome}`);
+    if (digitado === null) return;
+    if (digitado.trim() !== nome) { falha('O nome não confere. Nada foi excluído.'); return; }
+    const motivo = await excluirTurma(t, st.alunos);
+    if (motivo) falha(motivo); else aviso(`${nome} excluída`);
+  }
 
   async function trocarCodigo(id) {
     const t = st.turmas.find((x) => x.id === id);
