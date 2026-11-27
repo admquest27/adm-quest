@@ -573,3 +573,16 @@ test('professor joga como teste: cria o próprio personagem e marca progresso na
   await assertSucceeds(deleteDoc(doc(db, 'progresso/prof_m1f1')));
   await assertSucceeds(deleteDoc(doc(db, 'alunos/prof')));
 });
+
+test('grupos: só o professor muda o limite de um grupo, e o limite dele passa a valer para os convites', async () => {
+  await semearGrupos();
+  await assertSucceeds(criarGrupo('ativo1', 'g1', 'm1f7', ['ativo2']));
+  await assertFails(updateDoc(doc(aluno('ativo1'), 'grupos/g1'), { convites: ['ativo2', 'ativo3'] })); // padrão é dupla
+  await assertFails(updateDoc(doc(aluno('ativo1'), 'grupos/g1'), { limite: 3 }));
+  await assertFails(updateDoc(doc(aluno('ativo1'), 'grupos/g1'), { limite: 3, convites: ['ativo2', 'ativo3'] }));
+  await assertFails(updateDoc(doc(aluno('ativo1'), 'grupos/g1'), { aceito: true }));
+  await assertSucceeds(updateDoc(doc(prof(), 'grupos/g1'), { limite: 3 }));
+  await assertSucceeds(updateDoc(doc(aluno('ativo1'), 'grupos/g1'), { convites: ['ativo2', 'ativo3'] }));
+  await assertSucceeds(aceitar('ativo2', 'g1', 'm1f7', ['ativo1', 'ativo2'], ['ativo3']));
+  await assertSucceeds(aceitar('ativo3', 'g1', 'm1f7', ['ativo1', 'ativo2', 'ativo3'], []));
+});

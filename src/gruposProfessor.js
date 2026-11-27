@@ -6,7 +6,7 @@ import { db } from './firebase.js';
 import { esc } from './ui.js';
 import { progId } from './fases.js';
 import { MARCAS } from './registros.js';
-import { MODOS, ATV_GUILDA, configDaFase, configGuilda, atividadeDaFase, sortear, svgEscudo, nomeGuilda } from './grupos.js';
+import { MODOS, ATV_GUILDA, configDaFase, configGuilda, atividadeDaFase, limites, textoTamanho, distribuir, svgEscudo, nomeGuilda } from './grupos.js';
 
 const apelido = (st, uid) => { const a = st.alunos.find((x) => x.uid === uid); return a ? nomeCurto(a) : '(saiu)'; };
 const grupos = (st, atv) => (st.grupos ?? []).filter((g) => g.atividade === atv);
@@ -23,8 +23,14 @@ export function htmlGrupos(st, { atv, cfg, faseId, ativos, titulo, mostrarConfig
   const cartaoGrupo = (g, i) => {
     const p = g.proposta;
     const todos = p && g.membros.every((u) => p.confirmacoes.includes(u));
+    const lim = limites(cfg, g);
+    const selos = [
+      lim.excecao ? `<span class="chip pendente">Exceção: ${g.membros.length} integrantes</span>` : g.limite && g.limite !== lim.padraoMax ? `<span class="chip pendente">Exceção: aceita até ${g.limite}</span>` : '',
+      lim.incompleto ? '<span class="chip bloqueado">Incompleto</span>' : '',
+      g.aceito && g.membros.length < lim.min ? '<span class="chip ativo">Aceito assim</span>' : '',
+    ].join(' ');
     return `<li class="grupo-card">
-      <div class="grupo-topo">${ehGuilda && g.escudo ? svgEscudo(g.escudo, 32) : ''}<strong>${ehGuilda ? esc(nomeGuilda(g)) : `Grupo ${i + 1}`}</strong> <span class="nota">${g.membros.length} integrante(s)</span></div>
+      <div class="grupo-topo">${ehGuilda && g.escudo ? svgEscudo(g.escudo, 32) : ''}<strong>${ehGuilda ? esc(nomeGuilda(g)) : `Grupo ${i + 1}`}</strong> <span class="nota">${g.membros.length} integrante(s)</span> ${selos}</div>
       <div class="chips-membros">${g.membros.map((u) => `<span class="chip">${esc(apelido(st, u))} <button class="x" data-acao="gr-tirar" data-g="${esc(g.id)}" data-uid="${esc(u)}" aria-label="Tirar ${esc(apelido(st, u))} do grupo">×</button></span>`).join('')}
         ${(g.convites ?? []).map((u) => `<span class="chip convidado">${esc(apelido(st, u))} (convidado)</span>`).join('')}</div>
       ${ehGuilda && p ? `<div class="proposta"><span class="nota">Proposta:</span> ${svgEscudo(p.escudo, 28)} <strong>${esc(p.nome)}</strong> <span class="nota">${p.confirmacoes.length}/${g.membros.length} confirmaram${todos ? '' : ' (dá para aprovar mesmo assim)'}</span>
@@ -33,15 +39,20 @@ export function htmlGrupos(st, { atv, cfg, faseId, ativos, titulo, mostrarConfig
         ${faseId ? `<button class="mini" data-acao="gr-mencao" data-g="${esc(g.id)}" data-fase="${esc(faseId)}">Menção do grupo</button>` : ''}
         <button class="mini" data-acao="gr-registro" data-g="${esc(g.id)}" data-fase="${esc(faseId ?? '')}">Registro do grupo</button>
         <button class="mini" data-acao="gr-juntar" data-g="${esc(g.id)}" data-atv="${esc(atv)}">+ marcados</button>
+        <button class="mini" data-acao="gr-mais" data-g="${esc(g.id)}">Permitir mais um</button>
+        ${lim.incompleto ? `<button class="mini ok" data-acao="gr-aceitar" data-g="${esc(g.id)}">Aceitar assim</button>` : ''}
+        ${g.limite || g.aceito ? `<button class="mini" data-acao="gr-padrao" data-g="${esc(g.id)}">Voltar ao padrão</button>` : ''}
         <button class="mini ruim" data-acao="gr-desfazer" data-g="${esc(g.id)}">Desfazer</button></div></li>`;
   };
   const config = mostrarConfig ? `<div class="gr-config">
       <label>Quem monta <select data-gr-cfg="modo" data-atv="${esc(atv)}">${Object.entries(MODOS).map(([k, r]) => `<option value="${k}" ${cfg.modo === k ? 'selected' : ''}>${r}</option>`).join('')}</select></label>
-      <label>Tamanho <select data-gr-cfg="tamanho" data-atv="${esc(atv)}">${[2, 3, 4, 5, 6].map((n) => `<option value="${n}" ${cfg.tamanho === n ? 'selected' : ''}>${n === 2 ? 'dupla' : n === 3 ? 'trio' : `${n} pessoas`}</option>`).join('')}</select></label>
+      <label>Mínimo <select data-gr-cfg="minimo" data-atv="${esc(atv)}">${[1, 2, 3, 4, 5, 6, 7, 8].filter((n) => n <= cfg.tamanho).map((n) => `<option value="${n}" ${limites(cfg).min === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label>Máximo <select data-gr-cfg="tamanho" data-atv="${esc(atv)}">${[2, 3, 4, 5, 6, 7, 8].map((n) => `<option value="${n}" ${cfg.tamanho === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       ${cfg.modo === 'alunos' ? `<button class="mini ${cfg.aberta ? 'ok' : ''}" data-acao="gr-aberta" data-atv="${esc(atv)}">${cfg.aberta ? 'Alunos montando agora ✓ (tocar para fechar)' : 'Abrir para os alunos montarem'}</button>` : ''}
     </div>` : '';
-  return `<details class="roteiro grupos" ${lista.length || cfg.aberta ? 'open' : ''}><summary>${titulo} · ${lista.length} grupo(s)${sem.length ? ` · ${sem.length} sem grupo` : ''}</summary>
-    ${config}
+  const ajuda = mostrarConfig ? `<p class="nota">Grupos de ${textoTamanho(limites(cfg).min, cfg.tamanho)}. Há três jeitos de formar: os alunos montam por convite (escolha em "Quem monta" e abra para eles), você marca nomes em "Sem grupo", ou usa o sorteio. Exceções valem só para o grupo escolhido, e os alunos não veem a etiqueta.</p>` : '';
+  return `<details class="roteiro grupos" ${mostrarConfig || lista.length || cfg.aberta ? 'open' : ''}><summary>${titulo} · ${lista.length} grupo(s)${sem.length ? ` · ${sem.length} sem grupo` : ''}</summary>
+    ${ajuda}${config}
     <ul class="lista grupos-lista">${lista.map(cartaoGrupo).join('') || '<li class="vazio">Nenhum grupo ainda.</li>'}</ul>
     ${sem.length ? `<h4>Sem grupo <span class="nota">(só você vê)</span></h4>
       <ul class="sem-grupo">${sem.map((a) => `<li><label class="check"><input type="checkbox" data-semgrupo="${esc(atv)}" value="${esc(a.uid)}"> ${esc(nomeCurto(a))}</label></li>`).join('')}</ul>
@@ -64,9 +75,11 @@ export function htmlGruposDaFase(st, f, turma, ativos) {
 // ---------- ações ----------
 const marcados = (atv) => [...document.querySelectorAll(`[data-semgrupo="${atv}"]:checked`)].map((el) => el.value);
 
-function novoGrupo(lote, st, atv, membros) {
+const cfgDe = (st, atv) => { const t = st.turmas.find((x) => x.id === st.turma); return atv === ATV_GUILDA ? configGuilda(t) : configDaFase(t, st.fases.find((x) => x.id === atv)); };
+
+function novoGrupo(lote, st, atv, membros, extra = {}) {
   const ref = doc(collection(db, 'grupos'));
-  lote.set(ref, { turma: st.turma, atividade: atv, membros, convites: [], criador: 'professor', criadoEm: serverTimestamp() });
+  lote.set(ref, { turma: st.turma, atividade: atv, membros, convites: [], criador: 'professor', criadoEm: serverTimestamp(), ...extra });
   for (const u of membros) lote.set(doc(db, 'vagas', `${atv}_${u}`), { uid: u, turma: st.turma, atividade: atv, grupo: ref.id });
 }
 
@@ -85,13 +98,12 @@ export async function tratarGrupos(acao, b, ctx) {
     }
     case 'gr-sortear': {
       const atv = b.dataset.atv;
-      const f = st.fases.find((x) => x.id === atv);
-      const t = st.turmas.find((x) => x.id === st.turma);
-      const tam = (atv === ATV_GUILDA ? configGuilda(t) : configDaFase(t, f))?.tamanho ?? 4;
+      const { min, max } = limites(cfgDe(st, atv));
       const livres = semGrupo(st, atv, ativos).map((a) => a.uid);
-      const novos = sortear(livres, tam);
-      if (!novos.length) return true;
-      if (!confirm(`Sortear ${livres.length} aluno(s) em ${novos.length} grupo(s)?`)) return true;
+      const { grupos: novos, sobra } = distribuir(livres, min, max);
+      if (!novos.length) { falha(`Não dá para formar um grupo de ${textoTamanho(min, max)} com ${livres.length} aluno(s) sem grupo.`); return true; }
+      const aviso = sobra.length ? ` ${sobra.length} aluno(s) ficam sem grupo, porque a conta não fecha com ${textoTamanho(min, max)}: complete à mão ou permita uma exceção.` : '';
+      if (!confirm(`Sortear ${livres.length - sobra.length} aluno(s) em ${novos.length} grupo(s)?${aviso}`)) return true;
       const lote = writeBatch(db);
       novos.forEach((m) => novoGrupo(lote, st, atv, m));
       await lote.commit();
@@ -101,20 +113,34 @@ export async function tratarGrupos(acao, b, ctx) {
       const atv = b.dataset.atv;
       const sel = marcados(atv);
       if (!sel.length) { falha('Marque os alunos do novo grupo.'); return true; }
+      const { min, max } = limites(cfgDe(st, atv));
+      const fora = sel.length < min || sel.length > max;
+      if (fora && !confirm(`O padrão é de ${textoTamanho(min, max)}. Criar mesmo assim um grupo com ${sel.length}?`)) return true;
       const lote = writeBatch(db);
-      novoGrupo(lote, st, atv, sel);
+      novoGrupo(lote, st, atv, sel, sel.length > max ? { limite: sel.length } : sel.length < min ? { aceito: true } : {});
       await lote.commit();
       return true;
     }
     case 'gr-juntar': {
       const sel = marcados(b.dataset.atv);
       if (!sel.length) { falha('Marque, na lista "Sem grupo", quem vai entrar neste grupo.'); return true; }
+      const { max } = limites(cfgDe(st, b.dataset.atv), g);
+      const total = g.membros.length + sel.length;
+      if (total > max && !confirm(`Este grupo aceita até ${max}. Permitir que fique com ${total}?`)) return true;
       const lote = writeBatch(db);
-      lote.update(doc(db, 'grupos', g.id), { membros: [...g.membros, ...sel], convites: (g.convites ?? []).filter((u) => !sel.includes(u)) });
+      lote.update(doc(db, 'grupos', g.id), { membros: [...g.membros, ...sel], convites: (g.convites ?? []).filter((u) => !sel.includes(u)), ...(total > max ? { limite: total } : {}) });
       for (const u of sel) lote.set(doc(db, 'vagas', `${g.atividade}_${u}`), { uid: u, turma: st.turma, atividade: g.atividade, grupo: g.id });
       await lote.commit();
       return true;
     }
+    case 'gr-mais': {
+      const { max } = limites(cfgDe(st, g.atividade), g);
+      const novo = Math.min(12, Math.max(max, g.membros.length + (g.convites?.length ?? 0)) + 1);
+      await updateDoc(doc(db, 'grupos', g.id), { limite: novo });
+      return true;
+    }
+    case 'gr-aceitar': await updateDoc(doc(db, 'grupos', g.id), { aceito: true }); return true;
+    case 'gr-padrao': await updateDoc(doc(db, 'grupos', g.id), { limite: deleteField(), aceito: deleteField() }); return true;
     case 'gr-tirar': {
       const u = b.dataset.uid;
       if (!confirm(`Tirar ${apelido(st, u)} deste grupo?`)) return true;
@@ -159,8 +185,8 @@ export async function mudarConfigGrupos(el, st) {
     const atv = el.dataset.atv;
     const f = st.fases.find((x) => x.id === atv);
     const base = atv === ATV_GUILDA ? configGuilda(t) : configDaFase(t, f);
-    const valor = el.dataset.grCfg === 'tamanho' ? Number(el.value) : el.value;
-    await updateDoc(refTurma, { [`atividades.${atv}`]: { ...base, [el.dataset.grCfg]: valor, ...(el.dataset.grCfg === 'modo' && valor !== 'alunos' ? { aberta: false } : {}) } });
+    const valor = ['tamanho', 'minimo'].includes(el.dataset.grCfg) ? Number(el.value) : el.value;
+    await updateDoc(refTurma, { [`atividades.${atv}`]: { ...base, [el.dataset.grCfg]: valor, ...(el.dataset.grCfg === 'tamanho' && base.minimo > valor ? { minimo: valor } : {}), ...(el.dataset.grCfg === 'modo' && valor !== 'alunos' ? { aberta: false } : {}) } });
     return true;
   }
   return false;

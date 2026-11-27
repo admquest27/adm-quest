@@ -266,6 +266,11 @@ service cloud.firestore {
       return atividade(turma, atv).get('tamanho', 4);
     }
 
+    // O professor pode dar a um grupo um limite próprio (campo "limite", que o aluno não consegue alterar).
+    function limiteDoGrupo(g) {
+      return g.get('limite', tamanho(g.turma, g.atividade));
+    }
+
     function vaga(atv, uid) {
       return /databases/$(database)/documents/vagas/$(atv + '_' + uid);
     }
@@ -281,7 +286,7 @@ service cloud.firestore {
         return antes().convites.hasAny([eu()])
           && depois().membros == antes().membros.concat([eu()])
           && depois().convites == antes().convites.removeAll([eu()])
-          && depois().membros.size() <= tamanho(antes().turma, antes().atividade)
+          && depois().membros.size() <= limiteDoGrupo(antes())
           && existsAfter(vaga(antes().atividade, eu()))
           && getAfter(vaga(antes().atividade, eu())).data.grupo == gid;
       }
@@ -297,7 +302,7 @@ service cloud.firestore {
           && depois().membros == antes().membros
           && depois().convites is list
           && !depois().convites.hasAny(antes().membros)
-          && depois().membros.size() + depois().convites.size() <= tamanho(antes().turma, antes().atividade);
+          && depois().membros.size() + depois().convites.size() <= limiteDoGrupo(antes());
       }
 
       function sair() {

@@ -1,17 +1,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sortear, configDaFase, atividadeDaFase, grupoDe, convitesPara, ATV_GUILDA } from '../src/grupos.js';
+import { distribuir, limites, configDaFase, atividadeDaFase, grupoDe, convitesPara, ATV_GUILDA } from '../src/grupos.js';
 
-test('sorteio: grupos do tamanho pedido, sem grupo de uma pessoa só', () => {
-  const uids = Array.from({ length: 10 }, (_, i) => `a${i}`);
-  const g4 = sortear(uids, 4);
-  assert.equal(g4.length, 2);
-  assert.deepEqual(g4.map((g) => g.length).sort(), [5, 5]);
-  assert.deepEqual(g4.flat().sort(), [...uids].sort());
-  const g2 = sortear(uids.slice(0, 5), 2);
-  assert.deepEqual(g2.map((g) => g.length).sort(), [2, 3]);
-  assert.deepEqual(sortear(['x'], 4), [['x']]);
-  assert.deepEqual(sortear([], 4), []);
+test('sorteio: respeita mínimo e máximo, equilibra e separa quem sobra', () => {
+  const uids = Array.from({ length: 11 }, (_, i) => 'a' + i);
+  const tamanhos = (r) => r.grupos.map((g) => g.length).sort();
+  const r = distribuir(uids, 3, 4);
+  assert.deepEqual(tamanhos(r), [3, 4, 4]);
+  assert.equal(r.sobra.length, 0);
+  assert.equal(new Set(r.grupos.flat()).size, 11);
+  const exato = distribuir(uids, 4, 4);
+  assert.deepEqual(tamanhos(exato), [4, 4]);
+  assert.equal(exato.sobra.length, 3);
+  assert.deepEqual(tamanhos(distribuir(uids.slice(0, 5), 2, 2)), [2, 2]);
+  assert.deepEqual(distribuir(['x'], 2, 4), { grupos: [], sobra: ['x'] });
+  assert.deepEqual(distribuir([], 2, 4), { grupos: [], sobra: [] });
+});
+
+test('limites: o grupo com exceção usa o próprio máximo; o pequeno aceito deixa de ser incompleto', () => {
+  const cfg = { tamanho: 3, minimo: 3 };
+  assert.equal(limites(cfg).max, 3);
+  const quatro = limites(cfg, { limite: 4, membros: ['a', 'b', 'c', 'd'] });
+  assert.deepEqual([quatro.max, quatro.excecao, quatro.incompleto], [4, true, false]);
+  assert.equal(limites(cfg, { membros: ['a'] }).incompleto, true);
+  assert.equal(limites(cfg, { membros: ['a'], aceito: true }).incompleto, false);
+  assert.equal(limites({ tamanho: 2, minimo: 5 }).min, 2);
 });
 
 test('configuração da fase: padrão do conteúdo, ajuste da turma e "sem grupos"', () => {

@@ -4,7 +4,7 @@ import { db } from './firebase.js';
 import { esc } from './ui.js';
 import { htmlTela } from './jogo.js';
 import { imgAvatar } from './avatar.js';
-import { grupoDe, convitesPara, svgEscudo, nomeGuilda, FORMAS, CORES, SIMBOLOS } from './grupos.js';
+import { limites, textoTamanho, grupoDe, convitesPara, svgEscudo, nomeGuilda, FORMAS, CORES, SIMBOLOS } from './grupos.js';
 
 const nomeDe = (perfis, uid) => perfis[uid]?.apelido ?? 'Colega';
 const pessoa = (perfis, uid, extra = '') => `<span class="pessoa">${imgAvatar(perfis[uid]?.avatar, 'avatar pq')}<span>${esc(nomeDe(perfis, uid))}${extra}</span></span>`;
@@ -19,10 +19,13 @@ export function htmlFormacao(ctx) {
 
   if (meu) {
     const sou = meu.criador === eu;
-    const vagas = cfg.tamanho - meu.membros.length - (meu.convites?.length ?? 0);
+    const lim = limites(cfg, meu);
+    const vagas = lim.max - meu.membros.length - (meu.convites?.length ?? 0);
+    const faltam = lim.incompleto ? lim.min - meu.membros.length : 0;
     return `<div class="meu-grupo">
       <div class="pessoas">${meu.membros.map((u) => pessoa(perfis, u, u === eu ? ' (você)' : '')).join('')}
         ${(meu.convites ?? []).map((u) => pessoa(perfis, u, ' <span class="nota">convidado</span>')).join('')}</div>
+      ${faltam > 0 ? `<p class="nota">${faltam === 1 ? 'Falta 1 pessoa' : `Faltam ${faltam} pessoas`} para completar o grupo.</p>` : ''}
       ${podeMontar ? `<div class="linha-btn">
         ${sou && vagas > 0 ? `<button class="mini" data-grupo="convidar" data-g="${esc(meu.id)}">Convidar mais (${vagas} vaga${vagas > 1 ? 's' : ''})</button>` : ''}
         ${sou && meu.membros.length === 1 ? `<button class="mini ruim" data-grupo="desfazer" data-g="${esc(meu.id)}">Desfazer o grupo</button>` : ''}
@@ -36,7 +39,7 @@ export function htmlFormacao(ctx) {
 
   if (podeMontar) {
     return `${conv}${montando?.g === 'novo' ? htmlEscolha(ctx, cfg.tamanho - 1) : `<button class="botao" data-grupo="montar">Montar o meu grupo</button>
-      <p class="nota">Escolha até ${cfg.tamanho - 1} colega(s). Cada um recebe o convite e confirma.</p>`}`;
+      <p class="nota">Grupos de ${textoTamanho(limites(cfg).min, cfg.tamanho)}. Escolha até ${cfg.tamanho - 1} colega(s); cada um recebe o convite e confirma.</p>`}`;
   }
   const quem = cfg.modo === 'sorteio' ? 'O professor vai sortear os grupos.' : cfg.modo === 'professor' ? 'O professor vai montar os grupos.' : 'O professor ainda não abriu a formação dos grupos.';
   return `${conv}<p class="nota">${quem}</p>`;

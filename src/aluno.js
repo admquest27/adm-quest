@@ -313,7 +313,8 @@ export function iniciarAluno(user, opcoes = {}) {
       return `<div class="bloco-grupo"><h2>Sua guilda nesta fase</h2>${corpo}</div>`;
     }
     const ctx = { atv, cfg: configDaFase(st.turma, f), grupos: st.grupos, perfis: st.perfis, eu: alvo, ver, montando: st.montando?.atv === atv ? st.montando : null };
-    return `<div class="bloco-grupo"><h2>${cfg.tamanho === 2 ? 'Sua dupla' : cfg.tamanho === 3 ? 'Seu trio' : 'Seu grupo'} nesta fase</h2>${htmlFormacao(ctx)}</div>`;
+    const tam = grupoDe(st.grupos, atv, alvo)?.limite ?? cfg.tamanho;
+    return `<div class="bloco-grupo"><h2>${tam === 2 ? 'Sua dupla' : tam === 3 ? 'Seu trio' : 'Seu grupo'} nesta fase</h2>${htmlFormacao(ctx)}</div>`;
   }
 
   function ctxGuilda() {
