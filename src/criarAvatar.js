@@ -38,7 +38,11 @@ export async function htmlCriador({ escolha, aba = 'corpo', primeiraVez, erro = 
       + pecas(cat, 'pes', av, 'Calçado', 'corpo') + cores(cat, 'corPes', 'cloth', CORES_ROUPA, av.corPes, 'Cor do calçado');
   }
   return `<section class="cartao largo criador">
-    <h1>${primeiraVez ? 'Monte o seu avatar' : 'Editar avatar'}</h1>
+    <div class="av-barra">
+      ${primeiraVez ? '<span></span>' : '<button type="button" class="botao secundario" id="cancelar">Voltar</button>'}
+      <h1>${primeiraVez ? 'Seu avatar' : 'Avatar'}</h1>
+      <button type="button" class="botao" id="salvar">Salvar</button>
+    </div>
     <p class="sub">${primeiraVez ? 'É assim que você vai aparecer na Vila. Dá para mudar quando quiser.' : 'As mudanças só valem depois de salvar.'}</p>
     <div class="av-topo">
       <div class="av-palco"><canvas id="av-previa" width="64" height="64" aria-label="Prévia do avatar"></canvas>
@@ -50,8 +54,6 @@ export async function htmlCriador({ escolha, aba = 'corpo', primeiraVez, erro = 
       </div>
       <div class="av-acoes">
         <button type="button" class="botao secundario" id="av-surpresa">🎲 Surpresa</button>
-        <button type="button" class="botao" id="salvar">Salvar avatar</button>
-        ${primeiraVez ? '' : '<button type="button" class="botao secundario" id="cancelar">Voltar sem salvar</button>'}
         <p class="erro" id="msg">${esc(erro)}</p>
       </div>
     </div>

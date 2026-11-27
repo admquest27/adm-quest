@@ -1,5 +1,6 @@
 // Tela das AdmBux do aluno: saldo, loja, conquistas e extrato. Função pura: recebe os dados e devolve o HTML.
 import { esc } from './ui.js';
+import { htmlTela } from './jogo.js';
 import { imgAvatar } from './avatar.js';
 import { CONQUISTAS, itensDaLoja, podeComprar } from './economia.js';
 
@@ -23,7 +24,7 @@ function previa(i, avatar) {
   return `<span class="amostra-fundo fundo-${esc(i.estilo)}"></span>`;
 }
 
-export function htmlCarteira({ c, eco, compras, avatar, mundoAtual, ver, aviso }) {
+export function htmlCarteira({ c, eco, compras, avatar, mundoAtual, ver, aviso, rec = {}, aba = 'loja', tipo = 'titulo' }) {
   const dicas = eco?.dicas ?? [];
   const dica = dicas.length ? dicas[Math.floor(Date.now() / 86400000) % dicas.length] : '';
   const usando = compras?.usando ?? {};
@@ -47,10 +48,9 @@ export function htmlCarteira({ c, eco, compras, avatar, mundoAtual, ver, aviso }
         ${i.limitado && !meu ? '<span class="chip limitado" title="Some da loja no fim do mundo">Só neste mundo</span>' : ''}</div>
       <div class="item-acao">${botao}</div></li>`;
   };
-  const loja = Object.keys(TIPOS).map((t) => {
-    const lista = itens.filter((i) => i.tipo === t);
-    return lista.length ? `<details class="loja-sec" ${t === 'titulo' ? 'open' : ''}><summary>${TIPOS[t]} (${lista.length})</summary><ul class="loja">${lista.map(cartao).join('')}</ul></details>` : '';
-  }).join('');
+  const lista = itens.filter((i) => i.tipo === tipo);
+  const loja = itens.length ? `<div class="jg-filtros">${Object.entries(TIPOS).map(([t, nome]) => `<button type="button" data-loja="${t}" aria-pressed="${t === tipo}">${nome.replace(' do cartão', '')}</button>`).join('')}</div>
+    ${lista.length ? `<ul class="loja">${lista.map(cartao).join('')}</ul>` : '<p class="nota">Nada desta categoria por enquanto.</p>'}` : '';
 
   const textos = { ...CONQUISTAS, ...(eco?.conquistas ?? {}) };
   const total = Object.keys(textos).length;
@@ -60,25 +60,29 @@ export function htmlCarteira({ c, eco, compras, avatar, mundoAtual, ver, aviso }
   const extrato = c.linhas.slice().reverse().map((l) => `<li class="linha-extrato"><span class="nota">${data(l.quando)}</span><span class="desc">${esc(l.descricao)}</span><span class="valor ${l.valor < 0 ? 'saida' : 'entrada'}">${l.valor > 0 ? '+' : ''}${l.valor}</span></li>`).join('');
   const V = c.V;
 
-  return `<section class="cartao largo esq">
-    <button id="voltar-carteira" class="mini">← Fases</button>
-    <h1>Minhas AdmBux</h1>
-    <div class="saldo ${c.saldo < 0 ? 'negativo' : ''}"><span class="moeda" aria-hidden="true">🪙</span><strong>${c.saldo}</strong><span>AdmBux</span></div>
-    <p class="nota centro-txt">Entrou ${c.entradas} · Saiu ${c.saidas}</p>
-    ${c.saldo < 0 ? '<p class="banner">Seu saldo ficou negativo, porque uma fase deixou de estar validada depois de uma compra. Você não perde o que comprou, mas só volta a comprar quando o saldo ficar positivo.</p>' : ''}
-    ${dica ? `<p class="dica-adm"><strong>Dica de administrador.</strong> ${esc(dica)}</p>` : ''}
-    <p class="erro" id="msg">${esc(aviso ?? '')}</p>
-    <h2>Loja</h2>
-    <p class="nota">Itens só para enfeitar o seu avatar e o seu cartão. Ninguém vê o seu saldo.</p>
-    ${loja || '<p class="vazio">A loja ainda está sendo montada.</p>'}
-    <h2>Conquistas</h2>
-    ${ganhas ? `<ul class="lista conquistas">${ganhas}</ul>` : '<p class="nota">Nenhuma ainda. Elas aparecem de surpresa.</p>'}
-    ${escondidas > 0 ? `<p class="nota">Ainda há ${escondidas} conquista(s) escondida(s).</p>` : ''}
-    <details class="mais"><summary>Como ganhar AdmBux</summary>
-      <p>Fase validada pelo professor: ${V.fase}. Cada bônus feito numa fase validada: ${V.bonus}. Atitude positiva registrada pelo professor: ${V.atitude}. Conquista: ${V.conquista}. No fim de cada mundo, quem guardou AdmBux recebe ${Math.round(V.rendimento * 100)}% do saldo como rendimento da poupança. A menção nunca vale AdmBux.</p></details>
-    <h2>Extrato</h2>
-    ${extrato ? `<ul class="extrato">${extrato}</ul>` : '<p class="nota">Nada por aqui ainda. Conclua uma fase e espere o professor validar.</p>'}
-  </section>`;
+  const abas = [...(rec.admbux ? [['loja', 'Loja']] : []), ['avatar', 'Avatar'], ...(rec.admbux ? [['conquistas', 'Conquistas']] : [])];
+  const atual = abas.some(([id]) => id === aba) ? aba : abas[0][0];
+  const secoes = {
+    loja: () => `${c.saldo < 0 ? '<p class="banner">Seu saldo ficou negativo, porque uma fase deixou de estar validada depois de uma compra. Você não perde o que comprou, mas só volta a comprar quando o saldo ficar positivo.</p>' : ''}
+      <p class="erro" id="msg">${esc(aviso ?? '')}</p>
+      ${loja || '<p class="vazio">A loja ainda está sendo montada.</p>'}
+      ${dica ? `<p class="dica-adm"><strong>Dica de administrador.</strong> ${esc(dica)}</p>` : ''}
+      <p class="nota">Itens só para enfeitar o seu avatar e o seu cartão. Ninguém vê o seu saldo.</p>`,
+    avatar: () => `<div class="jg-avatar"><span class="moldura ${visual(eco, compras).moldura ? `mold-${esc(visual(eco, compras).moldura)}` : ''}">${imgAvatar(avatar, 'avatar-corpo', 'corpo')}</span></div>
+      ${ver ? '' : '<button type="button" id="trocar" class="botao">Mudar o avatar</button>'}<p class="erro" id="msg">${esc(aviso ?? '')}</p>`,
+    conquistas: () => `${ganhas ? `<ul class="lista conquistas">${ganhas}</ul>` : '<p class="nota">Nenhuma ainda. Elas aparecem de surpresa.</p>'}
+      ${escondidas > 0 ? `<p class="nota">Ainda há ${escondidas} conquista(s) escondida(s).</p>` : ''}
+      <details class="mais"><summary>Como ganhar AdmBux</summary>
+        <p>Fase validada pelo professor: ${V.fase}. Cada bônus feito numa fase validada: ${V.bonus}. Atitude positiva registrada pelo professor: ${V.atitude}. Conquista: ${V.conquista}. No fim de cada mundo, quem guardou AdmBux recebe ${Math.round(V.rendimento * 100)}% do saldo como rendimento da poupança. A menção nunca vale AdmBux.</p></details>
+      <h2>Extrato</h2>
+      <p class="nota">Entrou ${c.entradas} · Saiu ${c.saidas}</p>
+      ${extrato ? `<ul class="extrato">${extrato}</ul>` : '<p class="nota">Nada por aqui ainda. Conclua uma fase e espere o professor validar.</p>'}`,
+  };
+  return htmlTela({
+    aba: 'mochila', rec, titulo: 'Mochila',
+    direita: rec.admbux ? `<span class="jg-saldo ${c.saldo < 0 ? 'negativo' : ''}">${c.saldo} AdmBux</span>` : '',
+    corpo: `<div class="jg-abas">${abas.map(([id, nome]) => `<button type="button" data-mochila="${id}" ${id === atual ? 'aria-current="page"' : ''}>${nome}</button>`).join('')}</div>${secoes[atual]()}`,
+  });
 }
 
 // Aviso de conquista nova (guardado no aparelho, só para não repetir o aviso).

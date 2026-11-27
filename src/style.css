@@ -789,8 +789,6 @@ h1, h2, h3, .pixel { font-family: var(--f-titulo); font-weight: 700; letter-spac
 .ab-nota { color: #cfc6e6; font-size: 0.82rem; line-height: 1.4; margin: 0; text-align: center; }
 .ab-erro { color: #ffb4a8; font-size: 0.88rem; margin: 0; text-align: center; }
 .ab-erro:empty { display: none; }
-.ab-girar { display: none; position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center; color: #cfc6e6; font-family: var(--f-titulo); }
-@media (orientation: portrait) and (max-width: 700px) { .ab-girar { display: block; } }
 @media (orientation: portrait) {
   .ab-veu { background: linear-gradient(rgba(14,10,34,.85) 0%, rgba(14,10,34,.55) 45%, rgba(14,10,34,.2) 100%); }
   .ab-logo { left: 8vw; top: 32%; width: 84vw; max-width: 460px; }
@@ -825,8 +823,6 @@ h1, h2, h3, .pixel { font-family: var(--f-titulo); font-weight: 700; letter-spac
 .mapa-opcoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
 .mapa-opcoes .btn { font-size: 0.9rem; padding: 7px 12px; }
 .mapa-faixa { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); z-index: 6; white-space: nowrap; font-weight: 700; font-size: clamp(18px, 5vw, 40px); color: #fff3c4; background: var(--tijolo); padding: 0.2em 1.2em; border: 4px solid var(--tinta); box-shadow: inset 0 -5px 0 #9c2b22, 0 4px 0 var(--tinta); text-shadow: 3px 3px 0 var(--tinta); }
-.mapa-girar { display: none; position: absolute; inset: 0; z-index: 9; place-items: center; text-align: center; padding: 24px; background: var(--tinta); color: #fff; font-size: 1.3rem; }
-@media (orientation: portrait) and (max-width: 700px) { .mapa-girar { display: grid; } }
 @media (hover: hover) and (pointer: fine) { .mapa-dpad, .mapa-ab { opacity: 0.55; } }
 /* mapa 2.0: diálogo com retrato, configurações, seta e controles */
 .mapa-dialogo { background: #fbf1e3; color: #3a2a24; border: 4px solid #e8913f; outline: 3px solid #4b2b1f; box-shadow: inset 0 0 0 3px #fff8ec; border-radius: 6px; }
@@ -915,9 +911,28 @@ button.mapa-segredos { font: inherit; color: var(--ouro); background: none; bord
 @keyframes cg-surge { to { opacity: 0.75; } }
 .mapa-btn.com-aviso { position: relative; }
 .mapa-btn.com-aviso::after { content: ''; position: absolute; top: -6px; right: -6px; width: 12px; height: 12px; border-radius: 50%; background: #e03a3a; border: 2px solid #fff; }
-.mapa-girar .btn { margin-top: 18px; }
 
 /* nomes e botões do cartão do aluno quebram de linha em telas estreitas */
 .cab-aluno { flex-wrap: wrap; }
 .cab-aluno > div:not(.cab-botoes) { min-width: 120px; }
 .cab-aluno > .cab-botoes { flex: 1 1 auto; }
+
+/* ---------- mapa com o celular em pé: barra em duas linhas e avisos acima dos controles ---------- */
+@media (orientation: portrait) and (max-width: 700px) {
+  .mapa-barra { flex-direction: column; align-items: stretch; gap: 6px; }
+  .mapa-mundo { align-self: flex-start; }
+  .mapa-dir { justify-content: space-between; gap: 6px; }
+  .mapa-zona-stick { top: 40%; width: 55%; }
+  .mapa-zona { top: 22%; width: max-content; max-width: 92%; text-align: center; }
+  .mapa-alvo { bottom: calc(190px + env(safe-area-inset-bottom, 0px)); max-width: 94%; width: max-content; }
+  .mapa[data-controles='nunca'] .mapa-alvo { bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+  .mapa-dialogo { flex-wrap: wrap; width: 94%; }
+  .mapa-rosto, .mapa-rosto.arte { width: 84px; height: 84px; }
+  .mapa-rosto img, .mapa-rosto canvas, .mapa-rosto.arte img { width: 80px; height: 80px; }
+  .mapa-falas { flex-basis: 60%; }
+  .mapa-pular { top: 108px; }
+  .mapa-faixa { white-space: normal; width: max-content; max-width: 92%; text-align: center; }
+}
+
+.mapa-cfg-caixa label, .mapa-cfg-caixa label.check { color: #fff; }
+button.mapa-segredos { white-space: nowrap; }

@@ -1346,8 +1346,7 @@ export function iniciarMapa(raiz, opcoes) {
         <button class="btn verde" id="album-fechar">Voltar ao jogo</button></div></div>
     <div class="mapa-faixa" id="mapa-faixa" hidden></div>
     <div class="mapa-zona" id="mapa-zona" hidden></div>
-    <button class="mapa-btn mapa-pular" id="mapa-pular" hidden>Pular ⏭</button>
-    <div class="mapa-girar"><div>Deite o celular para jogar${opcoes.verLista ? '<br><button class="btn claro" type="button" data-lista>Prefiro o menu em lista</button>' : ''}</div></div>`;
+    <button class="mapa-btn mapa-pular" id="mapa-pular" hidden>Pular ⏭</button>`;
   const $ = (s) => raiz.querySelector(s);
 
   // ---------- caixa de diálogo ----------
@@ -1470,7 +1469,7 @@ export function iniciarMapa(raiz, opcoes) {
   });
   $('#mapa-cheia').addEventListener('click', async () => {
     // a tela cheia é da página inteira: se fosse só do mapa, ao abrir uma fase o celular ficaria preso num mapa escondido
-    try { if (!document.fullscreenElement) { await document.documentElement.requestFullscreen(); await screen.orientation?.lock?.('landscape'); } else await document.exitFullscreen(); } catch { /* aparelho sem tela cheia */ }
+    try { if (!document.fullscreenElement) { await document.documentElement.requestFullscreen(); } else await document.exitFullscreen(); } catch { /* aparelho sem tela cheia */ }
   });
 
   // ---------- segredos ----------
@@ -1573,11 +1572,12 @@ export function iniciarMapa(raiz, opcoes) {
   const aoSapo = (fim) => { const t = falasSapo[iSapo % Math.max(1, falasSapo.length)] ?? 'Croac.'; iSapo += 1; falar({ nome: textos.nomes?.sapo ?? 'Sapo', icone: 'sapo', quadro: 0, texto: t, aoFechar: fim }); };
 
   // Escala sempre inteira em pixels reais da tela (inclusive com o zoom de 125% ou 150% do Windows): cada pixel do
-  // jogo vira um quadrado do mesmo tamanho, sem pixels tortos nem borrão. A altura do jogo fica perto de 180.
+  // jogo vira um quadrado do mesmo tamanho, sem pixels tortos nem borrão. O lado menor da tela mostra perto de 180
+  // pixels do mundo, com o celular deitado ou em pé.
   const medida = () => {
     const r = raiz.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
     const w = (r.width || 640) * dpr; const h = (r.height || 360) * dpr;
-    const z = Math.max(1, Math.round(h / (180 * ZOOM)));
+    const z = Math.max(1, Math.round(Math.min(w, h) / (180 * ZOOM)));
     return { w: Math.min(560 * ZOOM, Math.ceil(w / z)), h: Math.ceil(h / z), zoom: z / dpr };
   };
   const m0 = medida();
@@ -1606,7 +1606,7 @@ export function iniciarMapa(raiz, opcoes) {
     atualizarEstados(estados, concluidas) { opcoes.estados = estados; opcoes.concluidas = concluidas; cena?.aplicarEstados(estados, concluidas); },
     revelarCaminho(id) { cena?.revelarCaminho(id); },
     derrotarCastelo() { cena?.derrotarCastelo(); },
-    pausar() { try { screen.orientation?.unlock?.(); } catch { /* sem trava de rotação */ } pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
+    pausar() { pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
     retomar() { jogo.loop.wake(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = true; aoRedimensionar(); tocarMusica(); },
     destruir() { window.removeEventListener('resize', aoRedimensionar); pararMusica(); pararRetrato(); clearInterval(digita); const gl = jogo.renderer?.gl; jogo.destroy(true); setTimeout(() => { try { gl?.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* já liberado */ } }, 300); raiz.innerHTML = ''; raiz.classList.remove('mapa'); },
     alternarSom,

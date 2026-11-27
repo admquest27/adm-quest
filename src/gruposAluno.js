@@ -2,6 +2,7 @@
 import { doc, collection, writeBatch, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc } from './ui.js';
+import { htmlTela } from './jogo.js';
 import { imgAvatar } from './avatar.js';
 import { grupoDe, convitesPara, svgEscudo, nomeGuilda, FORMAS, CORES, SIMBOLOS } from './grupos.js';
 
@@ -57,11 +58,11 @@ function htmlEscolha(ctx, maximo) {
 export function htmlGuilda(ctx) {
   const { grupos, perfis, eu, ver, rascunho, aviso } = ctx;
   const g = grupoDe(grupos, ctx.atv, eu);
-  const topo = '<button id="voltar-guilda" class="mini">← Fases</button>';
+  const molde = (corpo) => htmlTela({ aba: 'guilda', rec: ctx.rec, titulo: 'Minha guilda', corpo });
   if (!g) {
-    return `<section class="cartao largo esq">${topo}<h1>Minha guilda</h1>
+    return molde(`
       <p>A guilda é o seu grupo fixo neste mundo, com nome e escudo criados por vocês.</p>
-      ${htmlFormacao(ctx)}<p class="erro" id="msg">${esc(aviso ?? '')}</p></section>`;
+      ${htmlFormacao(ctx)}<p class="erro" id="msg">${esc(aviso ?? '')}</p>`);
   }
   const p = g.proposta;
   const todos = p && g.membros.every((u) => p.confirmacoes.includes(u));
@@ -76,14 +77,14 @@ export function htmlGuilda(ctx) {
       <p class="nota">Símbolo</p><div class="opcoes">${SIMBOLOS.map((s) => `<button type="button" class="simbolo ${r.simbolo === s ? 'sel' : ''}" data-escudo="simbolo" data-v="${s}">${s}</button>`).join('')}</div></div></div>
     <button class="botao" data-grupo="propor" data-g="${esc(g.id)}">Propor para a guilda</button>
     <p class="nota">Os outros integrantes confirmam, e o professor aprova antes de aparecer no jogo.</p></details>`;
-  return `<section class="cartao largo esq">${topo}
+  return molde(`
     <div class="guilda-cab">${g.escudo ? svgEscudo(g.escudo, 72) : '<div class="escudo-vazio">?</div>'}<div><h1>${esc(nomeGuilda(g))}</h1><p class="nota">${g.membros.length} integrante(s)</p></div></div>
     ${htmlFormacao(ctx)}
     ${p ?`<div class="proposta"><strong>Proposta de ${esc(nomeDe(perfis, p.por))}</strong>
       <div class="guilda-cab">${svgEscudo(p.escudo, 56)}<div><strong>${esc(p.nome)}</strong><p class="nota">Confirmaram: ${p.confirmacoes.map((u) => esc(nomeDe(perfis, u))).join(', ')}</p></div></div>
       ${todos ? '<p class="nota">Todos confirmaram. Agora é com o professor.</p>' : !jaConfirmei && !ver ? `<button class="botao" data-grupo="confirmar" data-g="${esc(g.id)}">Confirmar esta proposta</button>` : '<p class="nota">Esperando os outros integrantes confirmarem.</p>'}</div>` : ''}
     ${editor}
-    <p class="erro" id="msg">${esc(aviso ?? '')}</p></section>`;
+    <p class="erro" id="msg">${esc(aviso ?? '')}</p>`);
 }
 
 // ---------- ações ----------

@@ -1,6 +1,7 @@
 // Cartão da fase do aluno: uma semana com duas partes (terça na sala, segunda no laboratório).
 // Função pura: recebe os dados e devolve o HTML. Usada pelo aluno e pelo "ver como aluno".
 import { esc } from './ui.js';
+import { htmlTela } from './jogo.js';
 import {
   SITUACAO_ROTULO, contarTarefas, situacao, etapasDe, normMateriais, liberado, urlSegura, COMO, DIAS_FASE, diaDe, etapaLiberada,
 } from './fases.js';
@@ -20,12 +21,20 @@ function etapaHtml(it, n, ctx) {
   const camposOk = (it.campos ?? []).every((c) => (p?.respostas?.[it.id]?.[c.id] ?? '').trim());
   const faltaCampo = marcavel && (it.campos ?? []).length > 0 && !camposOk && !feita;
   const como = COMO[it.como];
-  return `<li class="etapa ${feita ? 'feita' : ''} ${it.opcional ? 'opcional' : ''}" data-n="${n}">
-    <p class="txt">${como ? `<span class="como" title="${como.rotulo}" aria-label="${como.rotulo}">${como.icone}</span> ` : ''}${esc(it.texto)}${it.opcional ? ' <span class="chip bonus">bônus</span>' : ''}</p>
+  const atual = ctx.atual === it.id;
+  const aberta = ctx.abertas?.[it.id] ?? atual;
+  const rotulo = [atual ? 'Agora' : '', como ? `${como.icone} ${como.rotulo}` : ''].filter(Boolean).join(' · ');
+  return `<li class="etapa ${feita ? 'feita' : ''} ${atual ? 'atual' : ''} ${aberta ? 'aberta' : ''} ${it.opcional ? 'opcional' : ''}" data-n="${n}">
+    <button type="button" class="etapa-cab" data-etapa="${esc(it.id)}" aria-expanded="${aberta}">
+      <span class="num" aria-hidden="true">${feita ? '✓' : n}</span>
+      <span class="txt">${rotulo ? `<span class="como">${rotulo}</span>` : ''}${esc(it.texto)}${it.opcional ? ' <span class="chip bonus">bônus</span>' : ''}${feita ? '<span class="so-leitor"> (feita)</span>' : ''}</span>
+    </button>
+    <div class="etapa-corpo" ${aberta ? '' : 'hidden'}>
     ${it.links?.length ? `<p class="links">${links(it.links)}</p>` : ''}
     ${campos ? `<div class="campos">${campos}</div>` : ''}
     ${saibaMais(it.saibaMais)}
-    ${marcavel ? `<label class="check feito"><input type="checkbox" data-tarefa="${esc(it.id)}" ${feita ? 'checked' : ''} ${editavel && !faltaCampo ? '' : 'disabled'}> Feito</label>${faltaCampo && editavel ? '<span class="nota">Preencha os campos para marcar como feito.</span>' : ''}` : ''}
+    ${marcavel ? `<label class="check feito"><input type="checkbox" data-tarefa="${esc(it.id)}" ${feita ? 'checked' : ''} ${editavel && !faltaCampo ? '' : 'disabled'}> <span>${feita ? 'Feita' : 'Marcar como feita'}</span></label>${faltaCampo && editavel ? '<span class="nota">Preencha os campos para marcar como feita.</span>' : ''}` : ''}
+    </div>
   </li>`;
 }
 
@@ -51,6 +60,9 @@ export function htmlCartao(ctx) {
 
   // etapas por dia, numeradas em sequência
   const todas = etapasDe(f);
+  const segAberta = turma?.liberacoes?.[f.id]?.seg === true;
+  // a etapa atual é a primeira que o aluno já pode marcar e ainda não marcou
+  const atual = editavel ? todas.find((e) => e.semMarcar !== true && p?.tarefas?.[e.id] !== true && (diaDe(e) !== 'seg' || segAberta) && etapaLiberada(turma, f.id, e))?.id : null;
   let n = 0;
   const partes = ['pre', 'ter', 'seg'].map((dia) => {
     const lista = todas.filter((e) => diaDe(e) === dia);
@@ -62,13 +74,10 @@ export function htmlCartao(ctx) {
     }
     const itens = lista.map((it) => {
       n += 1;
-      return etapaHtml(it, n, ctx) ?? `<li class="etapa trava" data-n="${n}"><span aria-hidden="true">🔒</span> Aguarde o professor liberar esta etapa.</li>`;
+      return etapaHtml(it, n, { ...ctx, atual }) ?? `<li class="etapa trava" data-n="${n}"><span class="num" aria-hidden="true">${n}</span><span class="txt">🔒 Aguarde o professor liberar esta etapa.</span></li>`;
     }).join('');
     return `<section class="parte-dia"><h2>${DIAS_FASE[dia]}</h2><ol class="etapas">${itens}</ol></section>`;
   }).join('');
-
-  const usados = new Set(todas.map((e) => e.como).filter(Boolean));
-  const legenda = usados.size ? `<p class="legenda-como">${[...usados].map((k) => COMO[k] ? `<span>${COMO[k].icone} ${COMO[k].rotulo}</span>` : '').join('')}</p>` : '';
 
   const materiais = normMateriais(f).map((m) => liberado(turma, f.id, m, 'travado')
     ? `<li>${links([m])}${m.descricao ? ` <span class="nota">${esc(m.descricao)}</span>` : ''}</li>`
@@ -77,23 +86,19 @@ export function htmlCartao(ctx) {
   const faltou = a?.faltou && !p?.concluida;
   const podeConcluir = editavel && (faltam === 0 || p?.concluida === true);
   const pct = total ? Math.round((100 * feitas) / total) : 0;
-  return `<section class="cartao largo esq">
-    <button id="voltar" class="mini">← Fases</button>
-    <h1>${esc(f.codigo)} · ${esc(f.nome)}</h1>
-    <p class="centro-txt"><span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}</span>${est === 'encerrada' ? ' <span class="chip">Fase encerrada</span>' : ''}</p>
+  const corpo = `<p class="estado-fase"><span class="chip sit-${sit}">${SITUACAO_ROTULO[sit]}</span>${est === 'encerrada' ? ' <span class="chip">Fase encerrada</span>' : ''}</p>
     ${faltou ? '<p class="banner">Você faltou na dinâmica desta fase, então ela ficou <strong>a fazer</strong>. Faça as etapas com ajuda do professor ou dos colegas e marque como concluída no fim.</p>' : ''}
     ${est === 'encerrada' && !editavel && !ver && !p?.concluida ? '<p class="banner">O professor encerrou esta fase. Se você precisa terminá-la, converse com ele.</p>' : ''}
     ${mencoes}${htmlRecados}
     <p class="missao">${esc(f.missao)}</p>
     ${total ? `<div class="progresso" aria-label="${feitas} de ${total} etapas feitas"><span style="width:${pct}%"></span></div><p class="nota centro-txt">${feitas} de ${total} etapas feitas</p>` : ''}
     ${grupoHtml ?? ''}
-    ${legenda}
     ${partes}
     ${materiais ? `<h2>Material de apoio</h2><ul class="materiais">${materiais}</ul>` : ''}
     ${criterios ? `<details><summary>Como serei avaliado</summary>${criterios}</details>` : f.avaliacao ? `<p class="nota">${esc(f.avaliacao)}</p>` : ''}
     ${f.cartaoResumo ? `<details><summary>Resumo da fase</summary><p>${esc(f.cartaoResumo)}</p></details>` : ''}
     <p class="erro" id="msg">${esc(aviso ?? '')}</p>
     ${f.tipo === 'chefao' || ver ? '' : `<button id="concluir" class="botao ${p?.concluida ? 'secundario' : !podeConcluir ? 'parcial' : ''}" ${editavel ? '' : 'disabled'}>${p?.concluida ? 'Desmarcar como concluída' : 'Concluir a fase'}</button>
-      ${!p?.concluida && faltam > 0 && editavel ? `<p class="nota centro-txt">Faltam ${faltam} etapa(s) para concluir.</p>` : ''}`}
-  </section>`;
+      ${!p?.concluida && faltam > 0 && editavel ? `<p class="nota centro-txt">Faltam ${faltam} etapa(s) para concluir.</p>` : ''}`}`;
+  return htmlTela({ aba: 'fases', rec: turma?.recursos, voltar: 'voltar', selo: f.tipo === 'chefao' ? 'CHEFÃO' : `FASE ${f.codigo}`, titulo: f.nome, corpo });
 }

@@ -1,0 +1,145 @@
+/* Telas do aluno no estilo "Pergaminho da Vila". Tudo fica sob #app.jogo, para não mexer no painel do professor. */
+#app.jogo, #app .criador {
+  --fundo: #3a2417; --texto: #2b1b10; --cartao: #fffaf0; --campo: #fffdf7; --suave: #5a4028; --borda: #b99a68;
+  --destaque: #8f2f24; --destaque-texto: #ffffff; --ok: #237033; --erro: #a3231a; color-scheme: light; color: var(--texto);
+}
+body:has(#app.jogo), body:has(#app .criador) { background: #3a2417; }
+#app.jogo { display: block; min-height: 100dvh; margin: 0 auto; padding: 0; max-width: none; text-align: left; }
+
+.jg { max-width: 520px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+.jg-topo { position: relative; min-height: 148px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 10px 12px; background: #24452b url('/abertura/vila.webp') 70% 45% / cover; border-bottom: 4px solid var(--tinta); }
+.jg-topo-linha { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.jg-voltar, .jg-saldo { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; font: 800 1rem var(--f-texto); border: 3px solid var(--tinta); box-shadow: 0 3px 0 var(--tinta); }
+.jg-voltar { background: var(--pergaminho); color: var(--tinta); cursor: pointer; }
+.jg-saldo { background: var(--tinta); color: var(--ouro); border-color: var(--ouro); }
+button.jg-saldo { cursor: pointer; }
+.jg-saldo.negativo { color: #ff9d94; border-color: #ff9d94; }
+.jg-placa { align-self: flex-start; max-width: 100%; background: #8f2f24; color: #fff; border: 3px solid var(--tinta); box-shadow: 0 3px 0 var(--tinta); padding: 6px 14px; }
+.jg-placa span { display: block; font-size: 0.75rem; font-weight: 800; }
+.jg-placa h1 { margin: 0; font-size: 1.45rem; line-height: 1.15; overflow-wrap: anywhere; }
+
+.jg-painel { flex: 1; margin: 10px; padding: 16px 14px; background: var(--pergaminho); border: 3px solid var(--tinta); box-shadow: inset 0 0 0 3px var(--ouro-esc); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.jg-painel > * { margin-block: 0; min-width: 0; }
+.jg-painel h2 { font-size: 1.15rem; margin-top: 4px; }
+.jg :focus-visible { outline: 3px dashed #1457b8; outline-offset: 2px; }
+
+.jg-menu { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; max-width: 520px; margin: 0 auto; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: #3a2417; border-top: 3px solid var(--tinta); }
+.jg-menu button { position: relative; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; font: 700 0.85rem var(--f-titulo); color: var(--tinta); background: #e8d3a6; border: 3px solid var(--tinta); cursor: pointer; }
+.jg-menu button[aria-current] { background: var(--ouro); }
+.jg-menu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.jg-menu .com-aviso::after { content: ''; position: absolute; top: 4px; right: 8px; width: 10px; height: 10px; background: #c0291c; border: 2px solid var(--tinta); border-radius: 50%; }
+
+/* botões e caixas dentro do pergaminho */
+#app.jogo .novidade { margin: 0; background: #fff1c4; color: var(--texto); border: 2px solid var(--ouro-esc); border-radius: 0; }
+#app.jogo .mini { min-height: 44px; border: 3px solid var(--tinta); border-radius: 0; background: var(--cartao); color: var(--tinta); font-weight: 800; }
+#app.jogo .mini.ok { background: var(--ouro); }
+#app.jogo .mini.ok.cheio { background: #dcebc9; color: #1f5a2b; }
+#app.jogo .mini:disabled { border-style: dashed; background: transparent; color: var(--suave); }
+#app.jogo input:not([type=checkbox]), #app.jogo textarea, #app.jogo select { border: 2px solid var(--borda); border-radius: 0; background: var(--campo); color: var(--texto); }
+#app.jogo .banner, #app.jogo .dica-adm, #app.jogo .bloco-grupo, #app.jogo .conquista-nova, #app.jogo .recados-fase, #app.jogo .mencoes, #app.jogo .reg, #app.jogo .proposta, #app.jogo details.mais, #app.jogo .jg-painel > details { background: var(--cartao); color: var(--texto); border: 2px solid var(--borda); border-radius: 0; padding: 10px 12px; }
+#app.jogo .jg-painel summary { min-height: 32px; cursor: pointer; font-weight: 800; }
+#app.jogo .link-btn { min-height: 44px; color: var(--destaque); font-weight: 800; }
+.jg-rodape { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.so-leitor { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* lista de fases */
+.jg-continuar { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 12px; text-align: left; color: var(--texto); background: var(--cartao); border: 3px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta); cursor: pointer; font-family: inherit; }
+.jg-continuar span { font-size: 0.75rem; font-weight: 800; color: var(--destaque); }
+.jg-continuar strong { font: 700 1.2rem var(--f-titulo); }
+.jg-fases { display: flex; flex-direction: column; gap: 8px; padding: 0; }
+#app.jogo .jg-fases .fase { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; width: 100%; min-height: 54px; margin: 0; padding: 8px 10px; text-align: left; color: var(--texto); background: var(--cartao); border: 3px solid var(--tinta); border-radius: 0; opacity: 1; }
+#app.jogo .jg-fases .fase .nm { font: 700 1rem var(--f-titulo); }
+#app.jogo .jg-fases .fase:has(.sit-validada) { background: #dcebc9; border-color: #2f7d3d; }
+#app.jogo .jg-fases .fase.afazer { background: #fbe7a8; border-color: #8a5d08; }
+#app.jogo .jg-fases .fase.obra { border: 3px dashed #7a5c3c; background: transparent; color: var(--suave); }
+#app.jogo .chip { border-radius: 0; background: var(--cartao); font-weight: 800; }
+#app.jogo .chip.sit-validada { color: #1f5a2b; border-color: #2f7d3d; }
+#app.jogo .chip.sit-concluida { color: #1457b8; border-color: #1457b8; }
+#app.jogo .chip.sit-afazer, #app.jogo .chip.sit-naoconcluida { color: #6b4705; border-color: #8a5d08; }
+#app.jogo .cab-aluno { padding: 8px 10px; background-color: var(--cartao); border: 3px solid var(--tinta); border-radius: 0; margin: 0; }
+#app.jogo .cab-aluno.tem-fundo { color: #fff; }
+#app.jogo .cab-aluno.tem-fundo .nota { color: rgba(255, 255, 255, 0.9); }
+
+/* fase: trilha numerada */
+.estado-fase { display: flex; gap: 6px; flex-wrap: wrap; }
+#app.jogo .missao { margin: 0; padding: 0; background: none; border: 0; text-align: left; }
+#app.jogo .etapas { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 8px 0 0; }
+#app.jogo .etapa { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; margin: 0; padding: 0; background: none; border: 0; border-radius: 0; font-style: normal; }
+#app.jogo .etapa::before { content: none; }
+.etapa-cab { grid-column: 1 / -1; display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; align-items: start; width: 100%; padding: 0; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.etapa .num { grid-column: 1; grid-row: 1; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font: 700 1.05rem var(--f-titulo); background: var(--cartao); border: 3px solid var(--tinta); }
+.etapa .txt { grid-column: 2; grid-row: 1; align-self: center; text-align: left; min-height: 34px; display: flex; flex-direction: column; justify-content: center; }
+#app.jogo .etapa.feita .num { background: #2f7d3d; color: #fff; }
+#app.jogo .etapa.feita .txt { color: var(--suave); }
+.etapa.atual .num { background: var(--ouro); }
+#app.jogo .etapa .como { display: block; width: auto; text-align: left; font-size: 0.75rem; font-weight: 800; color: var(--destaque); text-transform: uppercase; }
+.etapa-corpo { grid-column: 2; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 12px; background: var(--cartao); border: 2px solid var(--borda); }
+.etapa-corpo[hidden] { display: none; }
+.etapa-corpo:not(:has(*)) { display: none; }
+.etapa.atual.aberta .etapa-corpo { border: 3px solid var(--tinta); box-shadow: 0 4px 0 var(--tinta); }
+#app.jogo .etapa.atual .txt { font-weight: 800; }
+#app.jogo .etapa .check.feito { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; margin: 0; font: 700 1.05rem var(--f-titulo); color: var(--tinta); background: var(--ouro); border: 3px solid var(--tinta); border-radius: 0; cursor: pointer; }
+#app.jogo .etapa.feita .check.feito { background: #dcebc9; color: #1f5a2b; }
+#app.jogo .etapa .check.feito:has(input:disabled) { background: transparent; border-style: dashed; color: var(--suave); cursor: default; }
+#app.jogo .etapa .check.feito input { width: 22px; height: 22px; margin: 0; }
+#app.jogo .etapa.trava { color: var(--suave); }
+.etapa.trava .num { border-style: dashed; background: transparent; }
+#app.jogo .etapa.destaque .num { box-shadow: 0 0 0 4px var(--erro); }
+#app.jogo .trava-dia { padding: 10px; border: 3px dashed #7a5c3c; color: var(--suave); }
+#app.jogo .progresso { border: 3px solid var(--tinta); border-radius: 0; background: #e8d3a6; height: 16px; }
+
+/* mochila */
+.jg-abas, .jg-filtros { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.jg-abas button, .jg-filtros button { min-height: 46px; padding: 4px; color: var(--tinta); border: 3px solid var(--tinta); cursor: pointer; }
+.jg-abas button { font: 700 0.95rem var(--f-titulo); background: #c9ab78; }
+.jg-abas button[aria-current] { background: var(--ouro); }
+.jg-filtros button { font: 800 0.9rem var(--f-texto); background: var(--cartao); }
+.jg-filtros button[aria-pressed="true"] { background: #8f2f24; color: #fff; }
+#app.jogo .loja { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); margin: 0; }
+#app.jogo .item-loja { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; text-align: center; background: var(--cartao); border: 3px solid var(--tinta); border-radius: 0; }
+#app.jogo .item-loja.meu { background: #dcebc9; border-color: #2f7d3d; }
+#app.jogo .item-previa { min-height: 56px; }
+#app.jogo .item-loja:has(.item-previa .titulo-aluno) .item-previa { display: none; }
+#app.jogo .item-info { align-items: center; flex: 1; }
+#app.jogo .item-info strong { font: 700 1rem var(--f-titulo); }
+#app.jogo .item-info .chip.limitado { align-self: center; background: #3b1f4a; color: #f5d97a; }
+#app.jogo .item-acao { align-items: stretch; max-width: none; text-align: center; }
+.jg-avatar { display: flex; justify-content: center; padding: 12px; background: url('/abertura/vila.webp') 40% 80% / cover; border: 3px solid var(--tinta); }
+
+/* criação do avatar */
+#app .criador { background: var(--pergaminho); border: 3px solid var(--tinta); border-radius: 0; box-shadow: inset 0 0 0 3px var(--ouro-esc); }
+#app .criador .av-palco { border: 3px solid var(--tinta); border-radius: 0; background: url('/abertura/vila.webp') 40% 80% / cover; }
+#app .criador .av-peca { border-radius: 0; }
+.av-barra { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; background: var(--pergaminho); }
+.av-barra .botao { width: auto; margin: 0; min-height: 44px; padding: 6px 14px; }
+.av-barra h1 { margin: 0; font-size: 1.15rem; }
+
+/* computador (laboratório): menu na lateral e conteúdo mais largo */
+@media (min-width: 900px) {
+  .jg { max-width: 1040px; display: grid; grid-template-columns: 190px minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: 14px; padding: 14px; }
+  .jg-topo { grid-column: 2; min-height: 210px; border: 3px solid var(--tinta); }
+  .jg-painel { grid-column: 2; margin: 12px 0 0; padding: 22px 24px; }
+  .jg-menu { position: sticky; top: 14px; grid-column: 1; grid-row: 1 / span 2; align-self: start; display: flex; flex-direction: column; margin: 0; padding: 0; background: none; border: 0; }
+  .jg-menu button { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 16px; font-size: 1.05rem; }
+  .jg-fases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.jg-avatar .avatar-corpo { width: 192px; height: 224px; image-rendering: pixelated; display: block; }
+
+/* votação, baús e colegas */
+#app.jogo .votacao, #app.jogo .opcao-voto, #app.jogo .bau, #app.jogo .pessoa { border-radius: 0; }
+#app.jogo .votacao { margin: 0; border: 3px solid var(--tinta); }
+#app.jogo .opcao-voto { min-height: 48px; border: 3px solid var(--tinta); background: var(--cartao); color: var(--texto); }
+#app.jogo .opcao-voto.sel { background: var(--ouro); color: var(--tinta); }
+#app.jogo .bau { background: var(--cartao); border: 2px solid var(--borda); flex-wrap: nowrap; }
+#app.jogo .bau > span:first-child { min-width: 0; }
+#app.jogo .bau.aberto { background: #dcebc9; border-color: #2f7d3d; }
+#app.jogo .bau-acao input { width: 96px; }
+#app.jogo .barra-vida .barra-fundo { border-radius: 0; border: 3px solid var(--tinta); }
+#app.jogo .linha-btn .botao { margin: 0; }
+
+/* entrada, tutorial, espera e avisos: o mesmo pergaminho */
+body:has(#app.centro > .cartao) { background: #3a2417; }
+#app.centro > .cartao { --texto: #2b1b10; --suave: #5a4028; --borda: #b99a68; --campo: #fffdf7; --destaque: #8f2f24; --erro: #a3231a; color-scheme: light; color: var(--texto); background: var(--pergaminho); border: 3px solid var(--tinta); border-radius: 0; box-shadow: inset 0 0 0 3px var(--ouro-esc); }
+#app.centro > .cartao input { border: 2px solid var(--borda); border-radius: 0; background: var(--campo); color: var(--texto); }
+

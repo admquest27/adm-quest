@@ -2,13 +2,13 @@
 
 export const TUTORIAL = [
   { titulo: 'Cada semana é uma fase', texto: 'Na lista, toque numa fase aberta para ver a missão e as etapas. As fases "em obra" o professor ainda vai abrir.' },
-  { titulo: 'Marque "Feito" em cada etapa', texto: 'Fez a etapa? Marque "Feito". A parte de segunda abre no laboratório, quando o professor liberar.' },
+  { titulo: 'Uma etapa de cada vez', texto: 'Fez a etapa em destaque? Toque em "Marcar como feita". A parte de segunda abre no laboratório, quando o professor liberar.' },
   { titulo: 'Conclua a fase', texto: 'Com todas as etapas feitas, toque em "Concluir a fase". O professor confere e valida.' },
 ];
 
 export const NOVIDADES = {
-  admbux: { titulo: 'Novidade: AdmBux!', texto: (x) => `Você ganha AdmBux quando o professor valida uma fase, quando faz um bônus e por atitudes que ele registra. Você já tem ${x.saldo}. Toque em 🪙, no topo, para ver o saldo, a loja e as conquistas.` },
-  guildas: { titulo: 'Novidade: guildas!', texto: () => 'A guilda é o seu grupo fixo até o fim do mundo. Toque em "Guilda", no topo, para ver quem está com você e criar o nome e o escudo.' },
+  admbux: { titulo: 'Novidade: AdmBux!', texto: (x) => `Você ganha AdmBux quando o professor valida uma fase, quando faz um bônus e por atitudes que ele registra. Você já tem ${x.saldo}. Toque em "Mochila", no menu, para ver a loja e as conquistas.` },
+  guildas: { titulo: 'Novidade: guildas!', texto: () => 'A guilda é o seu grupo fixo até o fim do mundo. Toque em "Guilda", no menu, para ver quem está com você e criar o nome e o escudo.' },
 };
 
 // Memória "já vi" no aparelho. Se o navegador não guardar, vale só nesta sessão.

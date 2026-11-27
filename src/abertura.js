@@ -39,7 +39,7 @@ export function mostrarAbertura({ aoEntrar, logado = false, erro = '' } = {}) {
         </div>
       </div>
     </div>
-    <p class="ab-girar">Para jogar, deite o celular.</p>`;
+    `;
   const tela = document.getElementById('ab-tela');
   const toque = document.getElementById('ab-toque'); const menu = document.getElementById('ab-menu');
   let ativo = true; let estado = 'titulo';

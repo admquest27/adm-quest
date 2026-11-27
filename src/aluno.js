@@ -5,6 +5,7 @@ import { app, tela, esc } from './ui.js';
 import { normalizar, paraSalvar, sortear, PADRAO } from './avatar.js';
 import { htmlCriador, animarPrevia } from './criarAvatar.js';
 import { htmlCartao } from './cartao.js';
+import { htmlTela } from './jogo.js';
 import { criarMapaAluno } from './mapaAluno.js';
 import { htmlCarregando } from './carregandoMapa.js';
 import { nomeValido } from './alunos.js';
@@ -35,14 +36,15 @@ export function iniciarAluno(user, opcoes = {}) {
     turma: null, fases: [], mundo: null, progresso: {}, aval: {}, recados: [], faseAberta: null, aviso: '',
     eco: null, carteira: null, compras: null, naCarteira: false,
     grupos: [], perfis: {}, naGuilda: false, montando: null, rascunho: null, perfilEnviado: '', tutorial: null,
-    votacoes: [], meusVotos: {}, acertos: [], noMapa: false, voltarMapa: false, chegou: new Set(),
+    votacoes: [], meusVotos: {}, acertos: [], abasMochila: 'loja', tipoLoja: 'titulo', etapas: {}, noMapa: false, voltarMapa: false, chegou: new Set(),
   };
   let paradasAtivo = [];
   let mapa = null;
 
   const faixa = () => (ver ? `<div class="ver-faixa">Vendo como <strong>${esc(st.dados?.apelido ?? 'aluno')}</strong> (somente leitura) <button id="sair-ver" class="mini">Voltar ao painel</button></div>`
     : opcoes.teste ? '<div class="ver-faixa">Jogando como teste <button id="sair-ver" class="mini">Voltar ao painel</button></div>' : '');
-  const mostrar = (html, classe) => tela(faixa() + html, classe);
+  // as telas do jogo (com o menu) usam a classe "jogo"; as de entrada continuam como cartões
+  const mostrar = (html, classe) => tela(faixa() + html, html.startsWith('<div class="jg">') ? 'jogo' : classe);
 
   mostrar(htmlCarregando());
 
@@ -199,7 +201,7 @@ export function iniciarAluno(user, opcoes = {}) {
         if (rec.mapa && st.mundo && st.fases.length) st.noMapa = true;
       }
     }
-    if (st.naCarteira && rec.admbux) return telaCarteira();
+    if (st.naCarteira) return telaCarteira();
     if (st.naGuilda && rec.guildas) return telaGuilda();
     if (st.faseAberta) return telaCartao();
     if (st.noMapa && rec.mapa) return telaMapa();
@@ -238,6 +240,11 @@ export function iniciarAluno(user, opcoes = {}) {
       const placa = est === 'adiada' ? textos.adiada : est === 'cancelada' ? textos.cancelada : textoPlaca(textos, f);
       return `<li><div class="fase obra e-${est}">${cod}<span class="placa">${esc(placa ?? 'Em obra.')}</span></div></li>`;
     };
+    const abertas = st.fases.filter((f) => ['aberta', 'encerrada'].includes(estados[f.id] ?? 'trancada'));
+    // "Continue daqui": a última fase aberta que o aluno ainda não terminou
+    const seguir = [...abertas].reverse().find((f) => estados[f.id] === 'aberta' && ['inicio', 'andamento', 'afazer'].includes(situacao(f, st.progresso[f.id], st.aval[f.id], estados[f.id])));
+    const contagem = seguir ? contarTarefas(seguir, st.progresso[seguir.id]) : null;
+    const destaque = seguir ? `<button type="button" class="jg-continuar" data-fase="${esc(seguir.id)}"><span>CONTINUE DAQUI</span><strong>${seguir.tipo === 'chefao' ? '' : `${esc(seguir.codigo)} `}${esc(seguir.nome)}</strong>${contagem.total ? `<small>${contagem.feitas} de ${contagem.total} etapas feitas</small>` : ''}</button>` : '';
     const itens = st.fases.filter((f) => f.tipo !== 'excel').map(linha).join('');
     const excelAbertos = st.fases.filter((f) => f.tipo === 'excel' && ['aberta', 'encerrada'].includes(estados[f.id] ?? 'trancada')).map(linha).join('');
     const gerais = st.recados.filter((r) => !r.fase);
@@ -246,7 +253,6 @@ export function iniciarAluno(user, opcoes = {}) {
     const conq = { ...CONQUISTAS, ...(st.eco?.conquistas ?? {}) };
     const rec = st.turma?.recursos ?? {};
     const novas = ver || !rec.admbux ? [] : conquistasNovas(alvo, c.conquistas).novas;
-    const minhaGuilda = grupoDe(st.grupos, ATV_GUILDA, alvo);
     const pendentes = st.grupos.filter((g) => g.convites?.includes(alvo) && !grupoDe(st.grupos, g.atividade, alvo));
     const novidades = ver ? '' : ['admbux', 'guildas'].filter((id) => rec[id] && !jaViu(`admq-nov-${alvo}-${id}`)).map((id) => htmlNovidade(id, { saldo: c.saldo })).join('');
     // votações abertas e resultados de fases que ainda vão abrir
@@ -254,26 +260,19 @@ export function iniciarAluno(user, opcoes = {}) {
     const avisoConvite = pendentes.length ? `<p class="banner">Você tem ${pendentes.length === 1 ? 'um convite' : `${pendentes.length} convites`} para entrar num grupo. ${pendentes.map((g) => (g.atividade === ATV_GUILDA ? (rec.guildas ? 'Veja em Guilda.' : '') : `Veja na fase ${esc(st.fases.find((f) => f.id === g.atividade)?.codigo ?? '')}.`)).join(' ')}</p>` : '';
     const avisoConq = novas.length ? `<div class="conquista-nova" role="status"><span class="trofeu" aria-hidden="true">🏆</span><div><strong>Conquista desbloqueada!</strong>${novas.map((id) => `<p>${esc(conq[id]?.nome ?? id)}: ${esc(conq[id]?.texto ?? '')} (+${c.V.conquista} AdmBux)</p>`).join('')}</div><button id="ok-conquista" class="mini">Legal!</button></div>` : '';
     const recados = gerais.length ? `<h2>Recados do professor</h2><ul class="lista">${gerais.map((r) => `<li class="reg ${r.tipoAtitude === 'atencao' ? 'atencao' : ''}"><span class="nota">${dataCurta(r.criadoEm)} · ${esc(r.marca)}</span><p>${esc(r.texto)}</p></li>`).join('')}</ul>` : '';
-    mostrar(
-      `<section class="cartao largo">
-        ${avisoConq}
-        <div class="cab-aluno ${vis.fundo ? `tem-fundo fundo-${esc(vis.fundo)}` : ''}">
+    mostrar(htmlTela({
+      aba: 'fases', rec, selo: `MUNDO ${st.mundo?.ordem ?? 1}`, titulo: st.mundo?.nome ?? 'Vila dos Planos',
+      direita: rec.admbux ? `<button type="button" id="abrir-carteira" class="jg-saldo" aria-label="Minhas AdmBux: ${c.saldo}">${c.saldo} AdmBux</button>` : '',
+      corpo: `<div class="cab-aluno ${vis.fundo ? `tem-fundo fundo-${esc(vis.fundo)}` : ''}">
           ${avatarComMoldura(st.dados.avatar, vis.moldura)}
           <div><strong>${esc(st.dados.apelido)}</strong>${vis.titulo ? `<br><span class="titulo-aluno">${esc(vis.titulo)}</span>` : ''}<br><span class="nota">${esc(st.turma?.nome ?? '')}</span></div>
-          <div class="cab-botoes">${rec.admbux ? `<button id="abrir-carteira" class="mini moeda-btn" aria-label="Minhas AdmBux: ${c.saldo}">🪙 ${c.saldo}</button>` : ''}
-          ${rec.guildas ? `<button id="abrir-guilda" class="mini guilda-btn" aria-label="Minha guilda">${minhaGuilda?.escudo ? svgEscudo(minhaGuilda.escudo, 18) : '🛡️'} Guilda</button>` : ''}
-          ${ver ? '' : '<button id="trocar" class="mini">Avatar</button>'}</div>
         </div>
-        ${novidades}${avisoConvite}${votos}
-        <h2>${esc(st.mundo?.nome ?? 'Vila dos Planos')}</h2>
-        ${rec.mapa ? '<button id="abrir-mapa" class="botao botao-mapa">Abrir o mapa da Vila</button>' : ''}
-        <ul class="lista">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
-        ${excelAbertos ? `<h2>Trilha de Excel</h2><ul class="lista">${excelAbertos}</ul>` : ''}
+        ${destaque}${avisoConq}${avisoConvite}${votos}${novidades}
+        <ul class="lista jg-fases">${itens || '<li class="vazio">As fases ainda estão sendo preparadas.</li>'}</ul>
+        ${excelAbertos ? `<h2>Trilha de Excel</h2><ul class="lista jg-fases">${excelAbertos}</ul>` : ''}
         ${recados}
-        ${ver ? '' : '<button id="ver-tutorial" class="link-btn">Como funciona o jogo</button><button id="sair" class="botao secundario">Sair</button>'}
-      </section>`,
-      'centro alto'
-    );
+        ${ver ? '' : '<div class="jg-rodape"><button type="button" id="ver-tutorial" class="link-btn">Como funciona o jogo</button><button type="button" id="sair" class="link-btn">Sair</button></div>'}`,
+    }));
   }
 
   function telaCartao() {
@@ -283,7 +282,7 @@ export function iniciarAluno(user, opcoes = {}) {
     const a = st.aval[f.id];
     mostrar(htmlCartao({
       f, p: st.progresso[f.id], a, est, turma: st.turma, mundo: st.mundo, recados: st.recados, ver,
-      editavel: !ver && podeEditar(est, a), aviso: st.aviso, grupoHtml: blocoExtra(f, est) + blocoGrupo(f),
+      editavel: !ver && podeEditar(est, a), aviso: st.aviso, abertas: st.etapas, grupoHtml: blocoExtra(f, est) + blocoGrupo(f),
     }), 'centro alto');
   }
 
@@ -306,7 +305,7 @@ export function iniciarAluno(user, opcoes = {}) {
       const rec = st.turma?.recursos ?? {};
       const corpo = g
         ? `<div class="guilda-cab">${g.escudo ? svgEscudo(g.escudo, 40) : ''}<div><strong>${esc(nomeGuilda(g))}</strong><p class="nota">${g.membros.map((u) => esc(st.perfis[u]?.apelido ?? 'Colega')).join(', ')}</p></div></div>`
-        : `<p class="nota">Você ainda não está numa guilda. ${rec.guildas ? 'Toque em Guilda, no topo da tela de fases.' : 'O professor vai organizar as guildas.'}</p>`;
+        : `<p class="nota">Você ainda não está numa guilda. ${rec.guildas ? 'Toque em Guilda, no menu.' : 'O professor vai organizar as guildas.'}</p>`;
       return `<div class="bloco-grupo"><h2>Sua guilda nesta fase</h2>${corpo}</div>`;
     }
     const ctx = { atv, cfg: configDaFase(st.turma, f), grupos: st.grupos, perfis: st.perfis, eu: alvo, ver, montando: st.montando?.atv === atv ? st.montando : null };
@@ -314,7 +313,7 @@ export function iniciarAluno(user, opcoes = {}) {
   }
 
   function ctxGuilda() {
-    return { atv: ATV_GUILDA, cfg: configGuilda(st.turma), grupos: st.grupos, perfis: st.perfis, eu: alvo, ver, montando: st.montando?.atv === ATV_GUILDA ? st.montando : null, rascunho: st.rascunho, aviso: st.aviso };
+    return { atv: ATV_GUILDA, cfg: configGuilda(st.turma), grupos: st.grupos, perfis: st.perfis, eu: alvo, ver, montando: st.montando?.atv === ATV_GUILDA ? st.montando : null, rascunho: st.rascunho, aviso: st.aviso, rec: st.turma?.recursos };
   }
 
   function telaGuilda() {
@@ -365,7 +364,7 @@ export function iniciarAluno(user, opcoes = {}) {
   }
 
   function telaCarteira() {
-    mostrar(htmlCarteira({ c: carteira(), eco: st.eco, compras: st.compras, avatar: st.dados.avatar, mundoAtual: MUNDO, ver, aviso: st.aviso }), 'centro alto');
+    mostrar(htmlCarteira({ c: carteira(), eco: st.eco, compras: st.compras, avatar: st.dados.avatar, mundoAtual: MUNDO, ver, aviso: st.aviso, rec: st.turma?.recursos ?? {}, aba: st.abasMochila, tipo: st.tipoLoja }), 'centro alto');
   }
 
   async function comprar(id) {
@@ -436,7 +435,7 @@ export function iniciarAluno(user, opcoes = {}) {
         const travadas = pend.length - visiveis.length;
         aviso(`Ainda falta concluir ${pend.length} etapa(s)${visiveis.length ? ` (etapa ${visiveis.map((x) => x.n).join(', ')})` : ''}${travadas ? `. Há ${travadas} etapa(s) que o professor ainda vai liberar` : ''}.`);
         const lis = document.querySelectorAll('.etapa:not(.feita):not(.trava)');
-        lis.forEach((li) => li.classList.add('destaque'));
+        lis.forEach((li) => { li.classList.add('destaque', 'aberta'); const c = li.querySelector('.etapa-corpo'); if (c) c.hidden = false; });
         (lis[0] ?? document.getElementById('msg'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => lis.forEach((li) => li.classList.remove('destaque')), 3500);
         return;
@@ -454,16 +453,27 @@ export function iniciarAluno(user, opcoes = {}) {
       if (b.id === 'sair') { mapa?.destruir(); mapa = null; signOut(auth); return; }
       if (b.id === 'sair-ver') { mapa?.destruir(); mapa = null; opcoes.aoSair?.(); return; }
       if (b.id === 'abrir-mapa') { st.noMapa = true; st.aviso = ''; desenhar(); return; }
-      if (b.dataset.fase) { st.faseAberta = b.dataset.fase; st.aviso = ''; desenhar(); return; }
+      if (b.dataset.nav) {
+        const destino = b.dataset.nav;
+        st.faseAberta = null; st.voltarMapa = false; st.montando = null; st.aviso = '';
+        st.noMapa = destino === 'mapa'; st.naGuilda = destino === 'guilda'; st.naCarteira = destino === 'mochila';
+        desenhar(); window.scrollTo(0, 0); return;
+      }
+      if (b.dataset.mochila) { st.abasMochila = b.dataset.mochila; st.aviso = ''; desenhar(); return; }
+      if (b.dataset.loja) { st.tipoLoja = b.dataset.loja; st.aviso = ''; desenhar(); return; }
+      if (b.dataset.etapa) {
+        // abre e fecha sem redesenhar, para não perder a posição nem o que está sendo digitado
+        const li = b.closest('.etapa'); const abrir = !li.classList.contains('aberta');
+        st.etapas[b.dataset.etapa] = abrir; li.classList.toggle('aberta', abrir);
+        b.setAttribute('aria-expanded', abrir); li.querySelector('.etapa-corpo').hidden = !abrir; return;
+      }
+      if (b.dataset.fase) { st.faseAberta = b.dataset.fase; st.etapas = {}; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
       if (b.id === 'voltar') { st.faseAberta = null; st.aviso = ''; if (st.voltarMapa) { st.voltarMapa = false; st.noMapa = true; } desenhar(); return; }
-      if (b.id === 'abrir-carteira') { st.naCarteira = true; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
-      if (b.id === 'voltar-carteira') { st.naCarteira = false; st.aviso = ''; desenhar(); return; }
+      if (b.id === 'abrir-carteira') { st.naCarteira = true; st.abasMochila = 'loja'; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
       if (b.id === 'tut-prox') { if (st.tutorial >= TUTORIAL.length - 1) { st.tutorial = null; marcarVisto(`admq-tut-${alvo}`); } else st.tutorial += 1; desenhar(); return; }
       if (b.id === 'tut-pular') { st.tutorial = null; marcarVisto(`admq-tut-${alvo}`); desenhar(); return; }
       if (b.id === 'ver-tutorial') { st.tutorial = 0; desenhar(); window.scrollTo(0, 0); return; }
       if (b.dataset.novidade) { marcarVisto(`admq-nov-${alvo}-${b.dataset.novidade}`); desenhar(); return; }
-      if (b.id === 'abrir-guilda') { st.naGuilda = true; st.montando = null; st.aviso = ''; desenhar(); window.scrollTo(0, 0); return; }
-      if (b.id === 'voltar-guilda') { st.naGuilda = false; st.montando = null; st.aviso = ''; desenhar(); return; }
       if (ver) return;
       if (b.dataset.grupo) { await acaoGrupo(b); return; }
       if (b.dataset.votar) { const v = st.votacoes.find((x) => x.id === b.dataset.votar); if (v) await votar(v, b.dataset.op, alvo, st.dados.turma); return; }
