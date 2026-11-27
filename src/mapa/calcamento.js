@@ -41,8 +41,9 @@ export function desenharCalcamento(g, t, planta, Q) {
   }
   gc.putImageData(img, 0, 0); g.drawImage(cv, X0, Y0);
   const r = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
-  // rosácea em volta da fonte
-  g.strokeStyle = 'rgba(122,72,60,0.55)'; for (const [k, l] of [[0.34, 5], [0.62, 3]]) { g.lineWidth = l; g.beginPath(); g.ellipse(pr.cx * Q, pr.cy * Q, pr.rx * k * Q, pr.ry * k * Q, 0, 0, Math.PI * 2); g.stroke(); }
+  // rosácea em volta da fonte: os dois aros têm o mesmo centro do tanque, com a mesma folga em volta dele
+  const [mx, my, mrx, mry] = planta.TANQUE ?? [pr.cx, pr.cy, pr.rx * 0.34, pr.ry * 0.34];
+  g.strokeStyle = 'rgba(122,72,60,0.55)'; for (const [fx, fy, l] of [[0.75, 0.55, 5], [2.9, 2, 3]]) { g.lineWidth = l; g.beginPath(); g.ellipse(mx * Q, my * Q, (mrx + fx) * Q, (mry + fy) * Q, 0, 0, Math.PI * 2); g.stroke(); }
   // tanque de pedra em volta da fonte
   const fo = planta.TANQUE; if (fo) {
     const [tx, ty, rx, ry] = fo; const el = (cor, k, dy = 0) => { g.fillStyle = cor; g.beginPath(); g.ellipse(tx * Q, ty * Q + dy, rx * Q - k, ry * Q - k * 0.7, 0, 0, Math.PI * 2); g.fill(); };

@@ -936,3 +936,26 @@ button.mapa-segredos { font: inherit; color: var(--ouro); background: none; bord
 
 .mapa-cfg-caixa label, .mapa-cfg-caixa label.check { color: #fff; }
 button.mapa-segredos { white-space: nowrap; }
+
+/* ---------- barra do mapa alinhada: mesma altura para tudo, texto centralizado e números legíveis ---------- */
+.mapa-barra .mapa-btn, button.mapa-segredos { box-sizing: border-box; height: 44px; min-height: 44px; margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; line-height: 1; white-space: nowrap; }
+.mapa-barra .mapa-btn { padding: 0 12px; pointer-events: auto; }
+.mapa-barra .mapa-btn.ic { width: 48px; padding: 0; }
+.mapa-barra .mapa-btn.ic img { width: 28px; height: 28px; }
+.mapa-riscos { width: 16px; height: 3px; background: currentColor; box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor; }
+button.mapa-segredos { padding: 0 6px; font: 800 1rem var(--f-texto); color: var(--ouro); text-decoration: underline dotted; text-underline-offset: 4px; pointer-events: auto; }
+.mapa-mundo { line-height: 1.2; }
+.mapa-alvo .tecla, .mapa-ab .mapa-tecla { font-family: var(--f-texto); font-weight: 800; line-height: 1; }
+.mapa-ab .mapa-tecla { display: grid; place-items: center; padding: 0; }
+.mapa-alvo > b, .mapa-alvo .acao, .mapa-alvo .est { line-height: 1.2; }
+
+@media (orientation: portrait) and (max-width: 700px) {
+  .mapa-barra { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; align-items: center; }
+  .mapa-dir { display: contents; }
+  .mapa-mundo { grid-column: 1 / 4; grid-row: 1; align-self: center; }
+  button.mapa-segredos { grid-column: 4 / 6; grid-row: 1; justify-self: end; }
+  .mapa-barra .mapa-btn, .mapa-barra .mapa-btn.ic { grid-row: 2; width: 100%; }
+  .mapa-barra .mapa-btn { padding: 0 4px; gap: 6px; font-size: 0.9rem; }
+  .mapa-riscos { width: 11px; }
+}
+

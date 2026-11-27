@@ -80,7 +80,7 @@ export function criarMapaAluno({ alvo, ver, turma, aoAbrirFase, aoVoltar }) {
     const viuCair = ler(chave('castelo'), false);
     if (caiu && !viuCair && !ver) gravar(chave('castelo'), true);
     api = modulo.iniciarMapa(raiz, {
-      botoesBarra: '<button class="mapa-btn" id="mapa-lista" data-lista aria-label="Menu: lista de fases, carteira e avisos">☰ Menu</button>',
+      botoesBarra: '<button class="mapa-btn" id="mapa-lista" data-lista aria-label="Menu: lista de fases, carteira e avisos"><span class="mapa-riscos" aria-hidden="true"></span>Menu</button>',
       verLista: true,
       aoPronto: () => raiz.querySelector('.cg-mapa')?.remove(),
       urls: { base: `${import.meta.env.BASE_URL}mapa/na/`, lpc: `${import.meta.env.BASE_URL}mapa/lpc/` },
