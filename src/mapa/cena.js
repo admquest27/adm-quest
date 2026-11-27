@@ -1336,7 +1336,7 @@ export function iniciarMapa(raiz, opcoes) {
         <label>Tamanho dos botões <select id="cfg-botoes"><option value="normal">Normal</option><option value="grande">Grande</option></select></label>
         <label class="check"><input type="checkbox" id="cfg-dicas"> Mostrar dicas dos botões</label>
         <label class="check"><input type="checkbox" id="cfg-movimento"> Menos movimento na tela</label>
-        <p class="mapa-cfg-dica">No celular: arraste o dedo no lado esquerdo da tela para andar (ou use as setas, se preferir), A para conversar ou entrar, B para pular. No computador: setas ou W A S D para andar, E ou Enter para conversar ou entrar, Espaço para pular, M para o mapa inteiro e Esc para este menu.</p>
+        <p class="mapa-cfg-dica">No celular: arraste o dedo no lado esquerdo da tela para andar (ou use as setas, se preferir), A para conversar ou entrar, B para pular. No computador: setas ou W A S D para andar, E ou Enter para conversar ou entrar, Espaço para pular, M para o mapa inteiro e Esc para este menu.</p><p class="mapa-cfg-dica" id="mapa-medidas"></p>
         <button class="btn verde" id="cfg-fechar">Voltar ao jogo</button> <button class="btn" id="cfg-creditos" type="button">Créditos da arte</button></div></div>
     <div class="mapa-cfg" id="mapa-creditos" hidden role="dialog" aria-label="Créditos">
       <div class="mapa-cfg-caixa" style="max-height:94vh;overflow:auto"><h2>Créditos</h2><p class="mapa-cfg-dica">ADM Quest, jogo educacional do professor Silas (EMED Senac Campinas). A arte do mapa e dos personagens usa trabalhos livres da comunidade Liberated Pixel Cup (LPC), publicados no OpenGameArt, nas licenças CC-BY, CC-BY-SA, OGA-BY, GPL e CC0, conforme cada pacote. Música e efeitos sonoros: feitos para o jogo.</p><pre id="creditos-texto" style="white-space:pre-wrap;overflow-wrap:anywhere;text-align:left;font-size:11px;line-height:1.4;max-height:24vh;overflow:auto;user-select:text">Carregando...</pre>
@@ -1413,7 +1413,7 @@ export function iniciarMapa(raiz, opcoes) {
   $('#mapa-cfg').addEventListener('click', () => abrirCfg());
 
   // ---------- controle na tela ----------
-  let segurando = null; let cena = null; let vetorStick = null;
+  let segurando = null; let cena = null; let vetorStick = null; let soltarControles = () => { segurando = null; vetorStick = null; };
   raiz.querySelectorAll('[data-dir]').forEach((b) => {
     const solta = () => { if (segurando === b.dataset.dir) segurando = null; b.classList.remove('apertada'); };
     b.addEventListener('pointerdown', (e) => { e.preventDefault(); segurando = b.dataset.dir; b.classList.add('apertada'); if (cena) { cena.modoToque = true; cena.botao(b.dataset.dir); } });
@@ -1448,6 +1448,7 @@ export function iniciarMapa(raiz, opcoes) {
     });
     zona.addEventListener('pointermove', (e) => { if (dedo && e.pointerId === dedo.id) mover(e); });
     for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) zona.addEventListener(ev, fim);
+    soltarControles = () => { if (dedo) fim({ pointerId: dedo.id }); segurando = null; vetorStick = null; };
   }
   raiz.querySelectorAll('[data-bt]').forEach((b) => b.addEventListener('pointerdown', (e) => {
     e.preventDefault(); b.classList.add('apertada'); setTimeout(() => b.classList.remove('apertada'), 120);
@@ -1466,6 +1467,10 @@ export function iniciarMapa(raiz, opcoes) {
     if (somLigado() && (acabouDeLiberar() || !(e.estado === 'running' && e.tocando))) garantirSom();
     else { alternarSom(); if (somLigado()) garantirSom(); }
     pintarSom(); efeitoToque();
+  });
+  $('#mapa-cfg').addEventListener('click', () => {
+    const el = $('#mapa-medidas'); const r = raiz.getBoundingClientRect(); const c = raiz.querySelector('.mapa-jogo canvas');
+    if (el) el.textContent = `Medidas: área ${Math.round(r.width)}×${Math.round(r.height)}, aparelho ${screen.width}×${screen.height}, densidade ${(window.devicePixelRatio || 1).toFixed(2)}, ampliação ${(window.visualViewport?.scale ?? 1).toFixed(2)}, jogo ${c?.width}×${c?.height}, ${document.fullscreenElement ? 'tela cheia' : 'janela'}`;
   });
   $('#mapa-cheia').addEventListener('click', async () => {
     // a tela cheia é da página inteira: se fosse só do mapa, ao abrir uma fase o celular ficaria preso num mapa escondido
@@ -1577,7 +1582,8 @@ export function iniciarMapa(raiz, opcoes) {
   const medida = () => {
     const r = raiz.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
     const w = (r.width || 640) * dpr; const h = (r.height || 360) * dpr;
-    const z = Math.max(1, Math.round(Math.min(w, h) / (180 * ZOOM)));
+    const aparelho = Math.min(window.screen?.width || Infinity, window.screen?.height || Infinity) * dpr;
+    const z = Math.max(1, Math.round(Math.min(w, h, aparelho) / (180 * ZOOM)));
     return { w: Math.min(560 * ZOOM, Math.ceil(w / z)), h: Math.ceil(h / z), zoom: z / dpr };
   };
   const m0 = medida();
@@ -1595,20 +1601,43 @@ export function iniciarMapa(raiz, opcoes) {
   });
   jogo.events.once('ready', () => { cena = jogo.scene.getScene('mapa'); });
   tocarMusica(); // começa no primeiro toque ou tecla do jogador
-  const aoRedimensionar = () => {
+  let ultimaMedida = '';
+  const assinatura = (m) => [m.w, m.h, m.zoom, Math.round(raiz.getBoundingClientRect().width), Math.round(raiz.getBoundingClientRect().height)].join();
+  const ajustar = () => {
     if (!raiz.getBoundingClientRect().width) return; // escondido: ajusta quando voltar
-    const m = medida(); jogo.scale.setZoom(m.zoom); jogo.scale.resize(m.w, m.h);
+    const m = medida(); ultimaMedida = assinatura(m);
+    jogo.scale.getParentBounds(); // o Phaser guarda o tamanho antigo da área; atualiza antes de centralizar
+    jogo.scale.setZoom(m.zoom); jogo.scale.resize(m.w, m.h); jogo.scale.refresh();
   };
+  // Ao virar o celular, o navegador muda o tamanho aos poucos (barra de endereço, animação): mede de novo até assentar.
+  let esperas = [];
+  const aoRedimensionar = () => { esperas.forEach(clearTimeout); ajustar(); esperas = [120, 350, 700, 1300].map((ms) => setTimeout(ajustar, ms)); };
+  // virar com o dedo no analógico deixaria o personagem andando e o controle fora do lugar
+  // Em tela cheia, o Chrome do celular pode manter a página ampliada depois de girar: com o mapa aberto, a escala
+  // da página fica travada em 1 (ao sair do mapa, volta ao normal).
+  const meta = document.querySelector('meta[name="viewport"]'); const metaOriginal = meta?.getAttribute('content') ?? '';
+  const travarEscala = () => meta?.setAttribute('content', `${metaOriginal}, minimum-scale=1, maximum-scale=1`);
+  const soltarEscala = () => meta?.setAttribute('content', metaOriginal);
+  travarEscala();
+  const aoGirar = () => { soltarControles(); travarEscala(); aoRedimensionar(); };
+  document.addEventListener('fullscreenchange', aoGirar);
+  // conferência contínua: se a tela mudou sem o navegador avisar, o mapa se ajusta sozinho
+  const vigia = setInterval(() => { if (raiz.getBoundingClientRect().width && assinatura(medida()) !== ultimaMedida) ajustar(); }, 600);
   window.addEventListener('resize', aoRedimensionar);
+  window.addEventListener('orientationchange', aoGirar);
+  screen.orientation?.addEventListener?.('change', aoGirar);
+  window.visualViewport?.addEventListener('resize', aoRedimensionar);
+  const observador = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(aoRedimensionar);
+  observador?.observe(raiz);
 
   return {
     jogo, falar, cena: () => cena,
     atualizarEstados(estados, concluidas) { opcoes.estados = estados; opcoes.concluidas = concluidas; cena?.aplicarEstados(estados, concluidas); },
     revelarCaminho(id) { cena?.revelarCaminho(id); },
     derrotarCastelo() { cena?.derrotarCastelo(); },
-    pausar() { pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
-    retomar() { jogo.loop.wake(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = true; aoRedimensionar(); tocarMusica(); },
-    destruir() { window.removeEventListener('resize', aoRedimensionar); pararMusica(); pararRetrato(); clearInterval(digita); const gl = jogo.renderer?.gl; jogo.destroy(true); setTimeout(() => { try { gl?.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* já liberado */ } }, 300); raiz.innerHTML = ''; raiz.classList.remove('mapa'); },
+    pausar() { soltarEscala(); pararMusica(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = false; jogo.loop.sleep(); },
+    retomar() { travarEscala(); jogo.loop.wake(); if (jogo.input?.keyboard) jogo.input.keyboard.enabled = true; aoRedimensionar(); tocarMusica(); },
+    destruir() { window.removeEventListener('resize', aoRedimensionar); window.removeEventListener('orientationchange', aoGirar); screen.orientation?.removeEventListener?.('change', aoGirar); window.visualViewport?.removeEventListener('resize', aoRedimensionar); observador?.disconnect(); esperas.forEach(clearTimeout); document.removeEventListener('fullscreenchange', aoGirar); clearInterval(vigia); soltarEscala(); pararMusica(); pararRetrato(); clearInterval(digita); const gl = jogo.renderer?.gl; jogo.destroy(true); setTimeout(() => { try { gl?.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* já liberado */ } }, 300); raiz.innerHTML = ''; raiz.classList.remove('mapa'); },
     alternarSom,
   };
 }
