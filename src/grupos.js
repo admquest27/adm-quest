@@ -1,11 +1,13 @@
 // Guildas e grupos de atividade: o que é comum ao aluno e ao professor. Funções puras.
-import { MUNDO } from './fases.js';
+import { PRIMEIRO } from './mundos.js';
 
 // escape local (ui.js mexe na página e não roda nos testes)
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // A guilda é a "atividade" do mundo inteiro; os grupos de uma fase usam o id da fase.
-export const ATV_GUILDA = `guilda-${MUNDO}`;
+export const atividadeGuilda = (mundo = PRIMEIRO) => `guilda-${mundo}`;
+export const ehGuilda = (atv) => String(atv).startsWith('guilda-');
+export const ATV_GUILDA = atividadeGuilda();
 export const MODOS = { alunos: 'Os alunos montam', sorteio: 'Sorteio', professor: 'Você monta' };
 
 // Configuração de uma fase nesta turma: o que o professor definiu, ou o padrão do conteúdo.
@@ -16,10 +18,10 @@ export function configDaFase(turma, f) {
   return { tipo: salvo.tipo ?? base?.tipo ?? 'fase', tamanho: salvo.tamanho ?? base?.tamanho ?? 4, modo: salvo.modo ?? 'alunos', aberta: salvo.aberta === true, ...(salvo.minimo ? { minimo: salvo.minimo } : {}) };
 }
 
-export const configGuilda = (turma) => ({ tipo: 'guilda', tamanho: 4, modo: 'alunos', aberta: false, ...(turma?.atividades?.[ATV_GUILDA] ?? {}) });
+export const configGuilda = (turma, mundo = PRIMEIRO) => ({ tipo: 'guilda', tamanho: 4, modo: 'alunos', aberta: false, ...(turma?.atividades?.[atividadeGuilda(mundo)] ?? {}) });
 
 // Id da atividade cujos grupos valem para a fase: a própria fase ou a guilda.
-export const atividadeDaFase = (cfg, f) => (cfg?.tipo === 'guilda' ? ATV_GUILDA : f.id);
+export const atividadeDaFase = (cfg, f) => (cfg?.tipo === 'guilda' ? atividadeGuilda(f.mundo ?? PRIMEIRO) : f.id);
 
 export const grupoDe = (grupos, atv, uid) => grupos.find((g) => g.atividade === atv && g.membros?.includes(uid)) ?? null;
 export const convitesPara = (grupos, atv, uid) => grupos.filter((g) => g.atividade === atv && g.convites?.includes(uid));

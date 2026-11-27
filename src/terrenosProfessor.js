@@ -7,13 +7,15 @@ import { db } from './firebase.js';
 import { esc } from './ui.js';
 import { LOTES } from './mapa/vila.js';
 import { MODELOS_FASE } from './mapa/arte.js';
-import { MUNDO, parteAluno } from './fases.js';
+import { parteAluno } from './fases.js';
+import { temMapa } from './mundos.js';
 
 export const NOME_LOTE = { l1: 'Terreno 1, perto das Dunas', l2: 'Terreno 2, na Fazenda', l3: 'Terreno 3, perto do Castelo' };
 const lotes = () => LOTES.map((l) => l.id);
 const doLote = (st, id) => st.fases.find((f) => f.lote === id && !f.arquivada);
 
 export function htmlTerrenos(st) {
+  if (!temMapa(st.mundoId ?? 'm1')) return '<p class="px-vazio">Os terrenos ficam no mapa, e este mundo ainda não tem mapa.</p>';
   const arquivadas = st.fases.filter((f) => f.arquivada);
   const linhas = lotes().map((id) => {
     const f = doLote(st, id);
@@ -72,9 +74,11 @@ export function abrirTerreno({ st, dlg, loteId = '', faseId = '' }) {
       if (f) {
         lote.update(doc(db, 'fases', f.id), { ...dados, arquivada: false, atualizadoEm: serverTimestamp() });
       } else {
-        const id = `m1x${Math.max(0, ...st.fases.filter((x) => x.extra).map((x) => parseInt(String(x.id).replace(/\D/g, '').slice(2), 10) || 0)) + 1}`;
-        lote.set(doc(db, 'fases', id), { ...parteAluno({ ...dados, ordem: proxima, tipo: 'normal', etapas: [] }, MUNDO), extra: true, atualizadoEm: serverTimestamp() });
-        lote.set(doc(db, 'fasesProfessor', id), { mundo: MUNDO, professor: {}, atualizadoEm: serverTimestamp() });
+        const mundo = st.mundoId ?? 'm1';
+        const usados = st.fases.map((x) => Number(new RegExp(`^${mundo}x(\\d+)$`).exec(x.id)?.[1] ?? 0));
+        const id = `${mundo}x${Math.max(0, ...usados) + 1}`;
+        lote.set(doc(db, 'fases', id), { ...parteAluno({ ...dados, ordem: proxima, tipo: 'normal', etapas: [] }, mundo), extra: true, atualizadoEm: serverTimestamp() });
+        lote.set(doc(db, 'fasesProfessor', id), { mundo, professor: {}, atualizadoEm: serverTimestamp() });
       }
       await lote.commit(); dlg.close();
     } catch { msg().textContent = 'Não consegui salvar agora. Confira a conexão e tente de novo.'; }

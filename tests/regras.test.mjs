@@ -151,7 +151,7 @@ const prog = (uid, fase, extra = {}) => ({ uid, turma: '1A', fase, tarefas: { t1
 test('aluno ativo lê o conteúdo do mundo e das fases, mas não as notas do professor', async () => {
   await assertSucceeds(getDoc(doc(aluno('ativo1'), 'mundos/m1')));
   await assertSucceeds(getDoc(doc(aluno('ativo1'), 'fases/m1f1')));
-  await assertSucceeds(getDocs(collection(aluno('ativo1'), 'fases')));
+  await assertSucceeds(getDocs(query(collection(aluno('ativo1'), 'fases'), where('mundo', '==', 'm1'))));
   await assertFails(getDoc(doc(aluno('ativo1'), 'fasesProfessor/m1f1')));
   await assertFails(getDocs(collection(aluno('ativo1'), 'fasesProfessor')));
 });
@@ -585,4 +585,23 @@ test('grupos: só o professor muda o limite de um grupo, e o limite dele passa a
   await assertSucceeds(updateDoc(doc(aluno('ativo1'), 'grupos/g1'), { convites: ['ativo2', 'ativo3'] }));
   await assertSucceeds(aceitar('ativo2', 'g1', 'm1f7', ['ativo1', 'ativo2'], ['ativo3']));
   await assertSucceeds(aceitar('ativo3', 'g1', 'm1f7', ['ativo1', 'ativo2', 'ativo3'], []));
+});
+
+test('mundos: o aluno não lê o próximo mundo até o professor liberar para a turma dele', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'mundos/m2'), { nome: 'Arena' });
+    await setDoc(doc(db, 'fases/m2f1'), { mundo: 'm2', nome: 'Segredo' });
+  });
+  const a = aluno('ativo1');
+  await assertSucceeds(getDocs(query(collection(a, 'fases'), where('mundo', '==', 'm1'))));
+  await assertFails(getDoc(doc(a, 'fases/m2f1')));
+  await assertFails(getDoc(doc(a, 'mundos/m2')));
+  await assertFails(getDocs(query(collection(a, 'fases'), where('mundo', '==', 'm2'))));
+  await assertFails(getDocs(collection(a, 'fases')));
+  await assertFails(updateDoc(doc(a, 'turmas/1A'), { mundos: ['m2'] }));
+  await assertSucceeds(updateDoc(doc(prof(), 'turmas/1A'), { mundos: ['m2'] }));
+  await assertSucceeds(getDoc(doc(a, 'fases/m2f1')));
+  await assertSucceeds(getDoc(doc(a, 'mundos/m2')));
+  await assertSucceeds(getDocs(query(collection(a, 'fases'), where('mundo', '==', 'm2'))));
 });

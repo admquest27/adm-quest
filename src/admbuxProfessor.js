@@ -3,14 +3,13 @@ import { nomeDe, nomeCurto } from './alunos.js';
 import { doc, setDoc, writeBatch, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc } from './ui.js';
-import { MUNDO } from './fases.js';
 import { calcularCarteira, rendimentoDe, CONQUISTAS } from './economia.js';
 
 // Os dados do professor vêm indexados por uid_fase; a carteira precisa deles por fase, de um aluno só.
 export function carteiraDoAluno(st, uid) {
   const porFase = (mapa) => Object.fromEntries(Object.values(mapa ?? {}).filter((x) => x.uid === uid).map((x) => [x.fase, x]));
   return calcularCarteira({
-    fases: st.fases,
+    fases: st.fasesTodas ?? st.fases,
     progresso: porFase(st.progresso),
     aval: porFase(st.aval),
     recados: (st.comentarios ?? []).filter((c) => c.uid === uid && c.visivel === true),
@@ -64,7 +63,7 @@ export function htmlAdmBuxMais(st, ativos) {
   }
   const saldos = ativos.map((a) => ({ a, c: carteiraDoAluno(st, a.uid) }));
   const negativos = saldos.filter((x) => x.c.saldo < 0);
-  const pagos = saldos.filter((x) => st.carteiras?.[x.a.uid]?.rendimentos?.[MUNDO]);
+  const pagos = saldos.filter((x) => st.carteiras?.[x.a.uid]?.rendimentos?.[st.mundoId ?? 'm1']);
   const total = saldos.reduce((s, x) => s + Math.max(0, x.c.saldo), 0);
   return `<h2>AdmBux</h2>
     <p class="nota">${ativos.length} aluno(s) ativo(s) nesta turma, com ${total} AdmBux guardadas no total. O saldo de cada um aparece no botão 🪙 em Alunos.</p>
@@ -77,6 +76,7 @@ export function htmlAdmBuxMais(st, ativos) {
 
 export async function pagarRendimento(st, ativos) {
   const taxa = st.eco?.valores?.rendimento ?? 0.1;
+  const MUNDO = st.mundoId ?? 'm1';
   const nome = st.mundo?.nome ?? MUNDO;
   const alvo = ativos
     .filter((a) => !st.carteiras?.[a.uid]?.rendimentos?.[MUNDO])

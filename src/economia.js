@@ -4,6 +4,7 @@
 // visíveis, prêmios e rendimentos na carteira) menos as compras do aluno. Assim ninguém dá moeda para si mesmo.
 // A menção nunca vale moeda.
 import { etapasDe } from './fases.js';
+import { numeroDoMundo } from './mundos.js';
 
 export const VALORES_PADRAO = { fase: 10, bonus: 5, atitude: 5, conquista: 15, rendimento: 0.1 };
 
@@ -31,7 +32,7 @@ export function calcularCarteira({ fases = [], progresso = {}, aval = {}, recado
   const V = { ...VALORES_PADRAO, ...(eco?.valores ?? {}) };
   const linhas = [];
   const add = (quando, descricao, valor, tipo) => linhas.push({ quando, descricao, valor, tipo });
-  const ordenadas = fases.filter(temConcluir).sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  const ordenadas = fases.filter(temConcluir).sort((a, b) => numeroDoMundo(a.mundo) - numeroDoMundo(b.mundo) || (a.ordem ?? 0) - (b.ordem ?? 0));
 
   let primeira = null;
   let exilio = null;
@@ -71,7 +72,11 @@ export function calcularCarteira({ fases = [], progresso = {}, aval = {}, recado
   if (exilio !== null) ganhas.exilio = exilio;
   if (comBonus.length >= 3) ganhas.combo = comBonus[2];
   if (braco !== null) ganhas.braco = braco;
-  if (ordenadas.length && ordenadas.every((f) => aval[f.id]?.validada)) ganhas.vila = Math.max(...ordenadas.map((f) => ms(aval[f.id].validadaEm) || ms(aval[f.id].atualizadoEm)));
+  // "Vila completa": o primeiro mundo que o aluno tiver completado
+  for (const mundo of [...new Set(ordenadas.map((f) => f.mundo))]) {
+    const doMundo = ordenadas.filter((f) => f.mundo === mundo);
+    if (doMundo.every((f) => aval[f.id]?.validada)) { ganhas.vila = Math.max(...doMundo.map((f) => ms(aval[f.id].validadaEm) || ms(aval[f.id].atualizadoEm))); break; }
+  }
   if (cofre !== null) ganhas.cofre = cofre;
   const textos = { ...CONQUISTAS, ...(eco?.conquistas ?? {}) };
   for (const [id, quando] of Object.entries(ganhas)) add(quando, `Conquista: ${textos[id]?.nome ?? id}`, V.conquista, 'conquista');

@@ -6,7 +6,7 @@ import { db } from './firebase.js';
 import { esc } from './ui.js';
 import { progId } from './fases.js';
 import { MARCAS } from './registros.js';
-import { MODOS, ATV_GUILDA, configDaFase, configGuilda, atividadeDaFase, limites, textoTamanho, distribuir, svgEscudo, nomeGuilda } from './grupos.js';
+import { MODOS, atividadeGuilda, ehGuilda, configDaFase, configGuilda, atividadeDaFase, limites, textoTamanho, distribuir, svgEscudo, nomeGuilda } from './grupos.js';
 
 const apelido = (st, uid) => { const a = st.alunos.find((x) => x.uid === uid); return a ? nomeCurto(a) : '(saiu)'; };
 const grupos = (st, atv) => (st.grupos ?? []).filter((g) => g.atividade === atv);
@@ -19,7 +19,8 @@ const semGrupo = (st, atv, ativos) => {
 export function htmlGrupos(st, { atv, cfg, faseId, ativos, titulo, mostrarConfig = true }) {
   const lista = grupos(st, atv);
   const sem = semGrupo(st, atv, ativos);
-  const ehGuilda = atv === ATV_GUILDA;
+  const daGuilda = ehGuilda(atv);
+  const anterior = daGuilda && !lista.length ? (st.grupos ?? []).filter((g) => ehGuilda(g.atividade) && g.atividade < atv) : [];
   const cartaoGrupo = (g, i) => {
     const p = g.proposta;
     const todos = p && g.membros.every((u) => p.confirmacoes.includes(u));
@@ -30,10 +31,10 @@ export function htmlGrupos(st, { atv, cfg, faseId, ativos, titulo, mostrarConfig
       g.aceito && g.membros.length < lim.min ? '<span class="chip ativo">Aceito assim</span>' : '',
     ].join(' ');
     return `<li class="grupo-card">
-      <div class="grupo-topo">${ehGuilda && g.escudo ? svgEscudo(g.escudo, 32) : ''}<strong>${ehGuilda ? esc(nomeGuilda(g)) : `Grupo ${i + 1}`}</strong> <span class="nota">${g.membros.length} integrante(s)</span> ${selos}</div>
+      <div class="grupo-topo">${daGuilda && g.escudo ? svgEscudo(g.escudo, 32) : ''}<strong>${daGuilda ? esc(nomeGuilda(g)) : `Grupo ${i + 1}`}</strong> <span class="nota">${g.membros.length} integrante(s)</span> ${selos}</div>
       <div class="chips-membros">${g.membros.map((u) => `<span class="chip">${esc(apelido(st, u))} <button class="x" data-acao="gr-tirar" data-g="${esc(g.id)}" data-uid="${esc(u)}" aria-label="Tirar ${esc(apelido(st, u))} do grupo">×</button></span>`).join('')}
         ${(g.convites ?? []).map((u) => `<span class="chip convidado">${esc(apelido(st, u))} (convidado)</span>`).join('')}</div>
-      ${ehGuilda && p ? `<div class="proposta"><span class="nota">Proposta:</span> ${svgEscudo(p.escudo, 28)} <strong>${esc(p.nome)}</strong> <span class="nota">${p.confirmacoes.length}/${g.membros.length} confirmaram${todos ? '' : ' (dá para aprovar mesmo assim)'}</span>
+      ${daGuilda && p ? `<div class="proposta"><span class="nota">Proposta:</span> ${svgEscudo(p.escudo, 28)} <strong>${esc(p.nome)}</strong> <span class="nota">${p.confirmacoes.length}/${g.membros.length} confirmaram${todos ? '' : ' (dá para aprovar mesmo assim)'}</span>
         <div class="linha-btn"><button class="mini ok" data-acao="gr-aprovar" data-g="${esc(g.id)}">Aprovar nome e escudo</button><button class="mini" data-acao="gr-recusar-prop" data-g="${esc(g.id)}">Recusar</button></div></div>` : ''}
       <div class="linha-btn">
         ${faseId ? `<button class="mini" data-acao="gr-mencao" data-g="${esc(g.id)}" data-fase="${esc(faseId)}">Menção do grupo</button>` : ''}
@@ -53,6 +54,7 @@ export function htmlGrupos(st, { atv, cfg, faseId, ativos, titulo, mostrarConfig
   const ajuda = mostrarConfig ? `<p class="nota">Grupos de ${textoTamanho(limites(cfg).min, cfg.tamanho)}. Há três jeitos de formar: os alunos montam por convite (escolha em "Quem monta" e abra para eles), você marca nomes em "Sem grupo", ou usa o sorteio. Exceções valem só para o grupo escolhido, e os alunos não veem a etiqueta.</p>` : '';
   return `<details class="roteiro grupos" ${mostrarConfig || lista.length || cfg.aberta ? 'open' : ''}><summary>${titulo} · ${lista.length} grupo(s)${sem.length ? ` · ${sem.length} sem grupo` : ''}</summary>
     ${ajuda}${config}
+    ${anterior.length ? `<button class="mini" data-acao="gr-copiar" data-atv="${esc(atv)}">Copiar as guildas do mundo anterior</button>` : ''}
     <ul class="lista grupos-lista">${lista.map(cartaoGrupo).join('') || '<li class="vazio">Nenhum grupo ainda.</li>'}</ul>
     ${sem.length ? `<h4>Sem grupo <span class="nota">(só você vê)</span></h4>
       <ul class="sem-grupo">${sem.map((a) => `<li><label class="check"><input type="checkbox" data-semgrupo="${esc(atv)}" value="${esc(a.uid)}"> ${esc(nomeCurto(a))}</label></li>`).join('')}</ul>
@@ -66,7 +68,7 @@ export function htmlGruposDaFase(st, f, turma, ativos) {
   const tipoSel = `<label class="gr-tipo">Esta fase trabalha com <select data-gr-tipo="${esc(f.id)}"><option value="">sem grupos</option><option value="guilda" ${cfg?.tipo === 'guilda' ? 'selected' : ''}>as guildas do mundo</option><option value="fase" ${cfg?.tipo === 'fase' ? 'selected' : ''}>grupos só desta fase</option></select></label>`;
   if (!cfg) return `<h2>Grupos</h2>${tipoSel}`;
   if (cfg.tipo === 'guilda') {
-    return `<h2>Grupos</h2>${tipoSel}${htmlGrupos(st, { atv: ATV_GUILDA, cfg: configGuilda(turma), faseId: f.id, ativos, titulo: 'Guildas nesta fase', mostrarConfig: false })}
+    return `<h2>Grupos</h2>${tipoSel}${htmlGrupos(st, { atv: atividadeGuilda(f.mundo), cfg: configGuilda(turma, f.mundo), faseId: f.id, ativos, titulo: 'Guildas nesta fase', mostrarConfig: false })}
       <p class="nota">As guildas são montadas em Alunos, na aba Guildas.</p>`;
   }
   return `<h2>Grupos</h2>${tipoSel}${htmlGrupos(st, { atv: atividadeDaFase(cfg, f), cfg, faseId: f.id, ativos, titulo: 'Grupos desta fase' })}`;
@@ -75,7 +77,7 @@ export function htmlGruposDaFase(st, f, turma, ativos) {
 // ---------- ações ----------
 const marcados = (atv) => [...document.querySelectorAll(`[data-semgrupo="${atv}"]:checked`)].map((el) => el.value);
 
-const cfgDe = (st, atv) => { const t = st.turmas.find((x) => x.id === st.turma); return atv === ATV_GUILDA ? configGuilda(t) : configDaFase(t, st.fases.find((x) => x.id === atv)); };
+const cfgDe = (st, atv) => { const t = st.turmas.find((x) => x.id === st.turma); return ehGuilda(atv) ? configGuilda(t, atv.slice(7)) : configDaFase(t, st.fases.find((x) => x.id === atv)); };
 
 function novoGrupo(lote, st, atv, membros, extra = {}) {
   const ref = doc(collection(db, 'grupos'));
@@ -92,7 +94,7 @@ export async function tratarGrupos(acao, b, ctx) {
     case 'gr-aberta': {
       const atv = b.dataset.atv;
       const f = st.fases.find((x) => x.id === atv);
-      const base = atv === ATV_GUILDA ? configGuilda(st.turmas.find((t) => t.id === st.turma)) : configDaFase(st.turmas.find((t) => t.id === st.turma), f);
+      const base = ehGuilda(atv) ? configGuilda(st.turmas.find((t) => t.id === st.turma), atv.slice(7)) : configDaFase(st.turmas.find((t) => t.id === st.turma), f);
       await updateDoc(refTurma, { [`atividades.${atv}`]: { ...base, ...atual(atv), aberta: !base.aberta } });
       return true;
     }
@@ -130,6 +132,18 @@ export async function tratarGrupos(acao, b, ctx) {
       const lote = writeBatch(db);
       lote.update(doc(db, 'grupos', g.id), { membros: [...g.membros, ...sel], convites: (g.convites ?? []).filter((u) => !sel.includes(u)), ...(total > max ? { limite: total } : {}) });
       for (const u of sel) lote.set(doc(db, 'vagas', `${g.atividade}_${u}`), { uid: u, turma: st.turma, atividade: g.atividade, grupo: g.id });
+      await lote.commit();
+      return true;
+    }
+    case 'gr-copiar': {
+      const atv = b.dataset.atv;
+      const antigas = (st.grupos ?? []).filter((x) => ehGuilda(x.atividade) && x.atividade < atv);
+      const ultima = antigas.map((x) => x.atividade).sort().at(-1);
+      const ativos_ = new Set(ativos.map((a) => a.uid));
+      const copiar = antigas.filter((x) => x.atividade === ultima).map((x) => ({ x, membros: x.membros.filter((u) => ativos_.has(u)) })).filter((c) => c.membros.length);
+      if (!copiar.length || !confirm(`Copiar ${copiar.length} guilda(s) do mundo anterior, com os mesmos integrantes, nome e escudo? Depois dá para ajustar.`)) return true;
+      const lote = writeBatch(db);
+      for (const { x, membros } of copiar) novoGrupo(lote, st, atv, membros, { ...(x.nome ? { nome: x.nome, escudo: x.escudo } : {}), ...(x.limite ? { limite: x.limite } : {}), ...(x.aceito ? { aceito: true } : {}) });
       await lote.commit();
       return true;
     }
@@ -184,7 +198,7 @@ export async function mudarConfigGrupos(el, st) {
   if (el.dataset.grCfg) {
     const atv = el.dataset.atv;
     const f = st.fases.find((x) => x.id === atv);
-    const base = atv === ATV_GUILDA ? configGuilda(t) : configDaFase(t, f);
+    const base = ehGuilda(atv) ? configGuilda(t, atv.slice(7)) : configDaFase(t, f);
     const valor = ['tamanho', 'minimo'].includes(el.dataset.grCfg) ? Number(el.value) : el.value;
     await updateDoc(refTurma, { [`atividades.${atv}`]: { ...base, [el.dataset.grCfg]: valor, ...(el.dataset.grCfg === 'tamanho' && base.minimo > valor ? { minimo: valor } : {}), ...(el.dataset.grCfg === 'modo' && valor !== 'alunos' ? { aberta: false } : {}) } });
     return true;

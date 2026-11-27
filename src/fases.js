@@ -1,7 +1,5 @@
 // Ajudantes compartilhados sobre fases, progresso e avaliações.
 
-export const MUNDO = 'm1';
-
 export const ESTADOS = ['trancada', 'aberta', 'adiada', 'cancelada', 'encerrada'];
 export const ESTADO_ROTULO = {
   trancada: 'Trancada',

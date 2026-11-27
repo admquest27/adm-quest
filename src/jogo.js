@@ -11,7 +11,7 @@ const NOMES = { mapa: 'Mapa', fases: 'Fases', guilda: 'Guilda', mochila: 'Mochil
 
 // A Guilda só aparece quando o professor liga o recurso na turma.
 export function htmlMenu(aba, rec = {}, avisos = {}) {
-  const itens = ['mapa', 'fases', 'guilda', 'mochila'].filter((id) => id !== 'guilda' || rec.guildas);
+  const itens = ['mapa', 'fases', 'guilda', 'mochila'].filter((id) => (id === 'guilda' ? rec.guildas : id === 'mapa' ? !rec.semMapa : true));
   return `<nav class="jg-menu" aria-label="Menu do jogo">${itens.map((id) => `<button type="button" data-nav="${id}" ${id === aba ? 'aria-current="page"' : ''}${avisos[id] ? ' class="com-aviso"' : ''}>
     <svg viewBox="0 0 24 24" aria-hidden="true">${ICONES[id]}</svg><span>${NOMES[id]}</span></button>`).join('')}</nav>`;
 }

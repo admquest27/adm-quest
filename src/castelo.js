@@ -3,7 +3,7 @@
 import { doc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc } from './ui.js';
-import { ATV_GUILDA, grupoDe, svgEscudo, nomeGuilda } from './grupos.js';
+import { atividadeGuilda, grupoDe, svgEscudo, nomeGuilda } from './grupos.js';
 
 export const normalizarCodigo = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
 
@@ -11,7 +11,7 @@ export const normalizarCodigo = (s) => String(s ?? '').normalize('NFD').replace(
 export function vidaDoChefao({ f, fases, estados, grupos, acertos }) {
   const normais = fases.filter((x) => x.mundo === f.mundo && x.tipo !== 'chefao' && x.tipo !== 'excel');
   const encerradas = normais.filter((x) => estados?.[x.id] === 'encerrada').length;
-  const guildas = grupos.filter((g) => g.atividade === ATV_GUILDA && g.membros?.length);
+  const guildas = grupos.filter((g) => g.atividade === atividadeGuilda(f.mundo) && g.membros?.length);
   const total = (f.baus?.length ?? 0) * guildas.length;
   const abertos = acertos.filter((a) => a.fase === f.id && guildas.some((g) => g.id === a.grupo)).length;
   const parteFases = normais.length ? (50 * encerradas) / normais.length : 0;
@@ -19,19 +19,20 @@ export function vidaDoChefao({ f, fases, estados, grupos, acertos }) {
   return { vida: Math.max(0, Math.round(100 - parteFases - parteCastelo)), parteFases, parteCastelo, abertos, total, guildas };
 }
 
-export const htmlBarra = (vida, grande = false) => `<div class="barra-vida ${grande ? 'grande' : ''}" role="img" aria-label="Vida do Barão: ${vida}%">
-  <span class="barra-rotulo">Barão da Bagunça</span><span class="barra-fundo"><span class="barra-cheia" style="width:${vida}%"></span></span><strong>${vida}%</strong></div>`;
+export const htmlBarra = (vida, grande = false, chefe = 'Barão da Bagunça') => `<div class="barra-vida ${grande ? 'grande' : ''}" role="img" aria-label="Vida do chefão: ${vida}%">
+  <span class="barra-rotulo">${esc(chefe)}</span><span class="barra-fundo"><span class="barra-cheia" style="width:${vida}%"></span></span><strong>${vida}%</strong></div>`;
 
 // ---------- aluno ----------
 export function htmlCasteloAluno(ctx) {
   const { f, eu, grupos, acertos, ver, est } = ctx;
   const v = vidaDoChefao(ctx);
-  const g = grupoDe(grupos, ATV_GUILDA, eu);
-  if (v.vida === 0) return `<div class="castelo">${htmlBarra(0)}<p class="vitoria">🎉 O Barão da Bagunça foi derrotado! A Vila está livre.</p></div>`;
-  if (!g) return `<div class="castelo">${htmlBarra(v.vida)}<p class="nota">Você precisa estar numa guilda para abrir os baús. Fale com o professor.</p></div>`;
+  const g = grupoDe(grupos, atividadeGuilda(f.mundo), eu);
+  const chefe = ctx.mundo?.chefao || 'Barão da Bagunça';
+  if (v.vida === 0) return `<div class="castelo">${htmlBarra(0, false, chefe)}<p class="vitoria">🎉 ${esc(chefe)}: derrotado! A vitória é da turma.</p></div>`;
+  if (!g) return `<div class="castelo">${htmlBarra(v.vida, false, chefe)}<p class="nota">Você precisa estar numa guilda para abrir os baús. Fale com o professor.</p></div>`;
   const meus = new Set(acertos.filter((a) => a.grupo === g.id && a.fase === f.id).map((a) => a.bau));
   const aberto = est === 'aberta';
-  return `<div class="castelo">${htmlBarra(v.vida)}
+  return `<div class="castelo">${htmlBarra(v.vida, false, chefe)}
     <p class="nota">Baús abertos pela turma: ${v.abertos} de ${v.total}. A vitória só vem quando todas as guildas abrirem todos os baús.</p>
     <h3>Baús da guilda ${esc(nomeGuilda(g))}</h3>
     <ul class="baus">${(f.baus ?? []).map((b) => (meus.has(b.id)
@@ -61,7 +62,7 @@ export function htmlCasteloProfessor(st, f, turma) {
     const feitos = new Set((st.acertos ?? []).filter((a) => a.grupo === g.id && a.fase === f.id).map((a) => a.bau));
     return `<li class="aluno">${g.escudo ? svgEscudo(g.escudo, 24) : ''}<span class="nome">${esc(nomeGuilda(g))}</span><span class="nota">${(f.baus ?? []).map((b) => (feitos.has(b.id) ? '📦' : '🔒')).join('')}</span><strong>${feitos.size}/${f.baus?.length ?? 0}</strong></li>`;
   }).join('');
-  return `<h2>Castelo</h2>${htmlBarra(v.vida)}
+  return `<h2>Castelo</h2>${htmlBarra(v.vida, false, st.mundo?.chefao || undefined)}
     <p class="nota">Fases encerradas derrubam ${Math.round(v.parteFases)}% e os baús ${Math.round(v.parteCastelo)}%. ${v.abertos} de ${v.total} baús abertos.</p>
     <button class="botao" data-acao="cs-projetar">Projetar na tela da sala</button>
     <ul class="lista">${linhas || '<li class="vazio">Nenhuma guilda ainda. As guildas são montadas em Alunos, na aba Guildas.</li>'}</ul>
@@ -82,8 +83,8 @@ export function htmlProjecao(st, f, turma) {
   return `<div class="projecao">
     <button class="mini" data-acao="cs-sair">Sair da projeção</button>
     <h1>${esc(f.nome)}</h1>
-    ${htmlBarra(v.vida, true)}
-    ${v.vida === 0 ? '<p class="vitoria grande">🎉 O Barão da Bagunça foi derrotado!</p>' : `<p class="nota">${v.abertos} de ${v.total} baús abertos</p>`}
+    ${htmlBarra(v.vida, true, st.mundo?.chefao || undefined)}
+    ${v.vida === 0 ? `<p class="vitoria grande">🎉 ${esc(st.mundo?.chefao || 'Barão da Bagunça')}: derrotado!</p>` : `<p class="nota">${v.abertos} de ${v.total} baús abertos</p>`}
     <ul class="guildas-proj">${guildas}</ul></div>`;
 }
 

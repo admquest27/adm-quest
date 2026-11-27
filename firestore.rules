@@ -133,14 +133,19 @@ service cloud.firestore {
       allow delete: if ehProfessor();
     }
 
-    // Conteúdo do mundo e das fases: o aluno ativo lê, só o professor altera.
+    // Conteúdo do mundo e das fases: o aluno ativo lê só o Mundo 1 e os mundos que o professor liberou para a
+    // turma dele. Os próximos ficam escondidos, mesmo para quem tentar ler direto no banco.
+    function mundoLiberado(m) {
+      return m == 'm1' || m in get(/databases/$(database)/documents/turmas/$(meuAluno().turma)).data.get('mundos', []);
+    }
+
     match /mundos/{id} {
-      allow read: if ehProfessor() || ativo();
+      allow read: if ehProfessor() || (ativo() && mundoLiberado(id));
       allow write: if ehProfessor();
     }
 
     match /fases/{id} {
-      allow read: if ehProfessor() || ativo();
+      allow read: if ehProfessor() || (ativo() && mundoLiberado(resource.data.mundo));
       allow write: if ehProfessor();
     }
 

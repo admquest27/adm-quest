@@ -3,7 +3,8 @@
 import { doc, setDoc, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { esc, hoje } from './ui.js';
-import { ESTADO_ROTULO, MUNDO, etapasDe } from './fases.js';
+import { ESTADO_ROTULO, etapasDe } from './fases.js';
+import { fasesDoMundo } from './mundos.js';
 import {
   addDias, diaSemana, segundaDa, diasEntre, formatar, bloqueadosDe, limiteDoBimestre, gerarAgenda, diferencas, bimestreDe, dataDe, montarDias,
 } from './agenda.js';
@@ -76,7 +77,8 @@ export function planejar(st) {
   const b = cal.bimestres.find((x) => x.id === alvo) ?? cal.bimestres[0];
   const bloq = bloqueadosDe(cal, st.turma);
   const plano = st.plano ?? {};
-  const todas = st.mundo?.ordem === b.id ? st.fases : [];
+  const mundo = `m${b.id}`;
+  const todas = fasesDoMundo(st.fasesTodas ?? st.fases, mundo);
   const fases = todas.filter((f) => f.tipo !== 'excel');
   const excel = todas.filter((f) => f.tipo === 'excel');
   const diaDin = plano.diaDin ?? 2;
@@ -85,7 +87,7 @@ export function planejar(st) {
     ? gerarAgenda({ fases, bimestre: b, bloqueados: bloq, fixas: plano.fixas ?? {}, diaDin, diaCons })
     : { itens: [], limite: limiteDoBimestre(b), livres: [], folgas: [] };
   const dias = montarDias({ ag, fases: todas, bimestre: b, bloqueados: bloq, eventos: cal.eventos, diaDin, diaCons });
-  return { cal, b, bloq, plano, fases, excel, todas, ag, dias, diaDin, diaCons, minutosDia: plano.minutosDia ?? 100, dif: diferencas(plano.confirmado, ag.itens) };
+  return { cal, b, mundo, bloq, plano, fases, excel, todas, ag, dias, diaDin, diaCons, minutosDia: plano.minutosDia ?? 100, dif: diferencas(plano.confirmado, ag.itens) };
 }
 
 const faseDe = (p, id) => p.todas.find((f) => f.id === id);
@@ -103,8 +105,8 @@ function roteiroDoItem(p, st, it) {
   else {
     const k = it.parte === 'seg' ? 'recup_seg' : 'recup_ter';
     titulo = it.parte === 'seg' ? 'Semana de recuperação · segunda' : 'Fechamento do mundo · terça';
-    blocos = prof(idFimDoMundo(MUNDO))[k] ?? PADRAO[k];
-    return { titulo, blocos, editavel: k, faseId: idFimDoMundo(MUNDO), doMundo: true };
+    blocos = prof(idFimDoMundo(p.mundo))[k] ?? PADRAO[k];
+    return { titulo, blocos, editavel: k, faseId: idFimDoMundo(p.mundo), doMundo: true };
   }
   if (it.tipo === 'cons') blocos = comExcel(faseDe(p, it.faseId), blocos);
   return { titulo, blocos, editavel, faseId: it.faseId };
@@ -540,8 +542,8 @@ function dialogoFase(st, dlg, faseId) {
 
 // editor do roteiro de um dia de uma fase
 function dialogoRoteiro(st, dlg, faseId, tipo) {
-  const doMundo = faseId === idFimDoMundo(MUNDO);
-  const f = doMundo ? { codigo: 'Fim do mundo' } : st.fases.find((x) => x.id === faseId);
+  const doMundo = /^m\d+fim$/.test(faseId);
+  const f = doMundo ? { codigo: 'Fim do mundo' } : (st.fasesTodas ?? st.fases).find((x) => x.id === faseId);
   if (!f) return;
   const atual = st.profTodas?.[faseId]?.cronograma?.[tipo] ?? PADRAO[tipo] ?? PADRAO.din;
   const blocos = atual.map((b) => ({ ...b }));
@@ -608,7 +610,7 @@ function dialogoRoteiro(st, dlg, faseId, tipo) {
     }));
     if (!limpos.length) { document.getElementById('r-msg').textContent = 'Coloque ao menos um bloco com título.'; return; }
     try {
-      await setDoc(doc(db, 'fasesProfessor', faseId), { mundo: MUNDO, professor: { cronograma: { [tipo]: limpos } }, atualizadoEm: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, 'fasesProfessor', faseId), { mundo: doMundo ? faseId.slice(0, -3) : f.mundo ?? 'm1', professor: { cronograma: { [tipo]: limpos } }, atualizadoEm: serverTimestamp() }, { merge: true });
       dlg.close();
     } catch { document.getElementById('r-msg').textContent = 'Não consegui salvar agora.'; }
   };

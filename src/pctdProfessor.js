@@ -53,7 +53,7 @@ export function htmlPctd(st, p) {
   const alternar = `<div class="fc-passos">${[['doc', 'Ver o documento'], ['editar', 'Editar']].map(([id, r]) => `<button class="mini ${modo === id ? 'ok cheio' : ''}" data-acao="pc-modo" data-id="${id}">${r}</button>`).join('')}</div>`;
   if (modo === 'doc') {
     const turma = st.turmas?.find((t) => t.id === st.turma);
-    const blocos = pctdFtp({ bim, turmaNome: turma?.nome || st.turma, ano: ANO, p, roteiro: (f, tipo) => roteiroDaFase(st, f, tipo), marcas: MARCAS, cfg, mundo: st.mundo?.ordem === bim ? st.mundo : null });
+    const blocos = pctdFtp({ bim, turmaNome: turma?.nome || st.turma, ano: ANO, p, roteiro: (f, tipo) => roteiroDaFase(st, f, tipo), marcas: MARCAS, cfg, mundo: st.mundos?.[p.mundo]?.ordem === bim ? st.mundo : null });
     return `${alternar}
       <p class="nota">Assim fica o documento que você baixa. Toque numa semana da tabela para editá-la; os outros campos ficam em "Editar". No celular, arraste a folha para os lados.</p>
       <div class="linha-btn"><button class="botao" data-acao="pc-docx">Baixar PCTD (.docx)</button></div>
@@ -141,7 +141,7 @@ export async function tratarPctd(acao, b, { st, p, desenhar, turma }) {
       msg('Montando o PCTD...');
       try {
         const [{ gerarDocx, baixarArquivo, TIPO_DOCX }, { pctdFtp }] = await Promise.all([import('./arquivos.js'), import('./documentos.js')]);
-        const blocos = pctdFtp({ bim, turmaNome: turma?.nome || st.turma, ano: ANO, p, roteiro: (f, tipo) => roteiroDaFase(st, f, tipo), marcas: MARCAS, cfg, mundo: st.mundo?.ordem === bim ? st.mundo : null });
+        const blocos = pctdFtp({ bim, turmaNome: turma?.nome || st.turma, ano: ANO, p, roteiro: (f, tipo) => roteiroDaFase(st, f, tipo), marcas: MARCAS, cfg, mundo: st.mundos?.[p.mundo]?.ordem === bim ? st.mundo : null });
         baixarArquivo(`PCTD FTP ${bim}o bimestre - ${turma?.nome || st.turma}.docx`, gerarDocx(blocos), TIPO_DOCX);
         msg('PCTD baixado. Ele está na pasta de downloads.');
       } catch { msg('Não consegui montar o documento agora.'); }

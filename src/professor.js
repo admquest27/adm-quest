@@ -5,7 +5,7 @@ import {
 import { auth, db } from './firebase.js';
 import { app, tela, esc, hoje, guardar, ler } from './ui.js';
 import {
-  MUNDO, ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno,
+  ESTADOS, ESTADO_ROTULO, SITUACAO_ROTULO, progId, contarTarefas, situacao, estavel, parteAluno,
   etapasDe, normMateriais, liberado, COMO, DIAS_FASE, diaDe,
 } from './fases.js';
 import { abrirRegistros, atualizarRegistros, registrosAbertos, calcularRadar } from './registros.js';
@@ -17,7 +17,8 @@ import { htmlFechamento, htmlAno, tratarFechamento, mudarFechamento, lerArquivoT
 import { fazerBackup, htmlSecaoBackup, lerArquivoBackup, restaurar } from './backup.js';
 import { htmlCasteloProfessor, htmlProjecao, tratarCastelo } from './castelo.js';
 import { htmlGrupos, htmlGruposDaFase, tratarGrupos, mudarConfigGrupos } from './gruposProfessor.js';
-import { ATV_GUILDA, configGuilda } from './grupos.js';
+import { atividadeGuilda, configGuilda } from './grupos.js';
+import { PRIMEIRO, mundoAtual, mundosLiberados, numeroDoMundo, fasesDoMundo } from './mundos.js';
 import { podeExcluir, excluirTurma, arquivarTurma, reativarTurma } from './turmasProfessor.js';
 import { htmlAgenda, tratarAgenda, importarCalendario, ligarDicas, roteiroDaFase, htmlBlocos, resumoTurmas, horarioDoTipo, ANO, planejar, seletorBimestre } from './calendario.js';
 import { htmlPctd, tratarPctd, mudarPctd } from './pctdProfessor.js';
@@ -105,17 +106,12 @@ export function iniciarProfessor(user, opcoes = {}) {
     desenhar();
   }, () => {}));
 
-  paradas.push(onSnapshot(query(collection(db, 'fases'), where('mundo', '==', MUNDO)), (s) => {
-    st.fases = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.ordem - b.ordem);
-    desenhar();
-  }, () => {}));
-
-  // o fechamento e o quadro do ano olham para as fases de todos os mundos
-  st.fasesTodas = [];
+  // todas as fases de todos os mundos; as telas mostram as do mundo escolhido (ver aplicarMundo)
+  st.fasesTodas = []; st.mundos = {}; st.mundoSel = null;
   paradas.push(onSnapshot(collection(db, 'fases'), (s) => { st.fasesTodas = s.docs.map((d) => ({ id: d.id, ...d.data() })); desenhar(); }, () => {}));
 
-  paradas.push(onSnapshot(doc(db, 'mundos', MUNDO), (s) => {
-    st.mundo = s.exists() ? s.data() : null;
+  paradas.push(onSnapshot(collection(db, 'mundos'), (s) => {
+    st.mundos = Object.fromEntries(s.docs.map((d) => [d.id, d.data()]));
     desenhar();
   }, () => {}));
 
@@ -200,7 +196,18 @@ export function iniciarProfessor(user, opcoes = {}) {
     return htmlHoje(st);
   }
 
+  // Mundo mostrado nas telas: o escolhido no seletor ou, por padrão, o atual da turma.
+  const listaDeMundos = () => [...new Set([PRIMEIRO, ...Object.keys(st.mundos ?? {})])].sort((a, b) => numeroDoMundo(a) - numeroDoMundo(b));
+  function aplicarMundo() {
+    const lista = listaDeMundos();
+    const quer = st.mundoSel ?? mundoAtual(turmaAtual());
+    st.mundoId = lista.includes(quer) ? quer : PRIMEIRO;
+    st.mundo = st.mundos?.[st.mundoId] ?? null;
+    st.fases = fasesDoMundo(st.fasesTodas, st.mundoId);
+  }
+
   function desenhar() {
+    aplicarMundo();
     if (!st.carregou.turmas || !st.carregou.alunos) {
       tela('<p class="carregando">Conferindo a turma...</p>', 'centro');
       return;
@@ -221,6 +228,8 @@ export function iniciarProfessor(user, opcoes = {}) {
     const turmas = st.turmas.length > 1 && st.turmas.length <= 4
       ? `<div class="px-turmas" role="group" aria-label="Turma">${st.turmas.map((t) => `<button type="button" data-acao="turma" data-v="${esc(t.id)}" aria-pressed="${t.id === st.turma}" title="${esc(t.nome || t.id)}">${esc(t.teste ? 'Teste' : t.id)}</button>`).join('')}</div>`
       : st.turmas.length ? `<select id="sel-turma" class="px-turma-sel" aria-label="Turma">${st.turmas.map((t) => `<option value="${esc(t.id)}" ${t.id === st.turma ? 'selected' : ''}>${esc(t.nome || t.id)}${t.teste ? ' (teste)' : ''}</option>`).join('')}</select>` : '';
+    const mundos = listaDeMundos();
+    const seletorMundo = mundos.length > 1 ? `<select id="sel-mundo" class="px-turma-sel" aria-label="Mundo">${mundos.map((m) => `<option value="${esc(m)}" ${m === st.mundoId ? 'selected' : ''}>Mundo ${numeroDoMundo(m)}${mundosLiberados(turmaAtual()).includes(m) ? '' : ' (não liberado)'}</option>`).join('')}</select>` : '';
     // mantém a rolagem da ficha e dos filtros ao redesenhar
     const rolFicha = st.salaTopo ? 0 : app.querySelector('.px-ficha')?.scrollTop ?? 0;
     const rolFiltros = app.querySelector('.px-filtros')?.scrollLeft ?? 0;
@@ -229,7 +238,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     tela(
       `<aside class="px-lado" aria-label="Seções"><span class="px-marca">ADM Quest</span>${SECOES.map((x) => botao(...x)).join('')}<span class="px-mola"></span>
         <button type="button" class="px-nav jogar" data-acao="jogar">${icone('jogar')}<span>Jogar como teste</span></button>${botao('ajustes', 'Ajustes')}</aside>
-      <header class="px-topo"><span class="px-marca">ADM Quest</span>${turmas}
+      <header class="px-topo"><span class="px-marca">ADM Quest</span>${seletorMundo}${turmas}
         <button type="button" class="px-ic" data-acao="jogar" aria-label="Jogar como teste" title="Jogar como teste">${icone('jogar')}</button>
         <button type="button" class="px-ic" data-acao="ir" data-v="ajustes" aria-label="Ajustes">${icone('ajustes')}</button></header>
       ${st.aviso ? `<p class="px-faixa" role="alert">${esc(st.aviso)}</p>` : ''}
@@ -287,7 +296,7 @@ export function iniciarProfessor(user, opcoes = {}) {
     const vista = st.sub.alunos;
     const topo = `<div class="px-cab"><div><h1>Alunos</h1><p class="px-sub">${ativos.length} ativo(s)${pendentes.length ? ` · ${pendentes.length} esperando aprovação` : ''}</p></div>
       ${abas('sub', vista, [['lista', 'Turma'], ['radar', `Sem registro (${radar.size})`], ['guildas', 'Guildas']])}</div>`;
-    if (vista === 'guildas') return `${topo}${htmlGrupos(st, { atv: ATV_GUILDA, cfg: configGuilda(turmaAtual()), faseId: null, ativos, titulo: 'Guildas deste mundo' })}`;
+    if (vista === 'guildas') return `${topo}${htmlGrupos(st, { atv: atividadeGuilda(st.mundoId), cfg: configGuilda(turmaAtual(), st.mundoId), faseId: null, ativos, titulo: 'Guildas deste mundo' })}`;
     const estados = turmaAtual()?.estadoFases ?? {};
     const abertas = st.fases.filter((f) => !f.arquivada && ['aberta', 'encerrada'].includes(estados[f.id]));
     const outras = pendentesTotal() - pendentes.length;
@@ -407,6 +416,7 @@ export function iniciarProfessor(user, opcoes = {}) {
         <div class="linha-btn">
           <button class="mini ${t.aberta ? 'ok' : 'ruim'}" data-acao="aberta" data-id="${esc(t.id)}">${t.aberta ? 'Aberta para cadastros' : 'Fechada'}</button>
           <button class="mini" data-acao="codigo" data-id="${esc(t.id)}">Trocar código</button>
+          ${listaDeMundos().filter((m) => m !== PRIMEIRO).map((m) => { const ok = mundosLiberados(t).includes(m); return `<button class="mini ${ok ? 'ok cheio' : ''}" data-acao="mundo-liberar" data-id="${esc(t.id)}" data-m="${esc(m)}">${ok ? `Mundo ${numeroDoMundo(m)} liberado ✓` : `Liberar Mundo ${numeroDoMundo(m)}`}</button>`; }).join('')}
           ${podeExcluir(t, st.alunos) ? `<button class="mini ruim" data-acao="turma-excluir" data-id="${esc(t.id)}">Excluir</button>` : `<button class="mini" data-acao="turma-arquivar" data-id="${esc(t.id)}">Arquivar</button>`}
         </div>
       </li>`).join('');
@@ -557,6 +567,13 @@ export function iniciarProfessor(user, opcoes = {}) {
       if (acao === 'ir') { irPara(b.dataset.v, b.dataset.sub); return; }
       if (acao === 'sub') { st.sub[st.aba] = b.dataset.v; st.planFase = null; st.painelVista = null; desenhar(); return; }
       if (acao === 'turma') { trocarTurma(b.dataset.v); return; }
+      if (acao === 'mundo-liberar') {
+        const t = st.turmas.find((x) => x.id === b.dataset.id); const m = b.dataset.m; const ja = mundosLiberados(t).includes(m);
+        const nome = st.mundos?.[m]?.nome ?? `Mundo ${numeroDoMundo(m)}`;
+        if (!confirm(ja ? `Recolher ${nome} de ${t.nome || t.id}? Os alunos deixam de ver esse mundo; nada é apagado.` : `Liberar ${nome} para ${t.nome || t.id}? Os alunos passam a entrar nele.`)) return;
+        await updateDoc(doc(db, 'turmas', t.id), { mundos: ja ? (t.mundos ?? []).filter((x) => x !== m) : [...(t.mundos ?? []), m] });
+        return;
+      }
       if (acao.startsWith('turma-')) { await acaoTurma(acao, b.dataset.id); return; }
       if (acao === 'ir-sala') { irPara('sala'); st.salaFase = b.dataset.id; st.salaFiltro = b.dataset.filtro ?? 'todos'; desenhar(); return; }
       if (acao === 'ir-fase') { irPara('planejar', 'fases'); st.planFase = b.dataset.id; desenhar(); return; }
@@ -618,6 +635,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       if (e.target.dataset?.pc && (await mudarPctd(e.target, st, planoAgenda()))) return;
       const fc = await mudarFechamento(e.target, st);
       if (fc) { if (fc === 'desenhar') desenhar(); return; }
+      if (e.target.id === 'sel-mundo') { st.mundoSel = e.target.value; st.planFase = null; st.salaFase = null; st.salaAluno = null; st.painelVista = null; desenhar(); return; }
       if (e.target.id === 'sel-turma') { trocarTurma(e.target.value); }
       else if (e.target.dataset?.sl === 'fase') { st.salaFase = e.target.value; st.salaAluno = null; e.target.blur(); desenhar(); }
       else if (e.target.dataset?.sl === 'mostrar') { st.salaMostrar = e.target.checked; }
@@ -640,6 +658,7 @@ export function iniciarProfessor(user, opcoes = {}) {
   function trocarTurma(id) {
     gravarPendentes();
     st.turma = id; guardar('turma', id);
+    st.mundoSel = null;
     st.fechImport = null; st.fechFb = null;
     st.salaAluno = null; st.salaFase = null; st.planFase = null; st.fichaUid = null; st.painelVista = null;
     ligarTurma(); desenhar();
@@ -716,7 +735,7 @@ export function iniciarProfessor(user, opcoes = {}) {
       if (!/^[a-z0-9]{2,20}$/.test(f.id ?? '') || !f.nome || ids.has(f.id)) { falha(`Fase inválida ou repetida no arquivo: ${f.id ?? '(sem id)'}.`); return; }
       ids.add(f.id);
     }
-    const existentes = new Map(st.fases.map((f) => [f.id, f]));
+    const existentes = new Map(st.fasesTodas.map((f) => [f.id, f]));
     const itens = fases.map((f) => {
       const atual = existentes.get(f.id);
       let estado = 'nova';
@@ -750,24 +769,24 @@ export function iniciarProfessor(user, opcoes = {}) {
 
   async function exportarConteudo() {
     const [mundoDoc, fasesSnap, profSnap] = await Promise.all([
-      getDoc(doc(db, 'mundos', MUNDO)),
-      getDocs(query(collection(db, 'fases'), where('mundo', '==', MUNDO))),
+      getDoc(doc(db, 'mundos', st.mundoId)),
+      getDocs(query(collection(db, 'fases'), where('mundo', '==', st.mundoId))),
       getDocs(collection(db, 'fasesProfessor')),
     ]);
     const prof = new Map(profSnap.docs.map((d) => [d.id, d.data().professor ?? {}]));
     const m = mundoDoc.exists() ? mundoDoc.data() : {};
-    const fases = fasesSnap.docs.map((d) => ({ id: d.id, ...parteAluno(d.data(), MUNDO), professor: prof.get(d.id) ?? {} }))
+    const fases = fasesSnap.docs.map((d) => ({ id: d.id, ...parteAluno(d.data(), st.mundoId), professor: prof.get(d.id) ?? {} }))
       .sort((a, b) => a.ordem - b.ordem)
       .map(({ mundo, ...resto }) => resto);
     const saida = {
       formato: 1,
-      mundo: { id: MUNDO, ordem: m.ordem ?? 1, nome: m.nome ?? '', pergunta: m.pergunta ?? '', competencias: m.competencias ?? [], guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {}, mapa: m.mapa ?? {} },
+      mundo: { id: st.mundoId, ordem: m.ordem ?? 1, nome: m.nome ?? '', pergunta: m.pergunta ?? '', competencias: m.competencias ?? [], guia: m.guia ?? '', chefao: m.chefao ?? '', habilidades: m.habilidades ?? {}, textos: m.textos ?? {}, mapa: m.mapa ?? {} },
       fases,
     };
     const blob = new Blob([JSON.stringify(saida, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `conteudo-${MUNDO}-${hoje()}.json`;
+    a.download = `conteudo-${st.mundoId}-${hoje()}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
@@ -998,7 +1017,7 @@ export function iniciarProfessor(user, opcoes = {}) {
           nome: ed.nome.trim(), missao: ed.missao.trim(), etapas, materiais,
           instrucoes: deleteField(), tarefas: deleteField(), atualizadoEm: serverTimestamp(),
         });
-        lote.set(doc(db, 'fasesProfessor', f.id), { mundo: MUNDO, professor: { paraVoce: linhasDe(ed.roteiro) }, atualizadoEm: serverTimestamp() }, { merge: true });
+        lote.set(doc(db, 'fasesProfessor', f.id), { mundo: f.mundo ?? PRIMEIRO, professor: { paraVoce: linhasDe(ed.roteiro) }, atualizadoEm: serverTimestamp() }, { merge: true });
         await lote.commit();
         dlg.close();
       } catch { msg.textContent = 'Não consegui salvar agora.'; }
